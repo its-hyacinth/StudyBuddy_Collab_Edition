@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StudyBuddy — Schedule</title>
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/components.css" />
+  <link rel="stylesheet" href="../css/pages.css" />
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+  <div class="app-shell" id="appShell">
+    <div class="page-content">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">
+            <span class="title-icon"><i data-lucide="calendar"></i></span>
+            Schedule
+          </h1>
+          <p class="page-subtitle">View your classes, deadlines, and events in calendar or list view.</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div class="view-toggle" id="scheduleViewToggle" role="tablist">
+            <button type="button" class="active" data-view="calendar" role="tab">
+              <i data-lucide="calendar"></i> Calendar
+            </button>
+            <button type="button" data-view="list" role="tab">
+              <i data-lucide="list"></i> List
+            </button>
+          </div>
+          <button type="button" class="btn btn-primary" id="addScheduleBtn">
+            <i data-lucide="plus"></i> Add Event
+          </button>
+        </div>
+      </div>
+
+      <div class="page-layout">
+        <div class="page-main">
+          <div class="card" id="calendarView">
+            <div class="cal-nav">
+              <h4 id="fullCalMonth">September 2025</h4>
+              <div class="cal-nav-btns">
+                <button type="button" class="icon-btn" id="fullCalPrev" aria-label="Previous month"><i data-lucide="chevron-left"></i></button>
+                <button type="button" class="btn btn-ghost btn-sm" id="fullCalToday">Today</button>
+                <button type="button" class="icon-btn" id="fullCalNext" aria-label="Next month"><i data-lucide="chevron-right"></i></button>
+              </div>
+            </div>
+            <div class="cal-grid cal-full" id="fullCalendar">
+              <div class="cal-dow">Su</div>
+              <div class="cal-dow">Mo</div>
+              <div class="cal-dow">Tu</div>
+              <div class="cal-dow">We</div>
+              <div class="cal-dow">Th</div>
+              <div class="cal-dow">Fr</div>
+              <div class="cal-dow">Sa</div>
+              <div class="cal-day other"><span class="day-num">31</span></div>
+              <div class="cal-day"><span class="day-num">1</span></div>
+              <div class="cal-day"><span class="day-num">2</span></div>
+              <div class="cal-day"><span class="day-num">3</span></div>
+              <div class="cal-day"><span class="day-num">4</span></div>
+              <div class="cal-day"><span class="day-num">5</span></div>
+              <div class="cal-day"><span class="day-num">6</span></div>
+              <div class="cal-day"><span class="day-num">7</span></div>
+              <div class="cal-day"><span class="day-num">8</span></div>
+              <div class="cal-day"><span class="day-num">9</span></div>
+              <div class="cal-day"><span class="day-num">10</span></div>
+              <div class="cal-day"><span class="day-num">11</span></div>
+              <div class="cal-day today">
+                <span class="day-num">12</span>
+                <div class="cal-event-chip math">Mathematics</div>
+                <div class="cal-event-chip science">Science</div>
+                <div class="cal-event-chip task">Math Quiz Due</div>
+              </div>
+              <div class="cal-day"><span class="day-num">13</span></div>
+              <div class="cal-day"><span class="day-num">14</span></div>
+              <div class="cal-day"><span class="day-num">15</span><div class="cal-event-chip cs">Computer Science</div></div>
+              <div class="cal-day"><span class="day-num">16</span><div class="cal-event-chip filipino">Filipino</div></div>
+              <div class="cal-day"><span class="day-num">17</span><div class="cal-event-chip history">History</div></div>
+              <div class="cal-day"><span class="day-num">18</span><div class="cal-event-chip cs">Group Study</div></div>
+              <div class="cal-day"><span class="day-num">19</span><div class="cal-event-chip science">Science Lab</div></div>
+              <div class="cal-day"><span class="day-num">20</span></div>
+              <div class="cal-day"><span class="day-num">21</span></div>
+              <div class="cal-day"><span class="day-num">22</span><div class="cal-event-chip english">English Presentation</div></div>
+              <div class="cal-day"><span class="day-num">23</span></div>
+              <div class="cal-day"><span class="day-num">24</span></div>
+              <div class="cal-day"><span class="day-num">25</span></div>
+              <div class="cal-day"><span class="day-num">26</span></div>
+              <div class="cal-day"><span class="day-num">27</span></div>
+              <div class="cal-day"><span class="day-num">28</span></div>
+              <div class="cal-day"><span class="day-num">29</span></div>
+              <div class="cal-day"><span class="day-num">30</span></div>
+            </div>
+          </div>
+
+          <div class="card" id="listView" style="display:none">
+            <div class="card-header">
+              <div class="card-header-left">
+                <div class="card-icon blue"><i data-lucide="list"></i></div>
+                <h2 class="card-title">All Events</h2>
+              </div>
+            </div>
+            <div id="scheduleList">
+              <div class="schedule-item" data-id="sch_1">
+                <div class="time">Sep 12 · 8:00 – 9:30 AM</div>
+                <div class="info">
+                  <div class="subj">Mathematics</div>
+                  <div class="room">Room 302 · Class</div>
+                </div>
+                <span class="badge badge-info">Class</span>
+              </div>
+              <div class="schedule-item" data-id="sch_2">
+                <div class="time">Sep 12 · 10:00 – 11:30 AM</div>
+                <div class="info">
+                  <div class="subj">Science</div>
+                  <div class="room">Lab 105 · Class</div>
+                </div>
+                <span class="badge badge-info">Class</span>
+              </div>
+              <div class="schedule-item" data-id="sch_3">
+                <div class="time">Sep 12 · 1:00 – 2:30 PM</div>
+                <div class="info">
+                  <div class="subj">English</div>
+                  <div class="room">Room 210 · Class</div>
+                </div>
+                <span class="badge badge-info">Class</span>
+              </div>
+              <div class="schedule-item" data-id="sch_7">
+                <div class="time">Sep 12 · 11:59 PM</div>
+                <div class="info">
+                  <div class="subj">Math Quiz Due</div>
+                  <div class="room">Deadline</div>
+                </div>
+                <span class="badge badge-overdue">Deadline</span>
+              </div>
+              <div class="schedule-item" data-id="sch_8">
+                <div class="time">Sep 18 · 3:00 – 5:00 PM</div>
+                <div class="info">
+                  <div class="subj">Group Study Session</div>
+                  <div class="room">Library · Event</div>
+                </div>
+                <span class="badge badge-upcoming">Event</span>
+              </div>
+              <div class="schedule-item" data-id="sch_10">
+                <div class="time">Sep 22 · 1:00 – 2:00 PM</div>
+                <div class="info">
+                  <div class="subj">English Presentation</div>
+                  <div class="room">Room 210 · Event</div>
+                </div>
+                <span class="badge badge-upcoming">Event</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="page-aside">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-header-left">
+                <div class="card-icon blue"><i data-lucide="calendar"></i></div>
+                <h2 class="card-title">Mini Calendar</h2>
+              </div>
+            </div>
+            <div id="scheduleMiniCalendar"></div>
+          </div>
+
+          <div class="card" id="scheduleUpcomingEvents">
+            <div class="card-header">
+              <div class="card-header-left">
+                <div class="card-icon teal"><i data-lucide="calendar-days"></i></div>
+                <h2 class="card-title">Upcoming Events</h2>
+              </div>
+            </div>
+            <div id="scheduleEventsList">
+              <div class="list-item">
+                <span class="dot math"></span>
+                <div class="item-meta">
+                  <div class="item-title">Mathematics</div>
+                  <div class="item-sub">Today · 8:00 AM</div>
+                </div>
+              </div>
+              <div class="list-item">
+                <span class="dot science"></span>
+                <div class="item-meta">
+                  <div class="item-title">Science</div>
+                  <div class="item-sub">Today · 10:00 AM</div>
+                </div>
+              </div>
+              <div class="list-item">
+                <span class="dot cs"></span>
+                <div class="item-meta">
+                  <div class="item-title">Group Study Session</div>
+                  <div class="item-sub">Sep 18 · 3:00 PM</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-header-left">
+                <div class="card-icon green"><i data-lucide="refresh-cw"></i></div>
+                <h2 class="card-title">Google Calendar</h2>
+              </div>
+            </div>
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px">Sync your schedule with Google Calendar to stay updated across devices.</p>
+            <button type="button" class="btn btn-primary btn-block" id="syncGoogleCalendarBtn">
+              <i data-lucide="refresh-cw"></i> Sync with Google Calendar
+            </button>
+            <button type="button" class="btn btn-outline btn-block btn-sm" style="margin-top:8px" id="openGoogleCalendarBtn">
+              <i data-lucide="external-link"></i> Open Google Calendar
+            </button>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="addScheduleModal">
+    <div class="modal" role="dialog" aria-labelledby="addScheduleTitle">
+      <div class="modal-header">
+        <h3 id="addScheduleTitle">Add Schedule Event</h3>
+        <button type="button" class="modal-close" data-close-modal="addScheduleModal" aria-label="Close">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <form id="addScheduleForm">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="schTitle">Title</label>
+            <input type="text" class="form-control" id="schTitle" name="title" placeholder="Event title" required />
+          </div>
+          <div class="form-group">
+            <label for="schSubject">Subject</label>
+            <select class="form-control" id="schSubject" name="subjectId">
+              <option value="">Select subject (optional)</option>
+              <option value="subj_math">Mathematics</option>
+              <option value="subj_sci">Science</option>
+              <option value="subj_eng">English</option>
+              <option value="subj_cs">Computer Science</option>
+              <option value="subj_fil">Filipino</option>
+              <option value="subj_hist">History</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="schDate">Date</label>
+              <input type="date" class="form-control" id="schDate" name="date" required />
+            </div>
+            <div class="form-group">
+              <label for="schType">Type</label>
+              <select class="form-control" id="schType" name="type">
+                <option value="class">Class</option>
+                <option value="deadline">Deadline</option>
+                <option value="event">Event</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="schStartTime">Start Time</label>
+              <input type="time" class="form-control" id="schStartTime" name="startTime" required />
+            </div>
+            <div class="form-group">
+              <label for="schEndTime">End Time</label>
+              <input type="time" class="form-control" id="schEndTime" name="endTime" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="schRoom">Room / Location</label>
+            <input type="text" class="form-control" id="schRoom" name="room" placeholder="e.g. Room 302" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-close-modal="addScheduleModal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add Event</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="../js/data.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/sidebar.js"></script>
+  <script src="../js/google-integration.js"></script>
+  <script src="../js/schedule.js"></script>
+</body>
+</html>
