@@ -214,24 +214,24 @@
   font-size: 11.5px;
   font-weight: 600;
 }
-.subject-tag.math { background: #DBEAFE; color: #2563EB; }
-.subject-tag.science { background: #DCFCE7; color: #16A34A; }
-.subject-tag.english { background: #EDE9FE; color: #7C3AED; }
-.subject-tag.cs { background: #FFEDD5; color: #EA580C; }
-.subject-tag.filipino { background: #CCFBF1; color: #0D9488; }
-.subject-tag.history { background: #FCE7F3; color: #E11D48; }
+.subject-tag.math, .subject-tag.ias { background: #DBEAFE; color: #2563EB; }
+.subject-tag.science, .subject-tag.iaslab { background: #DCFCE7; color: #16A34A; }
+.subject-tag.english, .subject-tag.sysad { background: #EDE9FE; color: #7C3AED; }
+.subject-tag.cs, .subject-tag.capstone { background: #FFEDD5; color: #EA580C; }
+.subject-tag.filipino, .subject-tag.sia { background: #CCFBF1; color: #0D9488; }
+.subject-tag.history, .subject-tag.xplat { background: #FCE7F3; color: #E11D48; }
 
 .dot {
   width: 8px; height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
 }
-.dot.math { background: var(--math); }
-.dot.science { background: var(--science); }
-.dot.english { background: var(--english); }
-.dot.cs { background: var(--cs); }
-.dot.filipino { background: var(--filipino); }
-.dot.history { background: var(--history); }
+.dot.math, .dot.ias { background: var(--ias); }
+.dot.science, .dot.iaslab { background: var(--iaslab); }
+.dot.english, .dot.sysad { background: var(--sysad); }
+.dot.cs, .dot.capstone { background: var(--capstone); }
+.dot.filipino, .dot.sia { background: var(--sia); }
+.dot.history, .dot.xplat { background: var(--xplat); }
 
 /* ========== Progress Bar ========== */
 .progress-bar {
@@ -246,12 +246,12 @@
   border-radius: 999px;
   transition: width 400ms ease;
 }
-.progress-bar .fill.math { background: var(--math); }
-.progress-bar .fill.science { background: var(--science); }
-.progress-bar .fill.english { background: var(--english); }
-.progress-bar .fill.cs { background: var(--cs); }
-.progress-bar .fill.filipino { background: var(--filipino); }
-.progress-bar .fill.history { background: var(--history); }
+.progress-bar .fill.math, .progress-bar .fill.ias { background: var(--ias); }
+.progress-bar .fill.science, .progress-bar .fill.iaslab { background: var(--iaslab); }
+.progress-bar .fill.english, .progress-bar .fill.sysad { background: var(--sysad); }
+.progress-bar .fill.cs, .progress-bar .fill.capstone { background: var(--capstone); }
+.progress-bar .fill.filipino, .progress-bar .fill.sia { background: var(--sia); }
+.progress-bar .fill.history, .progress-bar .fill.xplat { background: var(--xplat); }
 .progress-bar .fill.blue { background: var(--primary); }
 .progress-bar .fill.green { background: var(--success); }
 .progress-bar .fill.purple { background: #7C3AED; }
@@ -877,12 +877,12 @@ textarea.form-control {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.cal-event-chip.math { background: #DBEAFE; color: #1E40AF; }
-.cal-event-chip.science { background: #DCFCE7; color: #166534; }
-.cal-event-chip.english { background: #EDE9FE; color: #5B21B6; }
-.cal-event-chip.cs { background: #FFEDD5; color: #9A3412; }
-.cal-event-chip.filipino { background: #CCFBF1; color: #115E59; }
-.cal-event-chip.history { background: #FCE7F3; color: #9F1239; }
+.cal-event-chip.math, .cal-event-chip.ias { background: #DBEAFE; color: #1E40AF; }
+.cal-event-chip.science, .cal-event-chip.iaslab { background: #DCFCE7; color: #166534; }
+.cal-event-chip.english, .cal-event-chip.sysad { background: #EDE9FE; color: #5B21B6; }
+.cal-event-chip.cs, .cal-event-chip.capstone { background: #FFEDD5; color: #9A3412; }
+.cal-event-chip.filipino, .cal-event-chip.sia { background: #CCFBF1; color: #115E59; }
+.cal-event-chip.history, .cal-event-chip.xplat { background: #FCE7F3; color: #9F1239; }
 .cal-event-chip.task { background: #FEF3C7; color: #92400E; }
 
 .view-toggle {

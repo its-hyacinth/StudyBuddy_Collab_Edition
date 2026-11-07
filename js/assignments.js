@@ -258,6 +258,11 @@ document.addEventListener('DOMContentLoaded', () => {
     render();
   });
 
+  document.getElementById('syncClassroomBtn')?.addEventListener('click', async (e) => {
+    const result = await syncGoogleClassroom(e.currentTarget);
+    if (result?.ok) render();
+  });
+
   const addBtn = document.getElementById('addAssignmentBtn') || document.getElementById('createAssignmentBtn');
   addBtn?.addEventListener('click', () => {
     openModal('addAssignmentModal');

@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function filtered() {
     let list = getTasks();
-    if (filter === 'today') list = list.filter((t) => t.today || t.dueDate === '2025-09-12');
+    if (filter === 'today') list = list.filter((t) => t.today || t.dueDate === localDateStr());
     else if (filter === 'upcoming') list = list.filter((t) => t.status === 'upcoming' || t.status === 'pending');
     else if (filter === 'completed') list = list.filter((t) => t.status === 'completed');
     list = [...list].sort((a, b) => {
@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const all = getTasks();
     const counts = {
       all: all.length,
-      today: all.filter((t) => t.today || t.dueDate === '2025-09-12').length,
+      today: all.filter((t) => t.today || t.dueDate === localDateStr()).length,
       upcoming: all.filter((t) => t.status !== 'completed').length,
       completed: all.filter((t) => t.status === 'completed').length,
     };

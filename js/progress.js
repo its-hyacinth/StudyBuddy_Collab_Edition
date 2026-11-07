@@ -6,7 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!session) return;
 
   let chartMode = '7days';
-  let calY = 2025, calM = 8;
+  const now = new Date();
+  let calY = now.getFullYear(), calM = now.getMonth();
 
   function renderStats() {
     const p = getProgress();

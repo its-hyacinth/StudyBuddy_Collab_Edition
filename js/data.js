@@ -21,6 +21,8 @@ const SB_KEYS = {
   PROGRESS: 'studybuddy_progress',
 };
 
+const SB_SEED_VERSION = 2;
+
 function sbGet(key, fallback = null) {
   try {
     const raw = localStorage.getItem(key);
@@ -42,144 +44,254 @@ function uid(prefix = 'id') {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-/* ---------- Seed Data ---------- */
-const SEED_SUBJECTS = [
+function localDateStr(d = new Date()) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/* COR + Google Classroom catalog — BSIT 4, 1st Sem SY 2026-2027, CTU Consolacion */
+const CLASSROOM_META = {
+  school: 'Cebu Technological University — Consolacion Campus',
+  campus: 'Consolacion Campus',
+  course: 'BS Information Technology',
+  yearLevel: '4th Year',
+  section: 'BSIT_DAY_4-B',
+  term: '1st Semester SY 2026-2027',
+  totalUnits: 17,
+};
+
+const CLASSROOM_COURSES = [
   {
-    id: 'subj_math',
-    name: 'Mathematics',
-    short: 'math',
+    id: 'gc_pc4112',
+    subjectId: 'subj_ias_lec',
+    name: 'Information Assurance and Security 2 (Lec)',
+    shortName: 'IAS 2 Lec',
+    code: 'PC 4112',
+    sectionCode: 'CM236',
+    units: 2,
+    short: 'ias',
     color: '#2563EB',
-    icon: 'calculator',
-    room: 'Room 302',
-    professor: 'Prof. Santos',
-    description: 'Covers basic and advanced mathematical concepts, problem solving, and applications.',
-    progress: 75,
-    assignments: 5,
-    completed: 4,
-    pending: 1,
+    icon: 'shield',
+    room: 'TBA',
+    professor: 'TBA',
+    progress: 48,
+    meetings: [{ days: [1], start: '07:00', end: '09:00' }],
+    description: 'Lecture for Information Assurance and Security 2. Instructor listed as TBA until Google Classroom returns the teacher.',
+    coursework: [
+      { id: 'asg_ias_quiz', title: 'Quiz 1 — Threat Models', dueDate: '2026-10-28', status: 'completed', description: 'CIA triad, STRIDE, and risk scoring.', points: 30 },
+      { id: 'asg_ias_threat', title: 'Threat Modeling Worksheet', dueDate: '2026-11-10', status: 'upcoming', description: 'Model threats for a campus web app.', points: 50 },
+    ],
   },
   {
-    id: 'subj_sci',
-    name: 'Science',
-    short: 'science',
+    id: 'gc_pc4112l',
+    subjectId: 'subj_ias_lab',
+    name: 'Information Assurance and Security 2 (Lab)',
+    shortName: 'IAS 2 Lab',
+    code: 'PC 4112L',
+    sectionCode: 'CM237',
+    units: 3,
+    short: 'iaslab',
     color: '#16A34A',
-    icon: 'flask-conical',
-    room: 'Lab 105',
-    professor: 'Prof. Reyes',
-    description: 'Explores biology, chemistry, and physics through experiments and theory.',
-    progress: 50,
-    assignments: 4,
-    completed: 2,
-    pending: 2,
+    icon: 'lock',
+    room: 'TBA',
+    professor: 'TBA',
+    progress: 40,
+    meetings: [{ days: [1, 3, 5], start: '07:00', end: '12:00' }],
+    description: 'Laboratory for IAS 2 (MWF 7:00 AM–12:00 PM). Room and professor TBA.',
+    coursework: [
+      { id: 'asg_ias_pcap', title: 'Packet Capture Lab', dueDate: '2026-11-07', status: 'upcoming', description: 'Wireshark capture and analysis write-up.', points: 100 },
+      { id: 'asg_ias_audit', title: 'Security Audit Checklist', dueDate: '2026-11-21', status: 'upcoming', description: 'Walk a small service against OWASP ASVS.', points: 80 },
+    ],
   },
   {
-    id: 'subj_eng',
-    name: 'English',
-    short: 'english',
+    id: 'gc_pc4113',
+    subjectId: 'subj_sysad',
+    name: 'Systems Administration and Maintenance',
+    shortName: 'SysAdmin',
+    code: 'PC 4113',
+    sectionCode: 'CM238',
+    units: 3,
+    short: 'sysad',
     color: '#7C3AED',
-    icon: 'book-open',
-    room: 'Room 210',
-    professor: 'Prof. Cruz',
-    description: 'Develops reading, writing, and communication skills through literature and composition.',
-    progress: 80,
-    assignments: 3,
-    completed: 3,
-    pending: 0,
-  },
-  {
-    id: 'subj_cs',
-    name: 'Computer Science',
-    short: 'cs',
-    color: '#EA580C',
-    icon: 'code-2',
-    room: 'Lab 401',
-    professor: 'Prof. Garcia',
-    description: 'Introduction to programming, algorithms, and software development fundamentals.',
-    progress: 60,
-    assignments: 4,
-    completed: 2,
-    pending: 2,
-  },
-  {
-    id: 'subj_fil',
-    name: 'Filipino',
-    short: 'filipino',
-    color: '#0D9488',
-    icon: 'languages',
-    room: 'Room 115',
-    professor: 'Prof. Mendoza',
-    description: 'Pag-aaral ng wika, panitikan, at kulturang Filipino.',
-    progress: 70,
-    assignments: 2,
-    completed: 1,
-    pending: 1,
-  },
-  {
-    id: 'subj_hist',
-    name: 'History',
-    short: 'history',
-    color: '#E11D48',
-    icon: 'landmark',
-    room: 'Room 220',
-    professor: 'Prof. Lopez',
-    description: 'World and Philippine history covering major events and their significance.',
+    icon: 'server',
+    room: 'TBA',
+    professor: 'TBA',
     progress: 55,
-    assignments: 3,
-    completed: 1,
-    pending: 2,
+    meetings: [{ days: [3], start: '09:30', end: '12:00' }],
+    description: 'Systems administration and maintenance. Wednesday 9:30 AM–12:00 PM.',
+    coursework: [
+      { id: 'asg_sys_mid', title: 'Midterm Lab — User Admin', dueDate: '2026-10-22', status: 'completed', description: 'Linux users, groups, and sudoers.', points: 50 },
+      { id: 'asg_sys_lab', title: 'Linux User Administration Lab', dueDate: '2026-11-12', status: 'upcoming', description: 'Create users, ACLs, and a backup cron.', points: 100 },
+    ],
+  },
+  {
+    id: 'gc_pc4114',
+    subjectId: 'subj_capstone',
+    name: 'Capstone Project and Research 2',
+    shortName: 'Capstone 2',
+    code: 'PC 4114',
+    sectionCode: 'CM239',
+    units: 3,
+    short: 'capstone',
+    color: '#EA580C',
+    icon: 'graduation-cap',
+    room: 'TBA',
+    professor: 'TBA',
+    progress: 62,
+    meetings: [{ days: [5], start: '13:00', end: '16:00' }],
+    description: 'Capstone Project and Research 2. Friday 1:00 PM–4:00 PM.',
+    coursework: [
+      { id: 'asg_cap_notes', title: 'Proposal Defense Notes', dueDate: '2026-10-15', status: 'completed', description: 'Panel comments compiled.', points: 40 },
+      { id: 'asg_cap_ch4', title: 'Chapter 4 Draft', dueDate: '2026-11-14', status: 'upcoming', description: 'Results and discussion draft.', points: 100 },
+    ],
+  },
+  {
+    id: 'gc_pelec4',
+    subjectId: 'subj_sia',
+    name: 'Systems Integration and Architecture 2',
+    shortName: 'SIA 2',
+    code: 'P ELEC 4',
+    sectionCode: 'CM240',
+    units: 3,
+    short: 'sia',
+    color: '#0D9488',
+    icon: 'blocks',
+    room: 'TBA',
+    professor: 'TBA',
+    progress: 35,
+    meetings: [{ days: [1, 2, 4], start: '10:00', end: '12:00' }],
+    description: 'Systems Integration and Architecture 2. Monday, Tuesday, Thursday 10:00 AM–12:00 PM.',
+    coursework: [
+      { id: 'asg_sia_rtm', title: 'Requirements Traceability Matrix', dueDate: '2026-11-03', status: 'overdue', description: 'Map requirements to integration components.', points: 60 },
+      { id: 'asg_sia_arch', title: 'Integration Architecture Diagram', dueDate: '2026-11-18', status: 'upcoming', description: 'Context + container diagrams for the system.', points: 80 },
+    ],
+  },
+  {
+    id: 'gc_ap6',
+    subjectId: 'subj_xplat',
+    name: 'Cross-Platform Script Development Technology',
+    shortName: 'Cross-Platform Script Dev',
+    code: 'AP 6',
+    sectionCode: 'CM241',
+    units: 3,
+    short: 'xplat',
+    color: '#E11D48',
+    icon: 'smartphone',
+    room: 'TBA',
+    professor: 'TBA',
+    progress: 28,
+    meetings: [{ days: [2, 4], start: '07:00', end: '09:30' }],
+    description: 'Cross-platform script development. Tuesday and Thursday 7:00 AM–9:30 AM.',
+    coursework: [
+      { id: 'asg_xp_ui', title: 'Flutter Screen Prototype', dueDate: '2026-11-04', status: 'overdue', description: 'Build two screens with navigation.', points: 50 },
+      { id: 'asg_xp_api', title: 'API Integration Mini App', dueDate: '2026-11-20', status: 'upcoming', description: 'Consume a REST API from a cross-platform client.', points: 100 },
+    ],
   },
 ];
 
-const SEED_ASSIGNMENTS = [
-  { id: 'asg_1', title: 'Algebra Homework Set 3', subjectId: 'subj_math', subject: 'Mathematics', dueDate: '2025-09-12', status: 'upcoming', description: 'Complete problems 1–20 from Chapter 3.', points: 50 },
-  { id: 'asg_2', title: 'Science Lab Report', subjectId: 'subj_sci', subject: 'Science', dueDate: '2025-09-14', status: 'upcoming', description: 'Write a report on the photosynthesis experiment.', points: 100 },
-  { id: 'asg_3', title: 'Essay: Modern Literature', subjectId: 'subj_eng', subject: 'English', dueDate: '2025-09-18', status: 'upcoming', description: 'Write a 1500-word essay on contemporary themes.', points: 75 },
-  { id: 'asg_4', title: 'Python Mini Project', subjectId: 'subj_cs', subject: 'Computer Science', dueDate: '2025-09-10', status: 'overdue', description: 'Build a CLI to-do app using Python.', points: 100 },
-  { id: 'asg_5', title: 'Math Quiz 1', subjectId: 'subj_math', subject: 'Mathematics', dueDate: '2025-09-05', status: 'completed', description: 'Covered Chapters 1–2.', points: 30 },
-  { id: 'asg_6', title: 'Vocabulary Worksheet', subjectId: 'subj_eng', subject: 'English', dueDate: '2025-09-03', status: 'completed', description: 'Unit 4 vocabulary exercises.', points: 20 },
-  { id: 'asg_7', title: 'Chemistry Worksheet', subjectId: 'subj_sci', subject: 'Science', dueDate: '2025-09-08', status: 'overdue', description: 'Balancing chemical equations.', points: 40 },
-  { id: 'asg_8', title: 'HTML/CSS Landing Page', subjectId: 'subj_cs', subject: 'Computer Science', dueDate: '2025-09-20', status: 'upcoming', description: 'Create a responsive landing page.', points: 80 },
-  { id: 'asg_9', title: 'Tula Analysis', subjectId: 'subj_fil', subject: 'Filipino', dueDate: '2025-09-16', status: 'upcoming', description: 'Suriin ang isang tula ni Rizal.', points: 50 },
-  { id: 'asg_10', title: 'WWII Timeline', subjectId: 'subj_hist', subject: 'History', dueDate: '2025-09-22', status: 'upcoming', description: 'Create a visual timeline of key WWII events.', points: 60 },
-  { id: 'asg_11', title: 'Geometry Problem Set', subjectId: 'subj_math', subject: 'Mathematics', dueDate: '2025-09-01', status: 'completed', description: 'Triangles and congruence.', points: 40 },
-  { id: 'asg_12', title: 'Reading Reflection', subjectId: 'subj_eng', subject: 'English', dueDate: '2025-08-28', status: 'completed', description: 'Reflect on the assigned short story.', points: 25 },
-  { id: 'asg_13', title: 'Data Structures Quiz', subjectId: 'subj_cs', subject: 'Computer Science', dueDate: '2025-09-04', status: 'completed', description: 'Arrays, stacks, and queues.', points: 50 },
-  { id: 'asg_14', title: 'Cell Structure Diagram', subjectId: 'subj_sci', subject: 'Science', dueDate: '2025-09-02', status: 'completed', description: 'Label plant and animal cells.', points: 30 },
-  { id: 'asg_15', title: 'Kasaysayan Essay', subjectId: 'subj_hist', subject: 'History', dueDate: '2025-09-25', status: 'upcoming', description: 'Philippine Revolution essay.', points: 70 },
-  { id: 'asg_16', title: 'Sanaysay Draft', subjectId: 'subj_fil', subject: 'Filipino', dueDate: '2025-09-07', status: 'overdue', description: 'First draft of personal sanaysay.', points: 40 },
-];
+function catalogCourseToSubject(course) {
+  const asgs = course.coursework || [];
+  const completed = asgs.filter((a) => a.status === 'completed').length;
+  const pending = asgs.filter((a) => a.status !== 'completed').length;
+  return {
+    id: course.subjectId,
+    classroomId: course.id,
+    name: course.name,
+    shortName: course.shortName,
+    short: course.short,
+    code: course.code,
+    sectionCode: course.sectionCode,
+    section: CLASSROOM_META.section,
+    units: course.units,
+    color: course.color,
+    icon: course.icon,
+    room: course.room || 'TBA',
+    professor: course.professor || 'TBA',
+    description: course.description,
+    meetings: course.meetings,
+    progress: course.progress,
+    assignments: asgs.length,
+    completed,
+    pending,
+    source: 'classroom',
+  };
+}
+
+function subjectToClass(subject) {
+  return {
+    id: `cls_${subject.id}`,
+    name: `${subject.code} · ${subject.shortName || subject.name}`,
+    subject: subject.name,
+    subjectId: subject.id,
+    short: subject.short,
+    students: 28,
+    nextActivity: 'Classroom coursework',
+    nextDate: '2026-11-14',
+    progress: subject.progress || 0,
+    professor: subject.professor || 'TBA',
+    room: subject.room || 'TBA',
+    section: subject.section || CLASSROOM_META.section,
+    source: 'classroom',
+  };
+}
+
+function buildScheduleFromSubjects(subjects, start = new Date(2026, 10, 2), end = new Date(2026, 11, 18)) {
+  const list = [];
+  const cursor = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  while (cursor <= end) {
+    const dow = cursor.getDay();
+    const date = localDateStr(cursor);
+    subjects.forEach((s) => {
+      (s.meetings || []).forEach((m) => {
+        if (!m.days.includes(dow)) return;
+        list.push({
+          id: `sch_${s.id}_${date}`,
+          title: s.shortName || s.name,
+          subjectId: s.id,
+          subject: s.name,
+          date,
+          startTime: m.start,
+          endTime: m.end,
+          room: s.room || 'TBA',
+          type: 'class',
+          source: 'classroom',
+        });
+      });
+    });
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return list;
+}
+
+/* ---------- Seed Data ---------- */
+const SEED_SUBJECTS = CLASSROOM_COURSES.map(catalogCourseToSubject);
+
+const SEED_ASSIGNMENTS = CLASSROOM_COURSES.flatMap((course) =>
+  (course.coursework || []).map((work) => ({
+    ...work,
+    classroomId: course.id,
+    subjectId: course.subjectId,
+    subject: course.name,
+    source: 'classroom',
+  }))
+);
 
 const SEED_TASKS = [
-  { id: 'task_1', title: 'Review Algebra notes', subjectId: 'subj_math', subject: 'Mathematics', dueDate: '2025-09-12', dueTime: '10:00', status: 'pending', today: true },
-  { id: 'task_2', title: 'Finish lab report draft', subjectId: 'subj_sci', subject: 'Science', dueDate: '2025-09-12', dueTime: '14:00', status: 'pending', today: true },
-  { id: 'task_3', title: 'Read Chapter 5', subjectId: 'subj_eng', subject: 'English', dueDate: '2025-09-13', dueTime: '18:00', status: 'upcoming', today: false },
-  { id: 'task_4', title: 'Debug Python project', subjectId: 'subj_cs', subject: 'Computer Science', dueDate: '2025-09-12', dueTime: '16:00', status: 'pending', today: true },
-  { id: 'task_5', title: 'Memorize vocabulary list', subjectId: 'subj_eng', subject: 'English', dueDate: '2025-09-11', dueTime: '09:00', status: 'completed', today: false },
-  { id: 'task_6', title: 'Practice calculus problems', subjectId: 'subj_math', subject: 'Mathematics', dueDate: '2025-09-14', dueTime: '11:00', status: 'upcoming', today: false },
-  { id: 'task_7', title: 'Prepare Filipino presentation', subjectId: 'subj_fil', subject: 'Filipino', dueDate: '2025-09-15', dueTime: '13:00', status: 'upcoming', today: false },
-  { id: 'task_8', title: 'Organize study notes', subjectId: 'subj_hist', subject: 'History', dueDate: '2025-09-10', dueTime: '20:00', status: 'completed', today: false },
+  { id: 'task_1', title: 'Review IAS 2 lecture notes', subjectId: 'subj_ias_lec', subject: 'Information Assurance and Security 2 (Lec)', dueDate: '2026-11-06', dueTime: '10:00', status: 'pending', today: true },
+  { id: 'task_2', title: 'Finish packet capture write-up', subjectId: 'subj_ias_lab', subject: 'Information Assurance and Security 2 (Lab)', dueDate: '2026-11-06', dueTime: '14:00', status: 'pending', today: true },
+  { id: 'task_3', title: 'Draft Capstone Chapter 4 outline', subjectId: 'subj_capstone', subject: 'Capstone Project and Research 2', dueDate: '2026-11-07', dueTime: '18:00', status: 'upcoming', today: false },
+  { id: 'task_4', title: 'Fix Flutter navigation bug', subjectId: 'subj_xplat', subject: 'Cross-Platform Script Development Technology', dueDate: '2026-11-06', dueTime: '16:00', status: 'pending', today: true },
+  { id: 'task_5', title: 'Read SysAdmin backup chapter', subjectId: 'subj_sysad', subject: 'Systems Administration and Maintenance', dueDate: '2026-11-05', dueTime: '09:00', status: 'completed', today: false },
+  { id: 'task_6', title: 'Sketch SIA 2 container diagram', subjectId: 'subj_sia', subject: 'Systems Integration and Architecture 2', dueDate: '2026-11-08', dueTime: '11:00', status: 'upcoming', today: false },
+  { id: 'task_7', title: 'Prepare Friday capstone demo notes', subjectId: 'subj_capstone', subject: 'Capstone Project and Research 2', dueDate: '2026-11-07', dueTime: '13:00', status: 'upcoming', today: false },
+  { id: 'task_8', title: 'Organize IAS lab screenshots', subjectId: 'subj_ias_lab', subject: 'Information Assurance and Security 2 (Lab)', dueDate: '2026-11-04', dueTime: '20:00', status: 'completed', today: false },
 ];
 
-const SEED_SCHEDULE = [
-  { id: 'sch_1', title: 'Mathematics', subjectId: 'subj_math', subject: 'Mathematics', date: '2025-09-12', startTime: '08:00', endTime: '09:30', room: 'Room 302', type: 'class' },
-  { id: 'sch_2', title: 'Science', subjectId: 'subj_sci', subject: 'Science', date: '2025-09-12', startTime: '10:00', endTime: '11:30', room: 'Lab 105', type: 'class' },
-  { id: 'sch_3', title: 'English', subjectId: 'subj_eng', subject: 'English', date: '2025-09-12', startTime: '13:00', endTime: '14:30', room: 'Room 210', type: 'class' },
-  { id: 'sch_4', title: 'Computer Science', subjectId: 'subj_cs', subject: 'Computer Science', date: '2025-09-15', startTime: '09:00', endTime: '10:30', room: 'Lab 401', type: 'class' },
-  { id: 'sch_5', title: 'Filipino', subjectId: 'subj_fil', subject: 'Filipino', date: '2025-09-16', startTime: '11:00', endTime: '12:30', room: 'Room 115', type: 'class' },
-  { id: 'sch_6', title: 'History', subjectId: 'subj_hist', subject: 'History', date: '2025-09-17', startTime: '14:00', endTime: '15:30', room: 'Room 220', type: 'class' },
-  { id: 'sch_7', title: 'Math Quiz Due', subjectId: 'subj_math', subject: 'Mathematics', date: '2025-09-12', startTime: '23:59', endTime: '23:59', room: '', type: 'deadline' },
-  { id: 'sch_8', title: 'Group Study Session', subjectId: 'subj_cs', subject: 'Computer Science', date: '2025-09-18', startTime: '15:00', endTime: '17:00', room: 'Library', type: 'event' },
-  { id: 'sch_9', title: 'Science Lab', subjectId: 'subj_sci', subject: 'Science', date: '2025-09-19', startTime: '08:00', endTime: '10:00', room: 'Lab 105', type: 'class' },
-  { id: 'sch_10', title: 'English Presentation', subjectId: 'subj_eng', subject: 'English', date: '2025-09-22', startTime: '13:00', endTime: '14:00', room: 'Room 210', type: 'event' },
-];
+const SEED_SCHEDULE = buildScheduleFromSubjects(SEED_SUBJECTS);
 
-const SEED_CLASSES = [
-  { id: 'cls_1', name: 'Math 101', subject: 'Mathematics', short: 'math', students: 32, nextActivity: 'Quiz 1', nextDate: '2025-09-15', progress: 75 },
-  { id: 'cls_2', name: 'Science 205', subject: 'Science', short: 'science', students: 28, nextActivity: 'Lab Report', nextDate: '2025-09-14', progress: 68 },
-  { id: 'cls_3', name: 'English 101', subject: 'English', short: 'english', students: 30, nextActivity: 'Essay Draft', nextDate: '2025-09-18', progress: 82 },
-  { id: 'cls_4', name: 'CS 308', subject: 'Computer Science', short: 'cs', students: 24, nextActivity: 'Project Demo', nextDate: '2025-09-20', progress: 60 },
-  { id: 'cls_5', name: 'Filipino 101', subject: 'Filipino', short: 'filipino', students: 26, nextActivity: 'Oral Recitation', nextDate: '2025-09-16', progress: 52 },
-];
+const SEED_CLASSES = SEED_SUBJECTS.map(subjectToClass);
 
 const SEED_STUDENTS = [
   { id: 'stu_1', name: 'Maria Santos', email: 'maria.santos@email.com', course: 'BSIT', year: '2nd Year', gpa: 3.8, status: 'active' },
@@ -193,63 +305,63 @@ const SEED_STUDENTS = [
 ];
 
 const SEED_GRADES = [
-  { id: 'grd_1', student: 'Maria Santos', assignment: 'Math Quiz 1', class: 'Math 101', score: 28, max: 30, status: 'graded' },
-  { id: 'grd_2', student: 'Juan Dela Cruz', assignment: 'Math Quiz 1', class: 'Math 101', score: 25, max: 30, status: 'graded' },
-  { id: 'grd_3', student: 'Ana Reyes', assignment: 'Lab Report', class: 'Science 205', score: null, max: 100, status: 'pending' },
-  { id: 'grd_4', student: 'Pedro Garcia', assignment: 'Essay Draft', class: 'English 101', score: 68, max: 75, status: 'graded' },
-  { id: 'grd_5', student: 'Lisa Mendoza', assignment: 'Python Project', class: 'CS 308', score: null, max: 100, status: 'pending' },
-  { id: 'grd_6', student: 'Sofia Cruz', assignment: 'Vocabulary Worksheet', class: 'English 101', score: 18, max: 20, status: 'graded' },
-  { id: 'grd_7', student: 'Miguel Torres', assignment: 'HTML Landing Page', class: 'CS 308', score: null, max: 80, status: 'pending' },
-  { id: 'grd_8', student: 'Carlos Lopez', assignment: 'Chemistry Worksheet', class: 'Science 205', score: 32, max: 40, status: 'graded' },
+  { id: 'grd_1', student: 'Maria Santos', assignment: 'Quiz 1 — Threat Models', class: 'PC 4112 · IAS 2 Lec', score: 28, max: 30, status: 'graded' },
+  { id: 'grd_2', student: 'Juan Dela Cruz', assignment: 'Quiz 1 — Threat Models', class: 'PC 4112 · IAS 2 Lec', score: 25, max: 30, status: 'graded' },
+  { id: 'grd_3', student: 'Ana Reyes', assignment: 'Packet Capture Lab', class: 'PC 4112L · IAS 2 Lab', score: null, max: 100, status: 'pending' },
+  { id: 'grd_4', student: 'Pedro Garcia', assignment: 'Chapter 4 Draft', class: 'PC 4114 · Capstone 2', score: 68, max: 100, status: 'graded' },
+  { id: 'grd_5', student: 'Lisa Mendoza', assignment: 'Flutter Screen Prototype', class: 'AP 6 · Cross-Platform Script Dev', score: null, max: 50, status: 'pending' },
+  { id: 'grd_6', student: 'Sofia Cruz', assignment: 'Midterm Lab — User Admin', class: 'PC 4113 · SysAdmin', score: 44, max: 50, status: 'graded' },
+  { id: 'grd_7', student: 'Miguel Torres', assignment: 'API Integration Mini App', class: 'AP 6 · Cross-Platform Script Dev', score: null, max: 100, status: 'pending' },
+  { id: 'grd_8', student: 'Carlos Lopez', assignment: 'Requirements Traceability Matrix', class: 'P ELEC 4 · SIA 2', score: 48, max: 60, status: 'graded' },
 ];
 
 const SEED_MESSAGES = [
-  { id: 'msg_1', from: 'Maria Santos', preview: 'Sir, can I request an extension for the lab report?', time: '10:32 AM', unread: true, class: 'Science 205' },
-  { id: 'msg_2', from: 'Ana Reyes', preview: 'Thank you for the feedback on my essay!', time: 'Yesterday', unread: true, class: 'English 101' },
-  { id: 'msg_3', from: 'Pedro Garcia', preview: 'When is the next quiz scheduled?', time: 'Sep 10', unread: false, class: 'Math 101' },
-  { id: 'msg_4', from: 'Lisa Mendoza', preview: 'I submitted my project on Drive.', time: 'Sep 9', unread: false, class: 'CS 308' },
-  { id: 'msg_5', from: 'Sofia Cruz', preview: 'Could you clarify question 5?', time: 'Sep 8', unread: false, class: 'Math 101' },
+  { id: 'msg_1', from: 'Maria Santos', preview: 'Can I request an extension for the packet capture lab?', time: '10:32 AM', unread: true, class: 'PC 4112L · IAS 2 Lab' },
+  { id: 'msg_2', from: 'Ana Reyes', preview: 'Posted the Chapter 4 comments in Classroom.', time: 'Yesterday', unread: true, class: 'PC 4114 · Capstone 2' },
+  { id: 'msg_3', from: 'Pedro Garcia', preview: 'When is the next SysAdmin lab due?', time: 'Nov 4', unread: false, class: 'PC 4113 · SysAdmin' },
+  { id: 'msg_4', from: 'Lisa Mendoza', preview: 'I submitted the Flutter prototype on Drive.', time: 'Nov 3', unread: false, class: 'AP 6 · Cross-Platform Script Dev' },
+  { id: 'msg_5', from: 'Sofia Cruz', preview: 'Could you clarify the RTM columns?', time: 'Nov 2', unread: false, class: 'P ELEC 4 · SIA 2' },
 ];
 
 const SEED_RESOURCES = [
-  { id: 'res_1', title: 'Algebra Formula Sheet', class: 'Math 101', type: 'pdf', size: '1.2 MB', uploaded: '2025-09-01' },
-  { id: 'res_2', title: 'Lab Safety Guidelines', class: 'Science 205', type: 'pdf', size: '840 KB', uploaded: '2025-08-28' },
-  { id: 'res_3', title: 'Essay Rubric', class: 'English 101', type: 'doc', size: '120 KB', uploaded: '2025-09-05' },
-  { id: 'res_4', title: 'Python Starter Kit', class: 'CS 308', type: 'zip', size: '3.4 MB', uploaded: '2025-09-03' },
-  { id: 'res_5', title: 'Lecture Slides Week 3', class: 'Filipino 101', type: 'slide', size: '2.1 MB', uploaded: '2025-09-08' },
+  { id: 'res_1', title: 'IAS 2 Lecture Slides', class: 'PC 4112 · IAS 2 Lec', type: 'pdf', size: '1.2 MB', uploaded: '2026-10-20' },
+  { id: 'res_2', title: 'Lab Safety & Tooling Guide', class: 'PC 4112L · IAS 2 Lab', type: 'pdf', size: '840 KB', uploaded: '2026-10-18' },
+  { id: 'res_3', title: 'Capstone Chapter Rubric', class: 'PC 4114 · Capstone 2', type: 'doc', size: '120 KB', uploaded: '2026-10-25' },
+  { id: 'res_4', title: 'Flutter Starter Kit', class: 'AP 6 · Cross-Platform Script Dev', type: 'zip', size: '3.4 MB', uploaded: '2026-10-22' },
+  { id: 'res_5', title: 'SIA 2 Architecture Patterns', class: 'P ELEC 4 · SIA 2', type: 'slide', size: '2.1 MB', uploaded: '2026-11-01' },
 ];
 
 const SEED_DRIVE = [
-  { id: 'drv_1', name: 'Mathematics', type: 'folder', owner: 'Me', modified: '2025-09-10', size: '—' },
-  { id: 'drv_2', name: 'Science Labs', type: 'folder', owner: 'Me', modified: '2025-09-08', size: '—' },
-  { id: 'drv_3', name: 'Algebra Notes.docx', type: 'doc', owner: 'Me', modified: '2025-09-11', size: '245 KB' },
-  { id: 'drv_4', name: 'Lab Report Template.xlsx', type: 'sheet', owner: 'Me', modified: '2025-09-09', size: '88 KB' },
-  { id: 'drv_5', name: 'Project Presentation.pptx', type: 'slide', owner: 'Me', modified: '2025-09-07', size: '1.8 MB' },
-  { id: 'drv_6', name: 'Syllabus.pdf', type: 'pdf', owner: 'Prof. Santos', modified: '2025-08-20', size: '420 KB', shared: true },
-  { id: 'drv_7', name: 'Group Photo.png', type: 'image', owner: 'Me', modified: '2025-09-05', size: '2.3 MB' },
-  { id: 'drv_8', name: 'English Essays', type: 'folder', owner: 'Me', modified: '2025-09-02', size: '—' },
-  { id: 'drv_9', name: 'Study Schedule.pdf', type: 'pdf', owner: 'Me', modified: '2025-09-12', size: '156 KB' },
-  { id: 'drv_10', name: 'CS Project Code', type: 'folder', owner: 'Me', modified: '2025-09-11', size: '—' },
+  { id: 'drv_1', name: 'IAS 2', type: 'folder', owner: 'Me', modified: '2026-11-04', size: '—' },
+  { id: 'drv_2', name: 'SysAdmin Labs', type: 'folder', owner: 'Me', modified: '2026-11-03', size: '—' },
+  { id: 'drv_3', name: 'Threat Model Notes.docx', type: 'doc', owner: 'Me', modified: '2026-11-05', size: '245 KB' },
+  { id: 'drv_4', name: 'Packet Capture Log.xlsx', type: 'sheet', owner: 'Me', modified: '2026-11-04', size: '88 KB' },
+  { id: 'drv_5', name: 'Capstone Defense.pptx', type: 'slide', owner: 'Me', modified: '2026-10-28', size: '1.8 MB' },
+  { id: 'drv_6', name: 'Course Syllabus.pdf', type: 'pdf', owner: 'Classroom', modified: '2026-08-20', size: '420 KB', shared: true },
+  { id: 'drv_7', name: 'Team Photo.png', type: 'image', owner: 'Me', modified: '2026-10-15', size: '2.3 MB' },
+  { id: 'drv_8', name: 'SIA 2 Diagrams', type: 'folder', owner: 'Me', modified: '2026-11-02', size: '—' },
+  { id: 'drv_9', name: 'Weekly Schedule.pdf', type: 'pdf', owner: 'Me', modified: '2026-11-06', size: '156 KB' },
+  { id: 'drv_10', name: 'Cross-Platform Code', type: 'folder', owner: 'Me', modified: '2026-11-05', size: '—' },
 ];
 
 const SEED_PROGRESS = {
   overall: 68,
   completedTasks: 12,
   totalTasks: 18,
-  completedAssignments: 5,
-  totalAssignments: 16,
+  completedAssignments: 3,
+  totalAssignments: 12,
   subjectsMastered: 2,
   totalSubjects: 6,
   hoursStudied: 24,
   weeklyGoalHours: 30,
   chart7Days: [
-    { label: 'Sep 9', value: 45 },
-    { label: 'Sep 10', value: 52 },
-    { label: 'Sep 11', value: 48 },
-    { label: 'Sep 12', value: 58 },
-    { label: 'Sep 13', value: 62 },
-    { label: 'Sep 14', value: 65 },
-    { label: 'Sep 15', value: 68 },
+    { label: 'Oct 31', value: 45 },
+    { label: 'Nov 1', value: 52 },
+    { label: 'Nov 2', value: 48 },
+    { label: 'Nov 3', value: 58 },
+    { label: 'Nov 4', value: 62 },
+    { label: 'Nov 5', value: 65 },
+    { label: 'Nov 6', value: 68 },
   ],
   chart30Days: [
     { label: 'W1', value: 40 }, { label: 'W2', value: 48 }, { label: 'W3', value: 55 }, { label: 'W4', value: 68 },
@@ -265,9 +377,11 @@ const SEED_SETTINGS = {
     email: 'juan.delacruz@email.com',
     studentId: '2023-04521',
     phone: '+63 912 345 6789',
-    school: 'State University',
-    course: 'BS Information Technology',
-    yearLevel: '2nd Year',
+    school: CLASSROOM_META.school,
+    course: CLASSROOM_META.course,
+    yearLevel: CLASSROOM_META.yearLevel,
+    section: CLASSROOM_META.section,
+    term: CLASSROOM_META.term,
     verified: true,
   },
   teacherProfile: {
@@ -275,19 +389,19 @@ const SEED_SETTINGS = {
     email: 'prof.delacruz@email.com',
     employeeId: 'T-2019-088',
     phone: '+63 917 111 2233',
-    school: 'State University',
-    department: 'College of Computing',
+    school: CLASSROOM_META.school,
+    department: 'College of Computer Studies',
     verified: true,
   },
   notifications: { email: true, push: true, deadlines: true, messages: true },
   appearance: { theme: 'light', compact: false },
-  connected: { googleCalendar: false, googleDrive: false },
+  connected: { googleClassroom: false, googleCalendar: false, googleDrive: false },
   storageUsed: 34.2,
   storageTotal: 50,
 };
 
 function seedIfNeeded() {
-  if (sbGet(SB_KEYS.SEEDED)) return;
+  if (sbGet(SB_KEYS.SEEDED) === SB_SEED_VERSION) return;
   sbSet(SB_KEYS.SUBJECTS, SEED_SUBJECTS);
   sbSet(SB_KEYS.ASSIGNMENTS, SEED_ASSIGNMENTS);
   sbSet(SB_KEYS.TASKS, SEED_TASKS);
@@ -300,7 +414,7 @@ function seedIfNeeded() {
   sbSet(SB_KEYS.DRIVE, SEED_DRIVE);
   sbSet(SB_KEYS.PROGRESS, SEED_PROGRESS);
   sbSet(SB_KEYS.SETTINGS, SEED_SETTINGS);
-  sbSet(SB_KEYS.SEEDED, true);
+  sbSet(SB_KEYS.SEEDED, SB_SEED_VERSION);
 }
 
 /* ---------- CRUD Helpers ---------- */
@@ -412,6 +526,9 @@ function statusLabel(status) {
 }
 
 function subjectShort(name) {
+  const subjects = getSubjects();
+  const match = subjects.find((s) => s.name === name || s.shortName === name || s.short === name || s.id === name);
+  if (match) return match.short;
   const map = {
     Mathematics: 'math',
     Science: 'science',
@@ -419,8 +536,20 @@ function subjectShort(name) {
     'Computer Science': 'cs',
     Filipino: 'filipino',
     History: 'history',
+    'Information Assurance and Security 2 (Lec)': 'ias',
+    'Information Assurance and Security 2 (Lab)': 'iaslab',
+    'Systems Administration and Maintenance': 'sysad',
+    'Capstone Project and Research 2': 'capstone',
+    'Systems Integration and Architecture 2': 'sia',
+    'Cross-Platform Script Development Technology': 'xplat',
+    'IAS 2 Lec': 'ias',
+    'IAS 2 Lab': 'iaslab',
+    SysAdmin: 'sysad',
+    'Capstone 2': 'capstone',
+    'SIA 2': 'sia',
+    'Cross-Platform Script Dev': 'xplat',
   };
-  return map[name] || 'math';
+  return map[name] || 'ias';
 }
 
 function daysUntil(dateStr) {

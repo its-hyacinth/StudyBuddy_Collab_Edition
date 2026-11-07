@@ -83,7 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const sched = document.getElementById('todaySchedule');
   if (sched) {
-    const items = getSchedule().filter((s) => s.date === '2025-09-12');
+    const items = getSchedule().filter((s) => s.date === localDateStr());
     sched.innerHTML = items.map((s, i) => `
       <div class="schedule-item">
         <div class="time">${formatTime(s.startTime)} – ${formatTime(s.endTime)}</div>

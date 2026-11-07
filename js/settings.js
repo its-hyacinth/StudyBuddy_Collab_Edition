@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function activatePanel(name) {
     document.querySelectorAll('.settings-nav button, [data-settings-tab]').forEach((btn) => {
-      btn.classList.toggle('active', (btn.dataset.settingsTab || btn.dataset.tab) === name);
+      btn.classList.toggle('active', (btn.dataset.settingsTab || btn.dataset.tab || btn.dataset.panel) === name);
     });
     document.querySelectorAll('.settings-panel').forEach((panel) => {
       panel.classList.toggle('active', panel.id === `panel-${name}` || panel.dataset.panel === name);
@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.querySelectorAll('.settings-nav button, [data-settings-tab]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const name = btn.dataset.settingsTab || btn.dataset.tab || 'account';
+      const name = btn.dataset.settingsTab || btn.dataset.tab || btn.dataset.panel || 'account';
       activatePanel(name);
     });
   });
@@ -107,32 +107,85 @@ document.addEventListener('DOMContentLoaded', () => {
   // Connected accounts
   function refreshConnected() {
     const connected = getSettings().connected || {};
-    const calBadge = document.getElementById('calConnectedBadge');
-    const driveBadge = document.getElementById('driveConnectedBadge');
-    const calBtn = document.getElementById('toggleCalendar');
-    const driveBtn = document.getElementById('toggleDrive');
-    if (calBadge) {
-      calBadge.textContent = connected.googleCalendar ? 'Connected' : 'Not connected';
-      calBadge.className = `badge ${connected.googleCalendar ? 'badge-completed' : 'badge-pending'}`;
+    const classroomOn = !!connected.googleClassroom;
+    const calOn = !!connected.googleCalendar;
+    const driveOn = !!connected.googleDrive;
+
+    const setToggle = (id, on) => {
+      const el = document.getElementById(id);
+      if (el) el.checked = on;
+    };
+    setToggle('toggleGoogleClassroom', classroomOn);
+    setToggle('toggleGoogleCalendar', calOn);
+    setToggle('toggleGoogleDrive', driveOn);
+
+    const classroomStatus = document.getElementById('classroomConnectStatus');
+    const calStatus = document.getElementById('calendarConnectStatus') || document.getElementById('googleCalStatus');
+    const driveStatus = document.getElementById('driveConnectStatus') || document.getElementById('googleDriveStatus');
+    if (classroomStatus) {
+      classroomStatus.textContent = classroomOn
+        ? 'Connected · Classes and coursework sync from Classroom'
+        : 'Not connected · Import BSIT 4 classes from Classroom';
     }
-    if (driveBadge) {
-      driveBadge.textContent = connected.googleDrive ? 'Connected' : 'Not connected';
-      driveBadge.className = `badge ${connected.googleDrive ? 'badge-completed' : 'badge-pending'}`;
-    }
-    if (calBtn) calBtn.textContent = connected.googleCalendar ? 'Disconnect' : 'Connect';
-    if (driveBtn) driveBtn.textContent = connected.googleDrive ? 'Disconnect' : 'Connect';
+    if (calStatus) calStatus.textContent = calOn ? 'Connected' : 'Not connected · Optional schedule overlay';
+    if (driveStatus) driveStatus.textContent = driveOn ? 'Connected' : 'Not connected · Access your files';
+
+    const classroomBtn = document.getElementById('toggleClassroom') || document.getElementById('connectGoogleClassroom');
+    const calBtn = document.getElementById('toggleCalendar') || document.getElementById('connectGoogleCalendar');
+    const driveBtn = document.getElementById('toggleDrive') || document.getElementById('connectGoogleDrive');
+    if (classroomBtn && classroomBtn.tagName === 'BUTTON') classroomBtn.textContent = classroomOn ? 'Disconnect' : 'Connect';
+    if (calBtn && calBtn.tagName === 'BUTTON') calBtn.textContent = calOn ? 'Disconnect' : 'Connect';
+    if (driveBtn && driveBtn.tagName === 'BUTTON') driveBtn.textContent = driveOn ? 'Disconnect' : 'Connect';
+
+    const clientInput = document.getElementById('googleClientId');
+    if (clientInput && !clientInput.value) clientInput.value = getGoogleClientId();
   }
 
-  document.getElementById('toggleCalendar')?.addEventListener('click', () => {
-    const connected = getSettings().connected || {};
-    if (connected.googleCalendar) disconnectGoogleAccount('calendar');
-    else connectGoogleAccount('calendar');
+  async function toggleService(service, wantOn) {
+    if (service === 'classroom' && wantOn) {
+      await syncGoogleClassroom();
+    } else if (wantOn) {
+      connectGoogleAccount(service);
+    } else {
+      disconnectGoogleAccount(service);
+    }
     refreshConnected();
+  }
+
+  document.getElementById('toggleGoogleClassroom')?.addEventListener('change', (e) => {
+    toggleService('classroom', e.target.checked);
+  });
+  document.getElementById('toggleGoogleCalendar')?.addEventListener('change', (e) => {
+    toggleService('calendar', e.target.checked);
+  });
+  document.getElementById('toggleGoogleDrive')?.addEventListener('change', (e) => {
+    toggleService('drive', e.target.checked);
+  });
+  document.getElementById('toggleClassroom')?.addEventListener('click', () => {
+    toggleService('classroom', !getSettings().connected?.googleClassroom);
+  });
+  document.getElementById('connectGoogleClassroom')?.addEventListener('click', () => {
+    toggleService('classroom', !getSettings().connected?.googleClassroom);
+  });
+  document.getElementById('toggleCalendar')?.addEventListener('click', () => {
+    toggleService('calendar', !getSettings().connected?.googleCalendar);
+  });
+  document.getElementById('connectGoogleCalendar')?.addEventListener('click', () => {
+    toggleService('calendar', !getSettings().connected?.googleCalendar);
   });
   document.getElementById('toggleDrive')?.addEventListener('click', () => {
-    const connected = getSettings().connected || {};
-    if (connected.googleDrive) disconnectGoogleAccount('drive');
-    else connectGoogleAccount('drive');
+    toggleService('drive', !getSettings().connected?.googleDrive);
+  });
+  document.getElementById('connectGoogleDrive')?.addEventListener('click', () => {
+    toggleService('drive', !getSettings().connected?.googleDrive);
+  });
+  document.getElementById('saveGoogleClientId')?.addEventListener('click', () => {
+    const id = document.getElementById('googleClientId')?.value.trim();
+    setGoogleClientId(id);
+    showToast(id ? 'Classroom client ID saved' : 'Client ID cleared — using enrolled-course catalog', 'success');
+  });
+  document.getElementById('syncClassroomSettingsBtn')?.addEventListener('click', async (e) => {
+    await syncGoogleClassroom(e.currentTarget);
     refreshConnected();
   });
 

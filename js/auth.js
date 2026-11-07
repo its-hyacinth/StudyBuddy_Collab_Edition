@@ -111,7 +111,7 @@ function initLoginPage() {
   document.getElementById('demoStudent')?.addEventListener('click', () => loginAs('student'));
   document.getElementById('demoTeacher')?.addEventListener('click', () => loginAs('teacher'));
   document.getElementById('googleLogin')?.addEventListener('click', () => {
-    showToast('Google Sign-In would connect via OAuth through the PHP backend.', 'info');
+    showToast('Google Sign-In would connect Classroom via OAuth. Using the student demo for now.', 'info');
     setTimeout(() => loginAs('student', { email: 'juan.google@gmail.com' }), 600);
   });
 }

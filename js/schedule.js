@@ -8,8 +8,9 @@ document.addEventListener('DOMContentLoaded', () => {
   wireModalClosers();
 
   let view = 'calendar';
-  let calY = 2025;
-  let calM = 8; // September 2025 to match seed
+  const now = new Date();
+  let calY = now.getFullYear();
+  let calM = now.getMonth();
 
   function eventsForDay(y, m, d) {
     const key = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
@@ -152,8 +153,19 @@ document.addEventListener('DOMContentLoaded', () => {
     render();
   });
 
-  document.getElementById('syncCalendarBtn')?.addEventListener('click', (e) => mockGoogleCalendarSync(e.currentTarget));
-  document.getElementById('openCalendarBtn')?.addEventListener('click', (e) => { e.preventDefault(); openInGoogleCalendar(); });
+  const runClassroomSync = async (btn) => {
+    const result = await syncGoogleClassroom(btn);
+    if (result?.ok) setTimeout(() => location.reload(), 400);
+  };
+  document.querySelectorAll('#syncCalendarBtn, #syncGoogleCalendarBtn, #syncClassroomBtn, #syncGoogleCalBtn, #connectGoogleCalBtn, #connectClassroomBtn').forEach((btn) => {
+    btn.addEventListener('click', (e) => runClassroomSync(e.currentTarget));
+  });
+  document.querySelectorAll('#openCalendarBtn, #openGoogleCalendarBtn, #openClassroomBtn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openInGoogleClassroom();
+    });
+  });
 
   render();
 });

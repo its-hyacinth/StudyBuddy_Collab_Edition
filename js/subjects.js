@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="subj-icon" style="background:${iconBg(s.color)};color:${s.color}"><i data-lucide="${s.icon || 'book'}"></i></div>
             <div class="subj-info">
               <h3>${s.name}</h3>
-              <p>${s.room || ''} · ${s.professor || ''}</p>
+              <p>${s.code || ''} · ${s.room || 'TBA'} · ${s.professor || 'TBA'}</p>
             </div>
             <div class="action-menu-wrap">
               <button type="button" class="action-menu-btn" data-menu="${s.id}"><i data-lucide="more-vertical"></i></button>
@@ -105,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
           <div style="flex:1;min-width:200px">
             <h3 style="font-size:18px;margin-bottom:4px">${s.name}</h3>
-            <p style="color:var(--text-muted);font-size:13px;margin-bottom:8px">${s.room} · ${s.professor}</p>
+            <p style="color:var(--text-muted);font-size:13px;margin-bottom:8px">${s.code || ''} ${s.sectionCode ? '· ' + s.sectionCode : ''} · ${s.units || ''} units · ${s.room || 'TBA'} · Prof. ${s.professor || 'TBA'}</p>
             <p style="font-size:13.5px;color:var(--text-body)">${s.description || ''}</p>
           </div>
         </div>
@@ -182,6 +182,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   document.getElementById('addSubjectBtn')?.addEventListener('click', () => openModal('addSubjectModal'));
+  document.getElementById('syncClassroomBtn')?.addEventListener('click', async (e) => {
+    const result = await syncGoogleClassroom(e.currentTarget);
+    if (result?.ok) render();
+  });
 
   // Color picker
   document.querySelectorAll('.color-swatch').forEach((sw) => {

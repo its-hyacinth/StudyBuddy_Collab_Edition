@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
       tbody.innerHTML = classes.map((c) => `
         <tr>
           <td><div class="cell-title"><div class="cell-icon"><i data-lucide="graduation-cap"></i></div>
-            <div><div class="title">${c.name}</div><div class="subtitle">${c.subject}</div></div></div></td>
+            <div><div class="title">${c.name}</div><div class="subtitle">${c.subject} · ${c.professor || 'TBA'}</div></div></div></td>
           <td>${c.students}</td>
           <td>${c.nextActivity}<br><small>${formatDate(c.nextDate)}</small></td>
           <td><div class="progress-row"><div class="progress-bar"><div class="fill ${c.short}" style="width:${c.progress}%"></div></div><span class="progress-pct">${c.progress}%</span></div></td>
@@ -49,6 +49,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof lucide !== 'undefined') lucide.createIcons();
   }
 
+  document.getElementById('syncClassroomBtn')?.addEventListener('click', async (e) => {
+    const result = await syncGoogleClassroom(e.currentTarget);
+    if (result?.ok) render();
+  });
   document.getElementById('addClassBtn')?.addEventListener('click', () => openModal('addClassModal'));
   document.getElementById('addClassForm')?.addEventListener('submit', (e) => {
     e.preventDefault();

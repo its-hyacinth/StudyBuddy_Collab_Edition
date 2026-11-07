@@ -36,36 +36,28 @@ studybuddy/
 - Role-based sidebar and session (`studybuddy_user`, `studybuddy_role`)
 - CRUD for subjects, assignments, tasks, schedule via `localStorage`
 - Filter tabs, search, pagination, modals, toasts
-- Mock Google Calendar / Drive sync with clear integration hooks
+- Google Classroom as the class source (COR-based catalog; live API when an OAuth client ID is set)
+- Optional Google Drive file view; Calendar is secondary to Classroom
 
-## Google API integration (production)
+## Classes (CTU Consolacion · BSIT 4)
 
-The frontend is deliberately structured so a PHP backend can replace the mocks later:
+Demo subjects follow Certificate of Registration, 1st Semester SY 2026-2027, section `BSIT_DAY_4-B`. Professors stay **TBA** until Google Classroom returns teacher names.
 
-```
-StudyBuddy (JS frontend)
-        │  fetch / XHR
-        ▼
-PHP backend (API endpoints)
-        ├── MySQL DB
-        ├── Google Calendar API  (OAuth 2.0)
-        └── Google Drive API     (OAuth 2.0)
-```
+## Google Classroom integration
 
-See `js/google-integration.js`:
+Classes, teachers, and coursework sync from **Google Classroom** (`js/google-integration.js`):
 
-- `mockGoogleCalendarSync()` → replace with `POST /api/google/calendar/sync`
-- `mockGoogleDriveSync()` → replace with `POST /api/google/drive/sync`
-- `openInGoogleCalendar()` / `openInGoogleDrive()` already open the real Google apps in a new tab
+- **Without a client ID:** Sync imports the enrolled COR catalog (rooms/professors TBA).
+- **With a client ID:** Settings → Connected Accounts → paste a Google Cloud OAuth Client ID. Authorized JavaScript origins must include this site. Scopes: `classroom.courses.readonly`, `classroom.coursework.me.readonly`, `classroom.rosters.readonly`.
 
-Suggested PHP endpoints (not included in this demo):
+Suggested production backend (optional later):
 
 | Endpoint | Purpose |
 |----------|---------|
 | `/api/auth/login` | Session / JWT |
 | `/api/google/oauth/start` | Begin OAuth consent |
 | `/api/google/oauth/callback` | Store refresh tokens |
-| `/api/google/calendar/sync` | Push/pull events |
+| `/api/google/classroom/sync` | Pull courses, teachers, coursework |
 | `/api/google/drive/sync` | List / upload files |
 | `/api/subjects`, `/api/assignments`, … | CRUD replacing `localStorage` |
 

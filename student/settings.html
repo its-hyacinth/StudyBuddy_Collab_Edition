@@ -250,11 +250,22 @@
                 <h2 class="card-title">Connected Accounts</h2>
               </div>
             </div>
+            <div class="connected-row" id="googleClassroomConnect">
+              <div class="conn-icon"><i data-lucide="school"></i></div>
+              <div class="conn-info">
+                <h4>Google Classroom</h4>
+                <p id="classroomConnectStatus">Not connected · Import classes and coursework</p>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="toggleGoogleClassroom" data-service="classroom" />
+                <span class="slider"></span>
+              </label>
+            </div>
             <div class="connected-row" id="googleCalendarConnect">
               <div class="conn-icon"><i data-lucide="calendar"></i></div>
               <div class="conn-info">
                 <h4>Google Calendar</h4>
-                <p id="calendarConnectStatus">Not connected · Sync your schedule</p>
+                <p id="calendarConnectStatus">Not connected · Optional schedule overlay</p>
               </div>
               <label class="toggle-switch">
                 <input type="checkbox" id="toggleGoogleCalendar" data-service="calendar" />
@@ -276,9 +287,17 @@
               <div class="conn-icon"><img src="https://www.google.com/favicon.ico" alt="Google" style="width:20px;height:20px" onerror="this.style.display='none'" /></div>
               <div class="conn-info">
                 <h4>Google Account</h4>
-                <p id="googleAccountEmail">juan.google@gmail.com</p>
+                <p id="googleAccountEmail">Classroom uses your Google account. Teachers stay TBA until Classroom lists them.</p>
               </div>
-              <button type="button" class="btn btn-outline btn-sm" id="manageGoogleAccount">Manage</button>
+              <button type="button" class="btn btn-outline btn-sm" id="syncClassroomSettingsBtn">Sync now</button>
+            </div>
+            <div style="padding:12px 0 4px">
+              <div class="row-label" style="margin-bottom:6px">Classroom OAuth Client ID (optional)</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <input class="form-control" id="googleClientId" placeholder="xxxx.apps.googleusercontent.com" style="flex:1;min-width:220px" />
+                <button type="button" class="btn btn-outline btn-sm" id="saveGoogleClientId">Save</button>
+              </div>
+              <p style="font-size:12px;color:var(--text-muted);margin-top:8px">Leave blank to use your COR enrollment catalog. Add a client ID to pull live courses, teachers, and coursework.</p>
             </div>
           </div>
 

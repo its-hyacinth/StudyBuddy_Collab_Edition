@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const greeting = document.getElementById('greeting');
   const greetingSub = document.getElementById('greetingSub');
   if (greeting) greeting.textContent = `${greetingTime()}, ${firstName}! 👋`;
-  if (greetingSub) greetingSub.textContent = 'Small steps every day lead to big results.';
+  if (greetingSub) greetingSub.textContent = `${CLASSROOM_META.section} · ${CLASSROOM_META.term} · ${CLASSROOM_META.campus}`;
 
   const subjects = getSubjects();
   const assignments = getAssignments();
@@ -28,8 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setStat('statTasks', tasks.filter((t) => t.status !== 'completed').length);
   setStat('statProgress', `${progress.overall}%`);
 
-  // Today's schedule — prefer seed "demo day" 2025-09-12, else today
-  const todayStr = '2025-09-12';
+  const todayStr = localDateStr();
   const todayItems = schedule.filter((s) => s.date === todayStr);
   const schedEl = document.getElementById('todaySchedule');
   if (schedEl) {
@@ -87,8 +86,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }).join('');
   }
 
-  // Mini calendar
-  let calY = 2025, calM = 8; // September
+  const now = new Date();
+  let calY = now.getFullYear(), calM = now.getMonth();
   const eventDates = schedule.map((s) => s.date);
   const mini = document.getElementById('miniCalendar');
   const renderCal = (y, m) => {
@@ -137,12 +136,19 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>`;
   }
 
-  document.getElementById('syncCalendarBtn')?.addEventListener('click', (e) => {
-    mockGoogleCalendarSync(e.currentTarget);
-  });
+  const runClassroomSync = async (btn) => {
+    const result = await syncGoogleClassroom(btn);
+    if (result?.ok) setTimeout(() => location.reload(), 400);
+  };
+  document.getElementById('syncCalendarBtn')?.addEventListener('click', (e) => runClassroomSync(e.currentTarget));
+  document.getElementById('syncClassroomBtn')?.addEventListener('click', (e) => runClassroomSync(e.currentTarget));
   document.getElementById('openCalendarBtn')?.addEventListener('click', (e) => {
     e.preventDefault();
-    openInGoogleCalendar();
+    openInGoogleClassroom();
+  });
+  document.getElementById('openClassroomBtn')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    openInGoogleClassroom();
   });
 
   document.querySelectorAll('[data-action]').forEach((btn) => {
@@ -153,6 +159,8 @@ document.addEventListener('DOMContentLoaded', () => {
         'add-assignment': 'assignments.html',
         'add-task': 'todo.html',
         'upload-drive': 'drive.html',
+        'view-schedule': 'schedule.html',
+        'upload-file': 'drive.html',
       };
       if (map[action]) window.location.href = map[action];
     });
