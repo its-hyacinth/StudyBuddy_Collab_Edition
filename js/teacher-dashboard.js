@@ -35,7 +35,16 @@ document.addEventListener('DOMContentLoaded', () => {
   setText('statStudents', baseTotal + students.length);
   setText('statClasses', classes.length);
   setText('statAssignments', assignments.filter((a) => a.status !== 'completed').length);
-  setText('statPending', grades.filter((g) => g.status === 'pending').length);
+  // Same rule as the Grades page: every grade record still marked 'pending'
+  const pendingGrading = grades.filter((g) => g.status === 'pending').length;
+  setText('statPending', pendingGrading);
+  const pendingDelta = document.getElementById('statPending')?.closest('.stat-card')?.querySelector('.stat-delta');
+  if (pendingDelta) {
+    pendingDelta.className = `stat-delta ${pendingGrading ? 'down' : 'up'}`;
+    pendingDelta.innerHTML = pendingGrading
+      ? '<i data-lucide="alert-circle"></i> Needs attention'
+      : '<i data-lucide="check-circle"></i> All caught up';
+  }
 
   // ---- My Classes table ----
   const table = document.querySelector('#classesTable tbody') || document.getElementById('classesTableBody');

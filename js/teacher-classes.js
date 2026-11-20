@@ -38,7 +38,8 @@ document.addEventListener('DOMContentLoaded', () => {
     setText('statTotalClasses', classes.length);
     setText('statTotalStudents', baseTotal + students.length);
     setText('statAvgProgress', avgProgress + '%');
-    // statActiveAsg is left alone: it needs assignment data (e.g. getAssignments()).
+    // Same rule as the Dashboard: every assignment that isn't completed
+    setText('statActiveAsg', getAssignments().filter((a) => a.status !== 'completed').length);
 
     // ---- Filter by search ----
     const q = search.toLowerCase();
