@@ -1,5 +1,7 @@
 /**
  * StudyBuddy — Settings (student + teacher)
+ * Profile edits are now saved to the server (handled by the settings page's own PHP) first,
+ * then mirrored to localStorage and the page.
  */
 document.addEventListener('DOMContentLoaded', () => {
   const isTeacher = document.body.dataset.role === 'teacher';
@@ -9,14 +11,64 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const settings = getSettings();
   const profile = (isTeacher ? settings.teacherProfile : settings.profile) || {};
+  // Real values injected by PHP (see settings page snippet). Falls back to {} if absent.
+  const server = window.SB_USER || {};
 
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
   const $ = (id) => document.getElementById(id);
 
   function initialsOf(name) {
     return String(name || '')
-      .replace(/^Prof\.?\s*/i, '')
+      .replace(/^(Prof|Dr|Mr|Ms|Mrs)\.?\s*/i, '')
       .split(' ').filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase() || '?';
+  }
+
+  // ---------- Server helper ----------
+  async function saveProfileToServer(fields) {
+    // Posts to the settings page itself (the PHP at the top of the page handles it)
+    const res = await fetch(window.location.pathname, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Profile-Save': '1',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || '',
+      },
+      body: JSON.stringify(fields),
+    });
+    let data = {};
+    try { data = await res.json(); } catch (_) { /* non-JSON response */ }
+    if (!res.ok || !data.success) throw new Error(data.message || 'Save failed');
+    return data;
+  }
+
+  // Keep the sidebar/header in sync (add data-user-name / data-user-email to those elements)
+  function refreshShellUser(name, email) {
+    if (name !== undefined) document.querySelectorAll('[data-user-name]').forEach((el) => (el.textContent = name));
+    if (email !== undefined) document.querySelectorAll('[data-user-email]').forEach((el) => (el.textContent = email));
+    if (name !== undefined) document.querySelectorAll('[data-user-initials]').forEach((el) => (el.textContent = initialsOf(name)));
+  }
+
+  // Mirror a successful save into localStorage + session
+  // The server (PHP session + database) is the source of truth, so this is best-effort only.
+  function persistLocally(next) {
+    try {
+      const key = isTeacher ? 'teacherProfile' : 'profile';
+      if (typeof updateSettings === 'function' && typeof getSettings === 'function') {
+        updateSettings({ [key]: { ...(getSettings()[key] || {}), ...next } });
+      }
+      if (typeof getSession === 'function' && typeof setSession === 'function') {
+        const user = getSession();
+        if (user) {
+          const patch = {};
+          if (next.fullName !== undefined) patch.name = next.fullName;
+          if (next.email !== undefined) patch.email = next.email;
+          if (Object.keys(patch).length) setSession({ ...user, ...patch }, user.role);
+        }
+      }
+    } catch (err) {
+      console.warn('Local profile cache not updated:', err);
+    }
   }
 
   // ---------- Panels ----------
@@ -37,25 +89,24 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ---------- Profile ----------
-  // The logged-in session is the source of truth for name and email, so this page
-  // always matches the sidebar and the rest of the site.
+  // Priority: server (database) > session > localStorage
   const fieldMap = isTeacher
     ? {
-        fullName: session.name || profile.fullName,
-        email: session.email || profile.email,
-        employeeId: profile.employeeId,
-        phone: profile.phone,
-        school: profile.school,
-        department: profile.department,
+        fullName: server.fullName || session.name || profile.fullName,
+        email: server.email || session.email || profile.email,
+        employeeId: server.employeeId ?? profile.employeeId,
+        phone: server.phone ?? profile.phone,
+        school: server.school ?? profile.school,
+        department: server.department ?? profile.department,
       }
     : {
-        fullName: profile.fullName,
-        email: profile.email,
-        studentId: profile.studentId,
-        phone: profile.phone,
-        school: profile.school,
-        course: profile.course,
-        yearLevel: profile.yearLevel,
+        fullName: server.fullName || session.name || profile.fullName,
+        email: server.email || session.email || profile.email,
+        studentId: server.studentId ?? profile.studentId,
+        phone: server.phone ?? profile.phone,
+        school: server.school ?? profile.school,
+        course: server.course ?? profile.course,
+        yearLevel: server.yearLevel ?? profile.yearLevel,
       };
 
   function showProfile(values) {
@@ -72,20 +123,21 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Side card + account info (teacher page)
-    const name = values.fullName || '';
+    const name = values.fullName ?? fieldMap.fullName ?? '';
+    const email = values.email ?? fieldMap.email ?? '';
     if ($('settingsDisplayName')) $('settingsDisplayName').textContent = name;
-    if ($('settingsDisplayEmail')) $('settingsDisplayEmail').textContent = values.email || '';
+    if ($('settingsDisplayEmail')) $('settingsDisplayEmail').textContent = email;
     if ($('settingsAvatar')) $('settingsAvatar').textContent = initialsOf(name);
-    if ($('infoEmployeeId')) $('infoEmployeeId').textContent = values.employeeId || '—';
-    if ($('infoDepartment')) $('infoDepartment').textContent = values.department || '—';
+    if ($('infoEmployeeId')) $('infoEmployeeId').textContent = values.employeeId || fieldMap.employeeId || '—';
+    if ($('infoDepartment')) $('infoDepartment').textContent = values.department || fieldMap.department || '—';
     // Student overview aside
     if ($('overviewName')) $('overviewName').textContent = name;
-    if ($('overviewEmail')) $('overviewEmail').textContent = values.email || '';
+    if ($('overviewEmail')) $('overviewEmail').textContent = email;
   }
   showProfile(fieldMap);
 
-  // Teacher: the Save Changes button on the profile form
-  $('profileForm')?.addEventListener('submit', (e) => {
+  // Teacher: Save Changes on the profile form
+  $('profileForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const next = {
       fullName: $('profileFullName')?.value.trim(),
@@ -98,33 +150,45 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!next.fullName) { showToast('Full name is required', 'error'); return; }
     if (!/^\S+@\S+\.\S+$/.test(next.email || '')) { showToast('Enter a valid email', 'error'); return; }
 
-    updateSettings({ teacherProfile: { ...getSettings().teacherProfile, ...next } });
-    const user = getSession();
-    if (user) setSession({ ...user, name: next.fullName, email: next.email }, user.role);
-    Object.assign(fieldMap, next);
-    showProfile(next);
-    showToast('Profile saved. Other pages will show your new name on next load.');
+    const btn = $('saveProfileBtn');
+    if (btn) btn.disabled = true;
+    try {
+      await saveProfileToServer(next);
+      persistLocally(next);
+      Object.assign(fieldMap, next);
+      showProfile(next);
+      refreshShellUser(next.fullName, next.email);
+      showToast('Profile saved');
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      if (btn) btn.disabled = false;
+    }
   });
 
-  // Student: click a row to edit it
+  // Student: click a row to edit it (one field at a time)
   document.querySelectorAll('.settings-row[data-field]').forEach((row) => {
-    row.addEventListener('click', () => {
+    row.addEventListener('click', async () => {
       const field = row.dataset.field;
       const current = fieldMap[field] || '';
-      const next = prompt(`Edit ${field}`, current);
-      if (next === null) return;
-      if (isTeacher) {
-        updateSettings({ teacherProfile: { ...getSettings().teacherProfile, [field]: next } });
-      } else {
-        updateSettings({ profile: { ...getSettings().profile, [field]: next } });
+      const raw = prompt(`Edit ${field}`, current);
+      if (raw === null) return;
+      const next = raw.trim();
+      if (next === current) return;
+      if (field === 'fullName' && !next) { showToast('Full name is required', 'error'); return; }
+      if (field === 'email' && !/^\S+@\S+\.\S+$/.test(next)) { showToast('Enter a valid email', 'error'); return; }
+
+      try {
+        await saveProfileToServer({ [field]: next });
+        persistLocally({ [field]: next });
+        fieldMap[field] = next;
+        showProfile(fieldMap);
+        if (field === 'fullName') refreshShellUser(next, undefined);
+        if (field === 'email') refreshShellUser(undefined, next);
+        showToast('Profile updated');
+      } catch (err) {
+        showToast(err.message, 'error');
       }
-      fieldMap[field] = next;
-      showProfile(fieldMap);
-      if (field === 'fullName') {
-        const user = getSession();
-        if (user) setSession({ ...user, name: next }, user.role);
-      }
-      showToast('Profile updated');
     });
   });
 
@@ -148,30 +212,63 @@ document.addEventListener('DOMContentLoaded', () => {
   Object.entries(notifIds).forEach(([id, key]) => wireNotif($(id), key));
 
   // ---------- Appearance ----------
+  // Saved under its own localStorage keys so every page can apply it (see the head snippet).
+  const THEME_KEY = 'sb_theme';
+  const COMPACT_KEY = 'sb_compact';
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (_) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (_) { /* storage blocked */ } },
+  };
+  const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
+
   function applyAppearance(a) {
     const theme = a.theme === 'system'
-      ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-      : (a.theme || 'light');
-    document.documentElement.setAttribute('data-theme', theme);
+      ? (systemDark.matches ? 'dark' : 'light')
+      : (a.theme === 'dark' ? 'dark' : 'light');
+    const root = document.documentElement;
+    // Set every common convention so it works with however the CSS was written
+    root.setAttribute('data-theme', theme);
+    root.classList.toggle('dark', theme === 'dark');
+    root.style.colorScheme = theme;
+    document.body.classList.toggle('dark', theme === 'dark');
     document.body.classList.toggle('compact-mode', !!a.compact);
   }
-  const appearance = { theme: 'light', compact: false, ...(settings.appearance || {}) };
+
+  const savedAppearance = settings.appearance || {};
+  const appearance = {
+    theme: store.get(THEME_KEY, savedAppearance.theme || 'light'),
+    compact: store.get(COMPACT_KEY, String(!!savedAppearance.compact)) === 'true',
+  };
   if ($('themeSelect')) $('themeSelect').value = appearance.theme;
-  if ($('compactMode')) $('compactMode').checked = !!appearance.compact;
+  if ($('compactMode')) $('compactMode').checked = appearance.compact;
   applyAppearance(appearance);
+
+  function saveAppearance() {
+    store.set(THEME_KEY, appearance.theme);
+    store.set(COMPACT_KEY, String(appearance.compact));
+    try {
+      if (typeof updateSettings === 'function' && typeof getSettings === 'function') {
+        updateSettings({ appearance: { ...(getSettings().appearance || {}), ...appearance } });
+      }
+    } catch (_) { /* optional mirror */ }
+  }
 
   $('themeSelect')?.addEventListener('change', (e) => {
     appearance.theme = e.target.value;
-    updateSettings({ appearance: { ...(getSettings().appearance || {}), ...appearance } });
+    saveAppearance();
     applyAppearance(appearance);
     showToast('Theme saved');
   });
   $('compactMode')?.addEventListener('change', (e) => {
     appearance.compact = e.target.checked;
-    updateSettings({ appearance: { ...(getSettings().appearance || {}), ...appearance } });
+    saveAppearance();
     applyAppearance(appearance);
     showToast('Layout preference saved');
   });
+  // "System" follows the OS live
+  const onSystemChange = () => { if (appearance.theme === 'system') applyAppearance(appearance); };
+  if (systemDark.addEventListener) systemDark.addEventListener('change', onSystemChange);
+  else if (systemDark.addListener) systemDark.addListener(onSystemChange);
 
   // ---------- Connected accounts ----------
   function refreshConnected() {
