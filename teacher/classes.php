@@ -95,8 +95,8 @@
               <table class="data-table" id="classesTable">
                 <thead>
                   <tr>
-                    <th>Class Name</th>
-                    <th>Subject</th>
+                     <th style="width: 24%; text-align: center; padding: 10px 12px;">Class Name</th>
+                     <th style="width: 20%; text-align: center; padding: 10px 12px;">Subject</th>
                     <th>Students</th>
                     <th>Next Activity</th>
                     <th>Progress</th>
