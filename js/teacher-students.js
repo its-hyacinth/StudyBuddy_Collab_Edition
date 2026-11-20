@@ -159,7 +159,14 @@ document.addEventListener('DOMContentLoaded', () => {
     yearFilter = e.target.value;
     render();
   });
-  document.getElementById('addStudentBtn')?.addEventListener('click', () => openModal('addStudentModal'));
+  document.getElementById('addStudentBtn')?.addEventListener('click', () => {
+    const sel = document.getElementById('studentClass');
+    if (sel) {
+      sel.innerHTML = '<option value="">No class</option>' +
+        getClasses().map((c) => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`).join('');
+    }
+    openModal('addStudentModal');
+  });
 
   document.getElementById('addStudentForm')?.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -182,7 +189,8 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    list.push({ id: uid('stu'), name, email, course, year, gpa: 0, status: 'active' });
+    const classId = document.getElementById('studentClass')?.value || null;
+    list.push({ id: uid('stu'), name, email, course, year, classId, gpa: 0, status: 'active' });
     sbSet(SB_KEYS.STUDENTS, list);
 
     closeModal('addStudentModal');
