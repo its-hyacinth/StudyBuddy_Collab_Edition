@@ -63,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
           </td>
           <td><span class="subject-tag ${escapeHtml(c.short)}"><span class="dot ${escapeHtml(c.short)}"></span> ${escapeHtml(c.subject)}</span></td>
-          <td>${enrolledCount(c, students)}</td>
+         <td style="text-align:center">${enrolledCount(c, students)}</td>
           <td>
             <div class="title">${escapeHtml(c.nextActivity)}</div>
             <div class="subtitle">${escapeHtml(formatDate(c.nextDate))}</div>
