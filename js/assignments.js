@@ -161,7 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <td><span class="subject-tag ${escapeHtml(short)}"><span class="dot ${escapeHtml(short)}"></span> ${escapeHtml(cls?.name || a.subject)}</span></td>
         <td>${formatDate(a.dueDate)}</td>
         <td>${a.points ? escapeHtml(a.points) + ' pts' : '—'}</td>
-        <td>${Number(a.submissions) || 0} / ${enrolled}</td>
+        <td style="text-align:center">${Number(a.submissions) || 0} / ${enrolled}</td>
         <td><span class="badge ${statusClass(a.status)}">${statusLabel(a.status)}</span></td>
         <td>${actionMenu(a)}</td>
       </tr>`;
