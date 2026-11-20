@@ -93,10 +93,10 @@
               <table class="data-table" id="asgTable">
                 <thead>
                   <tr>
+                    <th>Checkbox</th>
                     <th>Assignment</th>
                     <th>Subject</th>
                     <th>Due Date</th>
-                    <th>Points</th>
                     <th>Status</th>
                     <th></th>
                   </tr>
