@@ -51,7 +51,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const el = document.getElementById(id);
       if (el) el.textContent = value;
     };
-    setText('statTotalStudents', all.length);
+    // Same total as My Classes and the Dashboard: Classroom students + students added here
+    const classes = getClasses();
+    const classroomTotal = classes.reduce((s, c) => s + (Number(c.students) || 0), 0);
+    setText('statTotalStudents', classroomTotal + all.length);
+    const totalDelta = document.getElementById('statTotalStudents')?.closest('.stat-card')?.querySelector('.stat-delta');
+    if (totalDelta) totalDelta.innerHTML = `<i data-lucide="users"></i> ${classroomTotal} Classroom · ${all.length} added`;
     setText('statActiveStudents', activeCount);
     setText('statAvgGpa', avgGpa.toFixed(1));
     setText('statAtRisk', atRisk.length);
@@ -76,11 +81,12 @@ document.addEventListener('DOMContentLoaded', () => {
           <td>${escapeHtml(s.email)}</td>
           <td>${escapeHtml(s.course)}</td>
           <td>${escapeHtml(s.year)}</td>
+          <td>${escapeHtml(classes.find((c) => c.id === s.classId)?.name || '—')}</td>
           <td><strong>${escapeHtml(s.gpa)}</strong></td>
           <td><span class="badge ${statusClass(s.status)}">${statusLabel(s.status)}</span></td>
           <td></td>
         </tr>`).join('')
-        : '<tr><td colspan="7" style="text-align:center;padding:24px">No students found.</td></tr>';
+        : '<tr><td colspan="8" style="text-align:center;padding:24px">No students found.</td></tr>';
     }
 
     // ---- Student overview (donut center + legend; keeps the donut markup intact) ----
