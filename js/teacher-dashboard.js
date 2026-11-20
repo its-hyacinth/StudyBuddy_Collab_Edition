@@ -23,7 +23,11 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const greeting = document.getElementById('greeting');
-  if (greeting) greeting.textContent = `${greetingTime()}, Prof.! 👋`;
+  if (greeting) {
+    // Use the logged-in teacher's name so it matches Settings and the sidebar
+    const lastName = (session.name || '').replace(/^Prof\.?\s*/i, '').trim().split(' ').slice(-1)[0];
+    greeting.textContent = `${greetingTime()}, ${lastName ? 'Prof. ' + lastName : 'Prof.'}! 👋`;
+  }
 
   const students = getStudents();
   const classes = getClasses();
