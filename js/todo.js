@@ -149,9 +149,9 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.addEventListener('click', () => {
       const a = btn.getAttribute('data-action');
       if (a === 'add-task') openModal('addTaskModal');
-      else if (a === 'add-assignment') window.location.href = 'assignments.html';
-      else if (a === 'add-subject') window.location.href = 'subjects.html';
-      else if (a === 'add-schedule') window.location.href = 'schedule.html';
+      else if (a === 'add-assignment') window.location.href = 'assignments.php';
+      else if (a === 'add-subject') window.location.href = 'subjects.php';
+      else if (a === 'add-schedule') window.location.href = 'schedule.php';
     });
   });
 

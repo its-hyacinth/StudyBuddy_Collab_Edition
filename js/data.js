@@ -1,6 +1,6 @@
 /**
- * StudyBuddy — Mock seed data + localStorage helpers
- * All app data persists in localStorage for offline demo use.
+ * StudyBuddy — shared data helpers backed by the PHP/MySQL state API.
+ * Collection data is stored in dedicated MySQL tables; preferences use app_state.
  */
 
 const SB_KEYS = {
@@ -23,21 +23,26 @@ const SB_KEYS = {
 
 const SB_SEED_VERSION = 2;
 
+const SB_API_BASE = (window.location.pathname.includes('/student/') || window.location.pathname.includes('/teacher/')) ? '../api/' : 'api/';
+function sbRequest(method, key, value) {
+  const xhr = new XMLHttpRequest();
+  const url = `${SB_API_BASE}state.php?key=${encodeURIComponent(key)}`;
+  xhr.open(method, url, false); // synchronous to preserve the existing app's data-helper interface
+  xhr.setRequestHeader('X-CSRF-Token', document.querySelector('meta[name="csrf-token"]')?.content || '');
+  if (method === 'POST') { xhr.setRequestHeader('Content-Type','application/json'); xhr.send(JSON.stringify({key,value})); }
+  else xhr.send();
+  if (xhr.status === 401) { window.location.href = window.location.pathname.includes('/student/') || window.location.pathname.includes('/teacher/') ? '../index.php' : 'index.php'; return null; }
+  if (xhr.status < 200 || xhr.status >= 300) { console.error('StudyBuddy server request failed:', xhr.responseText); return null; }
+  try { return JSON.parse(xhr.responseText); } catch { return null; }
+}
 function sbGet(key, fallback = null) {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
+  const result = sbRequest('GET', key);
+  return result && result.ok && result.value !== null ? result.value : fallback;
 }
-
-function sbSet(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
-}
-
+function sbSet(key, value) { sbRequest('POST', key, value); }
 function sbRemove(key) {
-  localStorage.removeItem(key);
+  const xhr = new XMLHttpRequest(); xhr.open('DELETE', `${SB_API_BASE}state.php?key=${encodeURIComponent(key)}`, false);
+  xhr.setRequestHeader('X-CSRF-Token', document.querySelector('meta[name="csrf-token"]')?.content || ''); xhr.send();
 }
 
 function uid(prefix = 'id') {
@@ -401,20 +406,7 @@ const SEED_SETTINGS = {
 };
 
 function seedIfNeeded() {
-  if (sbGet(SB_KEYS.SEEDED) === SB_SEED_VERSION) return;
-  sbSet(SB_KEYS.SUBJECTS, SEED_SUBJECTS);
-  sbSet(SB_KEYS.ASSIGNMENTS, SEED_ASSIGNMENTS);
-  sbSet(SB_KEYS.TASKS, SEED_TASKS);
-  sbSet(SB_KEYS.SCHEDULE, SEED_SCHEDULE);
-  sbSet(SB_KEYS.CLASSES, SEED_CLASSES);
-  sbSet(SB_KEYS.STUDENTS, SEED_STUDENTS);
-  sbSet(SB_KEYS.GRADES, SEED_GRADES);
-  sbSet(SB_KEYS.MESSAGES, SEED_MESSAGES);
-  sbSet(SB_KEYS.RESOURCES, SEED_RESOURCES);
-  sbSet(SB_KEYS.DRIVE, SEED_DRIVE);
-  sbSet(SB_KEYS.PROGRESS, SEED_PROGRESS);
-  sbSet(SB_KEYS.SETTINGS, SEED_SETTINGS);
-  sbSet(SB_KEYS.SEEDED, SB_SEED_VERSION);
+  // No automatic demo records: each account starts with its own database-backed data.
 }
 
 /* ---------- CRUD Helpers ---------- */

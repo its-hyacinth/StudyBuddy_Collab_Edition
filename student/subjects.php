@@ -1,6 +1,8 @@
+<?php $expectedRole = 'student'; require_once __DIR__ . '/../includes/page_guard.php'; ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta name="csrf-token" content="<?= e($_SESSION['csrf_token']) ?>">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>StudyBuddy — Subjects</title>
@@ -137,12 +139,12 @@
               <div class="detail-stat-box">
                 <div class="ds-val">5</div>
                 <div class="ds-lbl">Assignments</div>
-                <a href="assignments.html">View all</a>
+                <a href="assignments.php">View all</a>
               </div>
               <div class="detail-stat-box">
                 <div class="ds-val">1</div>
                 <div class="ds-lbl">Pending</div>
-                <a href="todo.html">View tasks</a>
+                <a href="todo.php">View tasks</a>
               </div>
             </div>
             <h3 style="font-size:14px;margin:16px 0 12px">Recent Assignments</h3>

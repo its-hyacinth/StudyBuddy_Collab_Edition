@@ -3,29 +3,29 @@
  */
 
 const STUDENT_NAV = [
-  { href: 'dashboard.html', icon: 'layout-dashboard', label: 'Dashboard' },
-  { href: 'subjects.html', icon: 'book-open', label: 'Subjects' },
-  { href: 'assignments.html', icon: 'clipboard-list', label: 'Assignments' },
-  { href: 'todo.html', icon: 'check-square', label: 'To-Do List' },
-  { href: 'schedule.html', icon: 'calendar', label: 'Schedule' },
-  { href: 'progress.html', icon: 'trending-up', label: 'Study Progress' },
-  { href: 'drive.html', icon: 'hard-drive', label: 'Google Drive' },
+  { href: 'dashboard.php', icon: 'layout-dashboard', label: 'Dashboard' },
+  { href: 'subjects.php', icon: 'book-open', label: 'Subjects' },
+  { href: 'assignments.php', icon: 'clipboard-list', label: 'Assignments' },
+  { href: 'todo.php', icon: 'check-square', label: 'To-Do List' },
+  { href: 'schedule.php', icon: 'calendar', label: 'Schedule' },
+  { href: 'progress.php', icon: 'trending-up', label: 'Study Progress' },
+  { href: 'drive.php', icon: 'hard-drive', label: 'Google Drive' },
 ];
 
 const TEACHER_NAV = [
-  { href: 'dashboard.html', icon: 'layout-dashboard', label: 'Dashboard' },
-  { href: 'classes.html', icon: 'graduation-cap', label: 'My Classes' },
-  { href: 'assignments.html', icon: 'clipboard-list', label: 'Assignments' },
-  { href: 'grades.html', icon: 'award', label: 'Grades' },
-  { href: 'students.html', icon: 'users', label: 'Students' },
-  { href: 'messages.html', icon: 'message-square', label: 'Messages' },
-  { href: 'calendar.html', icon: 'calendar', label: 'Calendar' },
-  { href: 'resources.html', icon: 'folder-open', label: 'Resources' },
+  { href: 'dashboard.php', icon: 'layout-dashboard', label: 'Dashboard' },
+  { href: 'classes.php', icon: 'graduation-cap', label: 'My Classes' },
+  { href: 'assignments.php', icon: 'clipboard-list', label: 'Assignments' },
+  { href: 'grades.php', icon: 'award', label: 'Grades' },
+  { href: 'students.php', icon: 'users', label: 'Students' },
+  { href: 'messages.php', icon: 'message-square', label: 'Messages' },
+  { href: 'calendar.php', icon: 'calendar', label: 'Calendar' },
+  { href: 'resources.php', icon: 'folder-open', label: 'Resources' },
 ];
 
 function getActivePage() {
   const parts = window.location.pathname.split('/');
-  return parts[parts.length - 1] || 'dashboard.html';
+  return parts[parts.length - 1] || 'dashboard.php';
 }
 
 function renderSidebar(role) {
@@ -51,7 +51,7 @@ function renderSidebar(role) {
       <nav class="sidebar-nav">
         ${navHtml}
         <div class="sidebar-divider"></div>
-        <a href="settings.html" class="${active === 'settings.html' ? 'active' : ''}">
+        <a href="settings.php" class="${active === 'settings.php' ? 'active' : ''}">
           <i data-lucide="settings"></i><span>Settings</span>
         </a>
         <a href="#" id="logoutBtn">
@@ -143,10 +143,10 @@ function initShell(role) {
   });
 
   document.getElementById('sidebarUserCard')?.addEventListener('click', () => {
-    window.location.href = 'settings.html';
+    window.location.href = 'settings.php';
   });
   document.getElementById('headerUser')?.addEventListener('click', () => {
-    window.location.href = 'settings.html';
+    window.location.href = 'settings.php';
   });
 
   // Close action menus on outside click

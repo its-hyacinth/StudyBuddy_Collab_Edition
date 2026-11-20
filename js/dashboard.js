@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const recentEl = document.getElementById('recentSubjects');
   if (recentEl) {
     recentEl.innerHTML = subjects.slice(0, 4).map((s) => `
-      <a href="subjects.html" class="subject-tile">
+      <a href="subjects.php" class="subject-tile">
         <div class="tile-top">
           <div class="tile-icon" style="background:${s.color}22;color:${s.color}"><i data-lucide="${s.icon}"></i></div>
           <div>
@@ -155,12 +155,12 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.addEventListener('click', () => {
       const action = btn.getAttribute('data-action');
       const map = {
-        'add-subject': 'subjects.html',
-        'add-assignment': 'assignments.html',
-        'add-task': 'todo.html',
-        'upload-drive': 'drive.html',
-        'view-schedule': 'schedule.html',
-        'upload-file': 'drive.html',
+        'add-subject': 'subjects.php',
+        'add-assignment': 'assignments.php',
+        'add-task': 'todo.php',
+        'upload-drive': 'drive.php',
+        'view-schedule': 'schedule.php',
+        'upload-file': 'drive.php',
       };
       if (map[action]) window.location.href = map[action];
     });

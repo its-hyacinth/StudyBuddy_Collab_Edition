@@ -1,6 +1,8 @@
+<?php $expectedRole = 'student'; require_once __DIR__ . '/../includes/page_guard.php'; ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta name="csrf-token" content="<?= e($_SESSION['csrf_token']) ?>">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>StudyBuddy — Dashboard</title>
@@ -16,7 +18,7 @@
       <p class="greeting-sub" id="greetingSub">Here's what's happening with your studies today.</p>
 
       <div class="stat-grid">
-        <a href="subjects.html" class="stat-card" id="statSubjects">
+        <a href="subjects.php" class="stat-card" id="statSubjects">
           <div class="stat-icon blue"><i data-lucide="book-open"></i></div>
           <div class="stat-body">
             <div class="stat-label">Subjects</div>
@@ -25,7 +27,7 @@
           </div>
           <i data-lucide="chevron-right" class="stat-arrow"></i>
         </a>
-        <a href="assignments.html" class="stat-card" id="statAssignments">
+        <a href="assignments.php" class="stat-card" id="statAssignments">
           <div class="stat-icon purple"><i data-lucide="clipboard-list"></i></div>
           <div class="stat-body">
             <div class="stat-label">Assignments</div>
@@ -34,7 +36,7 @@
           </div>
           <i data-lucide="chevron-right" class="stat-arrow"></i>
         </a>
-        <a href="todo.html" class="stat-card" id="statTasks">
+        <a href="todo.php" class="stat-card" id="statTasks">
           <div class="stat-icon green"><i data-lucide="check-square"></i></div>
           <div class="stat-body">
             <div class="stat-label">Tasks</div>
@@ -43,7 +45,7 @@
           </div>
           <i data-lucide="chevron-right" class="stat-arrow"></i>
         </a>
-        <a href="progress.html" class="stat-card" id="statProgress">
+        <a href="progress.php" class="stat-card" id="statProgress">
           <div class="stat-icon orange"><i data-lucide="trending-up"></i></div>
           <div class="stat-body">
             <div class="stat-label">Study Progress</div>
@@ -63,7 +65,7 @@
                   <div class="card-icon blue"><i data-lucide="calendar-clock"></i></div>
                   <h2 class="card-title">Today's Schedule</h2>
                 </div>
-                <a href="schedule.html" class="view-all">View all</a>
+                <a href="schedule.php" class="view-all">View all</a>
               </div>
               <div id="todaySchedule">
                 <div class="schedule-item">
@@ -99,10 +101,10 @@
                   <div class="card-icon purple"><i data-lucide="book-open"></i></div>
                   <h2 class="card-title">Recent Subjects</h2>
                 </div>
-                <a href="subjects.html" class="view-all">View all</a>
+                <a href="subjects.php" class="view-all">View all</a>
               </div>
               <div class="subject-tiles" id="recentSubjects">
-                <a href="subjects.html" class="subject-tile">
+                <a href="subjects.php" class="subject-tile">
                   <div class="tile-top">
                     <div class="tile-icon" style="background:#DBEAFE;color:#2563EB"><i data-lucide="calculator"></i></div>
                     <div>
@@ -112,7 +114,7 @@
                   </div>
                   <div class="progress-bar"><div class="fill math" style="width:75%"></div></div>
                 </a>
-                <a href="subjects.html" class="subject-tile">
+                <a href="subjects.php" class="subject-tile">
                   <div class="tile-top">
                     <div class="tile-icon" style="background:#DCFCE7;color:#16A34A"><i data-lucide="flask-conical"></i></div>
                     <div>
@@ -122,7 +124,7 @@
                   </div>
                   <div class="progress-bar"><div class="fill science" style="width:50%"></div></div>
                 </a>
-                <a href="subjects.html" class="subject-tile">
+                <a href="subjects.php" class="subject-tile">
                   <div class="tile-top">
                     <div class="tile-icon" style="background:#EDE9FE;color:#7C3AED"><i data-lucide="book-open"></i></div>
                     <div>
@@ -132,7 +134,7 @@
                   </div>
                   <div class="progress-bar"><div class="fill english" style="width:80%"></div></div>
                 </a>
-                <a href="subjects.html" class="subject-tile">
+                <a href="subjects.php" class="subject-tile">
                   <div class="tile-top">
                     <div class="tile-icon" style="background:#FFEDD5;color:#EA580C"><i data-lucide="code-2"></i></div>
                     <div>
@@ -152,7 +154,7 @@
                 <div class="card-icon orange"><i data-lucide="clipboard-list"></i></div>
                 <h2 class="card-title">Upcoming Assignments</h2>
               </div>
-              <a href="assignments.html" class="view-all">View all</a>
+              <a href="assignments.php" class="view-all">View all</a>
             </div>
             <div id="upcomingAssignments">
               <div class="list-item">
@@ -243,7 +245,7 @@
                 <div class="card-icon green"><i data-lucide="pie-chart"></i></div>
                 <h2 class="card-title">Study Progress</h2>
               </div>
-              <a href="progress.html" class="view-all">Details</a>
+              <a href="progress.php" class="view-all">Details</a>
             </div>
             <div id="studyProgressDonut">
               <div class="donut-wrap">

@@ -105,10 +105,10 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('[data-action]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const map = {
-        'create-assignment': 'assignments.html',
-        'add-grade': 'grades.html',
-        'view-calendar': 'calendar.html',
-        'message-students': 'messages.html',
+        'create-assignment': 'assignments.php',
+        'add-grade': 'grades.php',
+        'view-calendar': 'calendar.php',
+        'message-students': 'messages.php',
       };
       const href = map[btn.dataset.action];
       if (href) location.href = href;

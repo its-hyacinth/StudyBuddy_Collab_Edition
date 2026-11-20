@@ -113,17 +113,17 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="detail-stat-box">
             <div class="ds-val">${s.assignments}</div>
             <div class="ds-lbl">Assignments</div>
-            <a href="assignments.html">View All</a>
+            <a href="assignments.php">View All</a>
           </div>
           <div class="detail-stat-box">
             <div class="ds-val">${s.completed}</div>
             <div class="ds-lbl">Completed</div>
-            <a href="assignments.html">View Completed</a>
+            <a href="assignments.php">View Completed</a>
           </div>
           <div class="detail-stat-box">
             <div class="ds-val">${s.pending}</div>
             <div class="ds-lbl">Pending</div>
-            <a href="assignments.html">View Pending</a>
+            <a href="assignments.php">View Pending</a>
           </div>
         </div>
         <h4 style="margin:8px 0 12px;font-size:14px">Recent Activity</h4>

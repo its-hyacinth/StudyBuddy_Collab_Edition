@@ -202,7 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('clearDataBtn')?.addEventListener('click', () => {
     if (!confirm('Reset all StudyBuddy demo data?')) return;
-    Object.values(SB_KEYS).forEach((k) => localStorage.removeItem(k));
+    Object.values(SB_KEYS).forEach((k) => sbRemove(k));
     seedIfNeeded();
     showToast('Demo data reset');
     setTimeout(() => location.reload(), 500);

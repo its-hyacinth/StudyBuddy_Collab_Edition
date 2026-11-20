@@ -1,6 +1,8 @@
+<?php require_once __DIR__ . '/includes/bootstrap.php'; if (!empty($_SESSION['user'])) { header('Location: ' . ($_SESSION['user']['role']==='teacher'?'teacher/dashboard.php':'student/dashboard.php')); exit; } ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta name="csrf-token" content="<?= e($_SESSION['csrf_token']) ?>">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>StudyBuddy — Log In</title>
@@ -30,7 +32,7 @@
 
     <div class="auth-right">
       <div class="auth-signup-link">
-        Don't have an account? <a href="signup.html">Sign up</a>
+        Don't have an account? <a href="signup.php">Sign up</a>
       </div>
 
       <div class="auth-form-wrap">
