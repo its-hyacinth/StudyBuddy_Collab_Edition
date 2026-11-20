@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const recentEl = document.getElementById('recentSubjects');
   if (recentEl) {
     recentEl.innerHTML = subjects.slice(0, 4).map((s) => `
-      <a href="subjects.php" class="subject-tile">
+      <a href="subjects.php?subject=${encodeURIComponent(s.id)}" class="subject-tile">
         <div class="tile-top">
           <div class="tile-icon" style="background:${s.color}22;color:${s.color}"><i data-lucide="${s.icon}"></i></div>
           <div>

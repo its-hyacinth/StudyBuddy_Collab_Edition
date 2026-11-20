@@ -9,9 +9,10 @@
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/components.css" />
   <link rel="stylesheet" href="../css/pages.css" />
+  <link rel="stylesheet" href="../css/student.css" />
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
-<body>
+<body class="student-app">
   <div class="app-shell" id="appShell">
     <div class="page-content">
       <div class="page-header">
@@ -112,11 +113,10 @@
             </div>
           </div>
 
-          <div class="subject-tabs" id="subjectTabs" role="tablist">
-            <button type="button" class="subject-tab active" data-tab="overview" role="tab">Overview</button>
-            <button type="button" class="subject-tab" data-tab="assignments" role="tab">Assignments</button>
-            <button type="button" class="subject-tab" data-tab="schedule" role="tab">Schedule</button>
-            <button type="button" class="subject-tab" data-tab="resources" role="tab">Resources</button>
+          <div class="subject-tabs" id="subjectTabs" role="group" aria-label="Filter subject assignments">
+            <button type="button" class="subject-tab active" data-filter="all" aria-pressed="true" aria-controls="subjectAssignmentList">All Subjects <span class="count">0</span></button>
+            <button type="button" class="subject-tab" data-filter="pending" aria-pressed="false" aria-controls="subjectAssignmentList">Pending <span class="count">0</span></button>
+            <button type="button" class="subject-tab" data-filter="completed" aria-pressed="false" aria-controls="subjectAssignmentList">Completed <span class="count">0</span></button>
           </div>
 
           <div class="card" id="subjectDetail">

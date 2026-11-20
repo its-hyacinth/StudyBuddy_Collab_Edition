@@ -9,9 +9,10 @@
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/components.css" />
   <link rel="stylesheet" href="../css/pages.css" />
+  <link rel="stylesheet" href="../css/student.css" />
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
-<body>
+<body class="student-app">
   <div class="app-shell" id="appShell">
     <div class="page-content">
       <div class="page-header">
@@ -93,16 +94,17 @@
               <table class="data-table" id="asgTable">
                 <thead>
                   <tr>
-                    <th>Checkbox</th>
+                    <th><label class="custom-check"><input type="checkbox" id="selectAll" aria-label="Select all assignments" /><span class="box"></span></label></th>
                     <th>Assignment</th>
                     <th>Subject</th>
                     <th>Due Date</th>
                     <th>Status</th>
-                    <th></th>
+                    <th aria-label="Actions"></th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr data-id="asg_1" data-status="upcoming">
+                    <td><label class="custom-check"><input type="checkbox" class="row-check" aria-label="Select Algebra Homework Set 3" /><span class="box"></span></label></td>
                     <td>
                       <div class="cell-title">
                         <div class="cell-icon" style="background:#DBEAFE;color:#2563EB"><i data-lucide="file-text"></i></div>
@@ -114,7 +116,6 @@
                     </td>
                     <td><span class="subject-tag math">Mathematics</span></td>
                     <td>Sep 12, 2025</td>
-                    <td>50 pts</td>
                     <td><span class="badge badge-upcoming">Upcoming</span></td>
                     <td>
                       <div class="action-menu-wrap">
@@ -123,6 +124,7 @@
                     </td>
                   </tr>
                   <tr data-id="asg_4" data-status="overdue">
+                    <td><label class="custom-check"><input type="checkbox" class="row-check" aria-label="Select Python Mini Project" /><span class="box"></span></label></td>
                     <td>
                       <div class="cell-title">
                         <div class="cell-icon" style="background:#FFEDD5;color:#EA580C"><i data-lucide="code-2"></i></div>
@@ -134,7 +136,6 @@
                     </td>
                     <td><span class="subject-tag cs">Computer Science</span></td>
                     <td>Sep 10, 2025</td>
-                    <td>100 pts</td>
                     <td><span class="badge badge-overdue">Overdue</span></td>
                     <td>
                       <div class="action-menu-wrap">
@@ -143,6 +144,7 @@
                     </td>
                   </tr>
                   <tr data-id="asg_5" data-status="completed">
+                    <td><label class="custom-check"><input type="checkbox" class="row-check" aria-label="Select Math Quiz 1" /><span class="box"></span></label></td>
                     <td>
                       <div class="cell-title">
                         <div class="cell-icon" style="background:#DBEAFE;color:#2563EB"><i data-lucide="check-circle"></i></div>
@@ -154,7 +156,6 @@
                     </td>
                     <td><span class="subject-tag math">Mathematics</span></td>
                     <td>Sep 5, 2025</td>
-                    <td>30 pts</td>
                     <td><span class="badge badge-completed">Completed</span></td>
                     <td>
                       <div class="action-menu-wrap">
@@ -163,6 +164,7 @@
                     </td>
                   </tr>
                   <tr data-id="asg_8" data-status="upcoming">
+                    <td><label class="custom-check"><input type="checkbox" class="row-check" aria-label="Select HTML/CSS Landing Page" /><span class="box"></span></label></td>
                     <td>
                       <div class="cell-title">
                         <div class="cell-icon" style="background:#FFEDD5;color:#EA580C"><i data-lucide="layout"></i></div>
@@ -174,7 +176,6 @@
                     </td>
                     <td><span class="subject-tag cs">Computer Science</span></td>
                     <td>Sep 20, 2025</td>
-                    <td>80 pts</td>
                     <td><span class="badge badge-upcoming">Upcoming</span></td>
                     <td>
                       <div class="action-menu-wrap">

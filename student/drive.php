@@ -9,9 +9,10 @@
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/components.css" />
   <link rel="stylesheet" href="../css/pages.css" />
+  <link rel="stylesheet" href="../css/student.css" />
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
-<body>
+<body class="student-app">
   <div class="app-shell" id="appShell">
     <div class="page-content">
       <div class="page-header">
@@ -58,6 +59,7 @@
               <table class="data-table" id="driveTable">
                 <thead>
                   <tr>
+                    <th aria-label="Selection"></th>
                     <th>Name</th>
                     <th>Owner</th>
                     <th>Last Modified</th>
@@ -67,6 +69,7 @@
                 </thead>
                 <tbody>
                   <tr data-id="drv_1" data-type="folder">
+                    <td><label class="custom-check"><input type="checkbox" aria-label="Select Mathematics folder" /><span class="box"></span></label></td>
                     <td>
                       <div class="cell-title">
                         <div class="file-icon folder"><i data-lucide="folder"></i></div>
@@ -83,6 +86,7 @@
                     </td>
                   </tr>
                   <tr data-id="drv_2" data-type="folder">
+                    <td><label class="custom-check"><input type="checkbox" aria-label="Select Science Labs folder" /><span class="box"></span></label></td>
                     <td>
                       <div class="cell-title">
                         <div class="file-icon folder"><i data-lucide="folder"></i></div>
@@ -99,6 +103,7 @@
                     </td>
                   </tr>
                   <tr data-id="drv_3" data-type="doc">
+                    <td><label class="custom-check"><input type="checkbox" aria-label="Select Algebra Notes.docx" /><span class="box"></span></label></td>
                     <td>
                       <div class="cell-title">
                         <div class="file-icon doc"><i data-lucide="file-text"></i></div>
@@ -115,6 +120,7 @@
                     </td>
                   </tr>
                   <tr data-id="drv_4" data-type="sheet">
+                    <td><label class="custom-check"><input type="checkbox" aria-label="Select Lab Report Template.xlsx" /><span class="box"></span></label></td>
                     <td>
                       <div class="cell-title">
                         <div class="file-icon sheet"><i data-lucide="table"></i></div>
@@ -131,6 +137,7 @@
                     </td>
                   </tr>
                   <tr data-id="drv_5" data-type="slide">
+                    <td><label class="custom-check"><input type="checkbox" aria-label="Select Project Presentation.pptx" /><span class="box"></span></label></td>
                     <td>
                       <div class="cell-title">
                         <div class="file-icon slide"><i data-lucide="presentation"></i></div>
@@ -147,6 +154,7 @@
                     </td>
                   </tr>
                   <tr data-id="drv_6" data-type="pdf" data-shared="true">
+                    <td><label class="custom-check"><input type="checkbox" aria-label="Select Syllabus.pdf" /><span class="box"></span></label></td>
                     <td>
                       <div class="cell-title">
                         <div class="file-icon pdf"><i data-lucide="file"></i></div>
@@ -166,6 +174,7 @@
                     </td>
                   </tr>
                   <tr data-id="drv_9" data-type="pdf">
+                    <td><label class="custom-check"><input type="checkbox" aria-label="Select Study Schedule.pdf" /><span class="box"></span></label></td>
                     <td>
                       <div class="cell-title">
                         <div class="file-icon pdf"><i data-lucide="file"></i></div>

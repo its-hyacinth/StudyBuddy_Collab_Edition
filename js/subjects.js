@@ -6,17 +6,79 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!session) return;
   wireModalClosers();
 
-  let selectedId = null;
+  const requestedSubjectId = new URLSearchParams(window.location.search).get('subject');
+  let selectedId = requestedSubjectId;
+  let showAllSubjects = !requestedSubjectId;
+  let assignmentFilter = 'all';
+  let subjects = [];
+  let assignments = [];
   const iconBg = (color) => `${color}22`;
+  const isCompleted = (assignment) => String(assignment.status || '').toLowerCase() === 'completed';
+  const uniqueAssignments = (list) => {
+    const seen = new Set();
+    return list.filter((assignment) => {
+      const key = assignment.classroomWorkId
+        ? `classroom:${assignment.subjectId}:${assignment.classroomWorkId}`
+        : assignment.id ? `id:${assignment.id}` : null;
+      if (!key) return true;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
+  const assignmentsFor = (subjectId) => {
+    const subject = subjects.find((item) => item.id === subjectId);
+    return uniqueAssignments(assignments.filter((assignment) =>
+      assignment.subjectId === subjectId
+      || (!assignment.subjectId && subject && [subject.name, subject.shortName, subject.code].includes(assignment.subject))
+    ));
+  };
+
+  function selectSubject(id) {
+    selectedId = id;
+    showAllSubjects = false;
+    assignmentFilter = 'all';
+    const url = new URL(window.location.href);
+    url.searchParams.set('subject', id);
+    window.history.replaceState({}, '', url);
+    render();
+    document.getElementById('subjectDetail')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function setAssignmentFilter(filter, allSubjects = false) {
+    assignmentFilter = filter;
+    if (allSubjects) {
+      showAllSubjects = true;
+      const url = new URL(window.location.href);
+      url.searchParams.delete('subject');
+      window.history.replaceState({}, '', url);
+    }
+    renderTabs();
+    renderDetail();
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }
 
   function render() {
-    const subjects = getSubjects();
-    if (!selectedId && subjects.length) selectedId = subjects[0].id;
+    subjects = getSubjects();
+    assignments = getAssignments();
+    if (!subjects.some((subject) => subject.id === selectedId)) {
+      selectedId = subjects[0]?.id || null;
+      assignmentFilter = 'all';
+      const url = new URL(window.location.href);
+      if (requestedSubjectId) showAllSubjects = true;
+      if (showAllSubjects) url.searchParams.delete('subject');
+      else if (selectedId) url.searchParams.set('subject', selectedId);
+      else url.searchParams.delete('subject');
+      window.history.replaceState({}, '', url);
+    }
 
     const grid = document.getElementById('subjectGrid');
     if (grid) {
-      grid.innerHTML = subjects.map((s) => `
-        <div class="subject-card" data-subject-id="${s.id}">
+      grid.innerHTML = subjects.map((s) => {
+        const subjectAssignments = assignmentsFor(s.id);
+        const completed = subjectAssignments.filter(isCompleted).length;
+        return `
+        <div class="subject-card ${!showAllSubjects && s.id === selectedId ? 'is-selected' : ''}" data-subject-id="${s.id}" role="button" tabindex="0" aria-pressed="${!showAllSubjects && s.id === selectedId}">
           <div class="subject-card-top">
             <div class="subj-icon" style="background:${iconBg(s.color)};color:${s.color}"><i data-lucide="${s.icon || 'book'}"></i></div>
             <div class="subj-info">
@@ -35,18 +97,22 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="progress-pct">${s.progress}%</span>
           </div>
           <div class="subject-card-stats">
-            <div class="ss"><div class="ss-val">${s.assignments}</div><div class="ss-lbl">Assignments</div></div>
-            <div class="ss"><div class="ss-val">${s.completed}</div><div class="ss-lbl">Completed</div></div>
-            <div class="ss"><div class="ss-val">${s.pending}</div><div class="ss-lbl">Pending</div></div>
+            <div class="ss"><div class="ss-val">${subjectAssignments.length}</div><div class="ss-lbl">Assignments</div></div>
+            <div class="ss"><div class="ss-val">${completed}</div><div class="ss-lbl">Completed</div></div>
+            <div class="ss"><div class="ss-val">${subjectAssignments.length - completed}</div><div class="ss-lbl">Pending</div></div>
           </div>
-        </div>`).join('');
+        </div>`;
+      }).join('');
 
       grid.querySelectorAll('.subject-card').forEach((card) => {
         card.addEventListener('click', (e) => {
           if (e.target.closest('.action-menu-wrap')) return;
-          selectedId = card.dataset.subjectId;
-          renderDetail();
-          renderTabs();
+          selectSubject(card.dataset.subjectId);
+        });
+        card.addEventListener('keydown', (e) => {
+          if (e.target !== card || !['Enter', ' '].includes(e.key)) return;
+          e.preventDefault();
+          selectSubject(card.dataset.subjectId);
         });
       });
       grid.querySelectorAll('[data-menu]').forEach((btn) => {
@@ -62,6 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
           e.stopPropagation();
           deleteSubject(btn.getAttribute('data-delete'));
           selectedId = null;
+          assignmentFilter = 'all';
           showToast('Subject deleted', 'warning');
           render();
         });
@@ -76,73 +143,102 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderTabs() {
-    const subjects = getSubjects();
     const tabs = document.getElementById('subjectTabs');
     if (!tabs) return;
-    tabs.innerHTML = subjects.map((s) => `
-      <button type="button" class="subject-tab ${s.id === selectedId ? 'active' : ''}" data-id="${s.id}">${s.name}</button>
+    const subject = subjects.find((item) => item.id === selectedId);
+    if (!subject && !showAllSubjects) {
+      tabs.innerHTML = '';
+      return;
+    }
+
+    const allAssignments = uniqueAssignments(assignments);
+    const completed = allAssignments.filter(isCompleted).length;
+    const filters = [
+      { id: 'all', label: 'All Subjects', count: allAssignments.length },
+      { id: 'pending', label: 'Pending', count: allAssignments.length - completed },
+      { id: 'completed', label: 'Completed', count: completed },
+    ];
+    tabs.innerHTML = filters.map((filter) => `
+      <button type="button" class="subject-tab ${showAllSubjects && filter.id === assignmentFilter ? 'active' : ''}" data-filter="${filter.id}" aria-pressed="${showAllSubjects && filter.id === assignmentFilter}" aria-controls="subjectAssignmentList">
+        ${filter.label} <span class="count">${filter.count}</span>
+      </button>
     `).join('');
     tabs.querySelectorAll('.subject-tab').forEach((tab) => {
       tab.addEventListener('click', () => {
-        selectedId = tab.dataset.id;
-        renderTabs();
-        renderDetail();
-        if (typeof lucide !== 'undefined') lucide.createIcons();
+        setAssignmentFilter(tab.dataset.filter, true);
       });
     });
   }
 
   function renderDetail() {
-    const s = getSubjects().find((x) => x.id === selectedId);
+    const s = subjects.find((x) => x.id === selectedId);
     const el = document.getElementById('subjectDetail');
-    if (!el || !s) { if (el) el.innerHTML = '<p class="empty-state">Select a subject</p>'; return; }
-    const activity = getAssignments().filter((a) => a.subjectId === s.id).slice(0, 4);
+    if (!el || (!s && !showAllSubjects)) { if (el) el.innerHTML = '<p class="empty-state">Select a subject</p>'; return; }
+    const subjectAssignments = showAllSubjects ? uniqueAssignments(assignments) : assignmentsFor(s.id);
+    const completed = subjectAssignments.filter(isCompleted).length;
+    const pending = subjectAssignments.length - completed;
+    const visibleAssignments = subjectAssignments.filter((assignment) => {
+      if (assignmentFilter === 'completed') return isCompleted(assignment);
+      if (assignmentFilter === 'pending') return !isCompleted(assignment);
+      return true;
+    });
+    const heading = showAllSubjects ? 'All Subjects' : s.name;
+    const color = showAllSubjects ? '#2563EB' : s.color;
+    const metadata = showAllSubjects
+      ? `${subjects.length} subjects · ${subjectAssignments.length} assignments`
+      : `${s.code || ''}${s.sectionCode ? ` · ${s.sectionCode}` : ''}${s.units ? ` · ${s.units} units` : ''} · ${s.room || 'TBA'} · Prof. ${s.professor || 'TBA'}`;
     el.innerHTML = `
-      <div class="card" style="margin-bottom:0">
-        <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
-          <div class="subj-icon" style="width:56px;height:56px;border-radius:14px;background:${iconBg(s.color)};color:${s.color};display:flex;align-items:center;justify-content:center">
-            <i data-lucide="${s.icon || 'book'}"></i>
-          </div>
-          <div style="flex:1;min-width:200px">
-            <h3 style="font-size:18px;margin-bottom:4px">${s.name}</h3>
-            <p style="color:var(--text-muted);font-size:13px;margin-bottom:8px">${s.code || ''} ${s.sectionCode ? '· ' + s.sectionCode : ''} · ${s.units || ''} units · ${s.room || 'TBA'} · Prof. ${s.professor || 'TBA'}</p>
-            <p style="font-size:13.5px;color:var(--text-body)">${s.description || ''}</p>
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="card-icon" style="background:${iconBg(color)};color:${color}"><i data-lucide="${showAllSubjects ? 'book-open' : s.icon || 'book'}"></i></div>
+          <div>
+            <h2 class="card-title">${heading}</h2>
+            <p class="subject-detail-meta">${metadata}</p>
           </div>
         </div>
-        <div class="subject-detail-stats">
-          <div class="detail-stat-box">
-            <div class="ds-val">${s.assignments}</div>
-            <div class="ds-lbl">Assignments</div>
-            <a href="assignments.php">View All</a>
-          </div>
-          <div class="detail-stat-box">
-            <div class="ds-val">${s.completed}</div>
-            <div class="ds-lbl">Completed</div>
-            <a href="assignments.php">View Completed</a>
-          </div>
-          <div class="detail-stat-box">
-            <div class="ds-val">${s.pending}</div>
-            <div class="ds-lbl">Pending</div>
-            <a href="assignments.php">View Pending</a>
-          </div>
-        </div>
-        <h4 style="margin:8px 0 12px;font-size:14px">Recent Activity</h4>
-        ${activity.length ? activity.map((a) => `
+      </div>
+      ${showAllSubjects ? '<p class="subject-detail-description">Assignments from all of your subjects.</p>' : s.description ? `<p class="subject-detail-description">${s.description}</p>` : ''}
+      <div class="subject-detail-stats">
+        <button type="button" class="detail-stat-box ${assignmentFilter === 'all' ? 'is-active' : ''}" data-assignment-filter="all" aria-pressed="${assignmentFilter === 'all'}" aria-controls="subjectAssignmentList">
+          <div class="ds-val">${subjectAssignments.length}</div>
+          <div class="ds-lbl">Assignments</div>
+        </button>
+        <button type="button" class="detail-stat-box ${assignmentFilter === 'completed' ? 'is-active' : ''}" data-assignment-filter="completed" aria-pressed="${assignmentFilter === 'completed'}" aria-controls="subjectAssignmentList">
+          <div class="ds-val">${completed}</div>
+          <div class="ds-lbl">Completed</div>
+        </button>
+        <button type="button" class="detail-stat-box ${assignmentFilter === 'pending' ? 'is-active' : ''}" data-assignment-filter="pending" aria-pressed="${assignmentFilter === 'pending'}" aria-controls="subjectAssignmentList">
+          <div class="ds-val">${pending}</div>
+          <div class="ds-lbl">Pending</div>
+        </button>
+      </div>
+      <h3 class="subject-assignments-heading">Assignments</h3>
+      <div class="subject-assignment-list" id="subjectAssignmentList" aria-live="polite">
+        ${visibleAssignments.length ? visibleAssignments.map((assignment) => {
+          const status = assignment.status || 'pending';
+          const assignmentSubject = subjects.find((subject) => subject.id === assignment.subjectId);
+          const subjectName = assignment.subject || assignmentSubject?.name || 'Unassigned';
+          const assignmentColor = showAllSubjects ? assignmentSubject?.color || '#2563EB' : s.color;
+          return `
           <div class="list-item">
-            <div class="cell-icon" style="width:32px;height:32px;border-radius:8px;background:${iconBg(s.color)};color:${s.color};display:flex;align-items:center;justify-content:center"><i data-lucide="file-text"></i></div>
+            <div class="cell-icon" style="width:32px;height:32px;border-radius:8px;background:${iconBg(assignmentColor)};color:${assignmentColor};display:flex;align-items:center;justify-content:center"><i data-lucide="file-text"></i></div>
             <div class="item-meta">
-              <div class="item-title">${a.title}</div>
-              <div class="item-sub">${formatDate(a.dueDate)}</div>
+              <div class="item-title">${assignment.title}</div>
+              <div class="item-sub">${showAllSubjects ? `${subjectName} · ` : ''}${assignment.dueDate ? `Due ${formatDate(assignment.dueDate)}` : 'No due date'}</div>
             </div>
-            <span class="badge ${statusClass(a.status)}">${statusLabel(a.status)}</span>
-          </div>`).join('') : '<p style="color:var(--text-muted);font-size:13px">No recent activity.</p>'}
+            <span class="badge ${statusClass(status)}">${statusLabel(status)}</span>
+          </div>`;
+        }).join('') : `<p class="subject-assignments-empty">No ${assignmentFilter === 'all' ? '' : `${assignmentFilter} `}assignments ${showAllSubjects ? 'across your subjects' : 'for this subject'}.</p>`}
       </div>`;
+    el.querySelectorAll('[data-assignment-filter]').forEach((button) => {
+      button.addEventListener('click', () => setAssignmentFilter(button.dataset.assignmentFilter, showAllSubjects));
+    });
   }
 
   function renderOverview() {
     const el = document.getElementById('subjectOverview');
     if (!el) return;
-    el.innerHTML = getSubjects().map((s) => `
+    el.innerHTML = subjects.map((s) => `
       <div class="list-item" data-goto="${s.id}">
         <span class="dot" style="background:${s.color}"></span>
         <div class="item-meta">
@@ -156,10 +252,7 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>`).join('');
     el.querySelectorAll('[data-goto]').forEach((row) => {
       row.addEventListener('click', () => {
-        selectedId = row.getAttribute('data-goto');
-        renderTabs();
-        renderDetail();
-        if (typeof lucide !== 'undefined') lucide.createIcons();
+        selectSubject(row.getAttribute('data-goto'));
       });
     });
   }
@@ -167,13 +260,13 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderFacts() {
     const el = document.getElementById('quickFacts');
     if (!el) return;
-    const subjects = getSubjects();
-    const asgs = getAssignments();
-    const completed = asgs.filter((a) => a.status === 'completed').length;
-    const pending = asgs.filter((a) => a.status !== 'completed').length;
+    const asgs = assignments;
+    const allAssignments = uniqueAssignments(asgs);
+    const completed = allAssignments.filter(isCompleted).length;
+    const pending = allAssignments.length - completed;
     el.innerHTML = `
       <div class="list-item" style="cursor:default"><div class="item-meta"><div class="item-title">Total Subjects</div></div><strong>${subjects.length}</strong></div>
-      <div class="list-item" style="cursor:default"><div class="item-meta"><div class="item-title">Total Assignments</div></div><strong>${asgs.length}</strong></div>
+      <div class="list-item" style="cursor:default"><div class="item-meta"><div class="item-title">Total Assignments</div></div><strong>${allAssignments.length}</strong></div>
       <div class="list-item" style="cursor:default"><div class="item-meta"><div class="item-title">Completed</div></div><strong>${completed}</strong></div>
       <div class="list-item" style="cursor:default"><div class="item-meta"><div class="item-title">Pending</div></div><strong>${pending}</strong></div>
       <div class="tip-footer" style="margin-top:12px;font-style:italic;color:var(--text-muted);font-size:12px">

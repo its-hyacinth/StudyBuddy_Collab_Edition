@@ -9,9 +9,10 @@
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/components.css" />
   <link rel="stylesheet" href="../css/pages.css" />
+  <link rel="stylesheet" href="../css/student.css" />
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
-<body>
+<body class="student-app">
   <div class="app-shell" id="appShell">
     <div class="page-content">
       <h1 class="greeting" id="greeting">Good morning, Juan!</h1>
