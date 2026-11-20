@@ -16,7 +16,7 @@
     <div class="auth-left">
       <div class="auth-brand">
         <img src="assets/logo.png" alt="StudyBuddy" />
-        <div class="brand-text">StudyBuddyyy</div>
+        <div class="brand-text">StudyBuddy</div>
       </div>
       <div class="auth-tagline">Learn. Track. Achieve.</div>
       <div class="auth-hero">
