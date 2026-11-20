@@ -148,6 +148,27 @@
   font-size: 13px;
 }
 
+.student-app #asgTable tbody tr.assignment-completed {
+  background: #F8FAFC;
+}
+
+.student-app #asgTable tbody tr.assignment-completed:hover {
+  background: #F1F5F9;
+}
+
+.student-app #asgTable tbody tr.assignment-completed .cell-title .title {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.student-app #asgTable tbody tr.assignment-completed .cell-title .cell-icon {
+  opacity: 0.7;
+}
+
+.student-app #asgTable tbody tr.assignment-completed td:nth-child(4) {
+  color: var(--text-muted);
+}
+
 .student-app .data-table tbody tr:last-child td {
   border-bottom: none;
 }

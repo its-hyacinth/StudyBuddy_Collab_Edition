@@ -62,7 +62,7 @@
             <label for="password">Password</label>
             <div class="input-icon-wrap">
               <i data-lucide="lock" class="input-icon"></i>
-              <input class="form-control" type="password" id="password" placeholder="At least 6 characters" required />
+              <input class="form-control" type="password" id="password" placeholder="At least 8 characters" required />
             </div>
           </div>
           <div class="form-group">

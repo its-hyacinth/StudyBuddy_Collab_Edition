@@ -94,7 +94,12 @@
               <table class="data-table" id="asgTable">
                 <thead>
                   <tr>
-                    <th><label class="custom-check"><input type="checkbox" id="selectAll" aria-label="Select all assignments" /><span class="box"></span></label></th>
+                    <th scope="col">
+                      <label class="custom-check">
+                        <input type="checkbox" id="selectAll" aria-label="Mark all assignments on this page as complete" />
+                        <span class="box"></span>
+                      </label>
+                    </th>
                     <th>Assignment</th>
                     <th>Subject</th>
                     <th>Due Date</th>
@@ -187,7 +192,7 @@
               </table>
             </div>
 
-            <div class="pagination">
+            <div class="pagination" id="asgPagination">
               <div class="pagination-info">Showing 1–4 of 16 assignments</div>
               <div class="pagination-controls">
                 <button type="button" class="page-btn" disabled aria-label="Previous"><i data-lucide="chevron-left"></i></button>
@@ -336,6 +341,29 @@
           <button type="submit" class="btn btn-primary">Add Assignment</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="assignmentDetailsModal">
+    <div class="modal" role="dialog" aria-labelledby="assignmentDetailsTitle">
+      <div class="modal-header">
+        <h3 id="assignmentDetailsTitle">Assignment details</h3>
+        <button type="button" class="modal-close" data-close-modal="assignmentDetailsModal" aria-label="Close">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group"><span class="row-label">Subject</span><div id="assignmentDetailsSubject">—</div></div>
+        <div class="form-row">
+          <div class="form-group"><span class="row-label">Due date</span><div id="assignmentDetailsDueDate">—</div></div>
+          <div class="form-group"><span class="row-label">Points</span><div id="assignmentDetailsPoints">—</div></div>
+        </div>
+        <div class="form-group"><span class="row-label">Status</span><div><span class="badge badge-info" id="assignmentDetailsStatus">Upcoming</span></div></div>
+        <div class="form-group"><span class="row-label">Description</span><p id="assignmentDetailsDescription">—</p></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-close-modal="assignmentDetailsModal">Close</button>
+      </div>
     </div>
   </div>
 

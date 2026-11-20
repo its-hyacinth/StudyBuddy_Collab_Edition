@@ -30,6 +30,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const subject = subjects.find((item) => item.id === subjectId);
     return uniqueAssignments(assignments.filter((assignment) =>
       assignment.subjectId === subjectId
+      || assignment.classId === subjectId
+      || (subject?.classroomId && (assignment.classId === subject.classroomId || assignment.classroomId === subject.classroomId))
       || (!assignment.subjectId && subject && [subject.name, subject.shortName, subject.code].includes(assignment.subject))
     ));
   };
@@ -74,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const grid = document.getElementById('subjectGrid');
     if (grid) {
-      grid.innerHTML = subjects.map((s) => {
+      grid.innerHTML = subjects.length ? subjects.map((s) => {
         const subjectAssignments = assignmentsFor(s.id);
         const completed = subjectAssignments.filter(isCompleted).length;
         return `
@@ -102,7 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="ss"><div class="ss-val">${subjectAssignments.length - completed}</div><div class="ss-lbl">Pending</div></div>
           </div>
         </div>`;
-      }).join('');
+      }).join('') : '<p class="empty-state">No subjects yet. Add one or sync your Classroom courses.</p>';
 
       grid.querySelectorAll('.subject-card').forEach((card) => {
         card.addEventListener('click', (e) => {
@@ -249,7 +251,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         </div>
         <i data-lucide="chevron-right" class="chevron"></i>
-      </div>`).join('');
+      </div>`).join('') || '<p class="empty-state">No subjects to show.</p>';
     el.querySelectorAll('[data-goto]').forEach((row) => {
       row.addEventListener('click', () => {
         selectSubject(row.getAttribute('data-goto'));
@@ -278,6 +280,17 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('syncClassroomBtn')?.addEventListener('click', async (e) => {
     const result = await syncGoogleClassroom(e.currentTarget);
     if (result?.ok) render();
+  });
+  document.querySelectorAll('[data-action]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const routes = {
+        'add-assignment': 'assignments.php',
+        'add-task': 'todo.php',
+        'view-schedule': 'schedule.php',
+        'open-drive': 'drive.php',
+      };
+      if (routes[button.dataset.action]) window.location.href = routes[button.dataset.action];
+    });
   });
 
   // Color picker

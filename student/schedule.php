@@ -42,58 +42,14 @@
         <div class="page-main">
           <div class="card" id="calendarView">
             <div class="cal-nav">
-              <h4 id="fullCalMonth">September 2025</h4>
+              <h4 id="fullCalMonth"></h4>
               <div class="cal-nav-btns">
                 <button type="button" class="icon-btn" id="fullCalPrev" aria-label="Previous month"><i data-lucide="chevron-left"></i></button>
                 <button type="button" class="btn btn-ghost btn-sm" id="fullCalToday">Today</button>
                 <button type="button" class="icon-btn" id="fullCalNext" aria-label="Next month"><i data-lucide="chevron-right"></i></button>
               </div>
             </div>
-            <div class="cal-grid cal-full" id="fullCalendar">
-              <div class="cal-dow">Su</div>
-              <div class="cal-dow">Mo</div>
-              <div class="cal-dow">Tu</div>
-              <div class="cal-dow">We</div>
-              <div class="cal-dow">Th</div>
-              <div class="cal-dow">Fr</div>
-              <div class="cal-dow">Sa</div>
-              <div class="cal-day other"><span class="day-num">31</span></div>
-              <div class="cal-day"><span class="day-num">1</span></div>
-              <div class="cal-day"><span class="day-num">2</span></div>
-              <div class="cal-day"><span class="day-num">3</span></div>
-              <div class="cal-day"><span class="day-num">4</span></div>
-              <div class="cal-day"><span class="day-num">5</span></div>
-              <div class="cal-day"><span class="day-num">6</span></div>
-              <div class="cal-day"><span class="day-num">7</span></div>
-              <div class="cal-day"><span class="day-num">8</span></div>
-              <div class="cal-day"><span class="day-num">9</span></div>
-              <div class="cal-day"><span class="day-num">10</span></div>
-              <div class="cal-day"><span class="day-num">11</span></div>
-              <div class="cal-day today">
-                <span class="day-num">12</span>
-                <div class="cal-event-chip math">Mathematics</div>
-                <div class="cal-event-chip science">Science</div>
-                <div class="cal-event-chip task">Math Quiz Due</div>
-              </div>
-              <div class="cal-day"><span class="day-num">13</span></div>
-              <div class="cal-day"><span class="day-num">14</span></div>
-              <div class="cal-day"><span class="day-num">15</span><div class="cal-event-chip cs">Computer Science</div></div>
-              <div class="cal-day"><span class="day-num">16</span><div class="cal-event-chip filipino">Filipino</div></div>
-              <div class="cal-day"><span class="day-num">17</span><div class="cal-event-chip history">History</div></div>
-              <div class="cal-day"><span class="day-num">18</span><div class="cal-event-chip cs">Group Study</div></div>
-              <div class="cal-day"><span class="day-num">19</span><div class="cal-event-chip science">Science Lab</div></div>
-              <div class="cal-day"><span class="day-num">20</span></div>
-              <div class="cal-day"><span class="day-num">21</span></div>
-              <div class="cal-day"><span class="day-num">22</span><div class="cal-event-chip english">English Presentation</div></div>
-              <div class="cal-day"><span class="day-num">23</span></div>
-              <div class="cal-day"><span class="day-num">24</span></div>
-              <div class="cal-day"><span class="day-num">25</span></div>
-              <div class="cal-day"><span class="day-num">26</span></div>
-              <div class="cal-day"><span class="day-num">27</span></div>
-              <div class="cal-day"><span class="day-num">28</span></div>
-              <div class="cal-day"><span class="day-num">29</span></div>
-              <div class="cal-day"><span class="day-num">30</span></div>
-            </div>
+            <div class="cal-grid cal-full" id="fullCalendar"></div>
           </div>
 
           <div class="card" id="listView" style="display:none">
@@ -157,16 +113,6 @@
         </div>
 
         <aside class="page-aside">
-          <div class="card">
-            <div class="card-header">
-              <div class="card-header-left">
-                <div class="card-icon blue"><i data-lucide="calendar"></i></div>
-                <h2 class="card-title">Mini Calendar</h2>
-              </div>
-            </div>
-            <div id="scheduleMiniCalendar"></div>
-          </div>
-
           <div class="card" id="scheduleUpcomingEvents">
             <div class="card-header">
               <div class="card-header-left">
@@ -279,6 +225,26 @@
           <button type="submit" class="btn btn-primary">Add Event</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="dayScheduleModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="dayScheduleTitle">
+      <div class="modal-header">
+        <h3 id="dayScheduleTitle">Schedule for this day</h3>
+        <button type="button" class="modal-close" data-close-modal="dayScheduleModal" aria-label="Close day schedule">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div id="dayScheduleEvents"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-close-modal="dayScheduleModal">Close</button>
+        <button type="button" class="btn btn-primary" id="addDayScheduleBtn">
+          <i data-lucide="plus"></i> Add Event
+        </button>
+      </div>
     </div>
   </div>
 

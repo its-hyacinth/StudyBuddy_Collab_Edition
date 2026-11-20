@@ -400,6 +400,7 @@ const SEED_SETTINGS = {
   },
   notifications: { email: true, push: true, deadlines: true, messages: true },
   appearance: { theme: 'light', compact: false },
+  privacy: { profileVisibility: 'classmates', showProgress: true, activityStatus: true },
   connected: { googleClassroom: false, googleCalendar: false, googleDrive: false },
   storageUsed: 34.2,
   storageTotal: 50,
@@ -471,6 +472,11 @@ function addSchedule(entry) {
   list.push(item);
   sbSet(SB_KEYS.SCHEDULE, list);
   return item;
+}
+function updateSchedule(id, patch) {
+  const list = getSchedule().map((entry) => (entry.id === id ? { ...entry, ...patch } : entry));
+  sbSet(SB_KEYS.SCHEDULE, list);
+  return list.find((entry) => entry.id === id);
 }
 function deleteSchedule(id) {
   sbSet(SB_KEYS.SCHEDULE, getSchedule().filter((s) => s.id !== id));

@@ -74,10 +74,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // ---------- Panels ----------
   function activatePanel(name) {
     document.querySelectorAll('.settings-nav button, [data-settings-tab]').forEach((btn) => {
-      btn.classList.toggle('active', (btn.dataset.settingsTab || btn.dataset.tab || btn.dataset.panel) === name);
+      const active = (btn.dataset.settingsTab || btn.dataset.tab || btn.dataset.panel) === name;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-selected', String(active));
     });
     document.querySelectorAll('.settings-panel').forEach((panel) => {
-      panel.classList.toggle('active', panel.id === `panel-${name}` || panel.dataset.panel === name);
+      const active = panel.id === `panel-${name}` || panel.dataset.panel === name;
+      panel.classList.toggle('active', active);
+      panel.hidden = !active;
     });
   }
 
@@ -126,6 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const name = values.fullName ?? fieldMap.fullName ?? '';
     const email = values.email ?? fieldMap.email ?? '';
     if ($('settingsDisplayName')) $('settingsDisplayName').textContent = name;
+    if ($('settingsName')) $('settingsName').textContent = name;
     if ($('settingsDisplayEmail')) $('settingsDisplayEmail').textContent = email;
     if ($('settingsAvatar')) $('settingsAvatar').textContent = initialsOf(name);
     if ($('infoEmployeeId')) $('infoEmployeeId').textContent = values.employeeId || fieldMap.employeeId || '—';
@@ -133,8 +138,56 @@ document.addEventListener('DOMContentLoaded', () => {
     // Student overview aside
     if ($('overviewName')) $('overviewName').textContent = name;
     if ($('overviewEmail')) $('overviewEmail').textContent = email;
+    if ($('settingsRole') && !isTeacher) {
+      $('settingsRole').textContent = `Student${values.course || fieldMap.course ? ` · ${values.course || fieldMap.course}` : ''}${values.yearLevel || fieldMap.yearLevel ? ` · ${values.yearLevel || fieldMap.yearLevel}` : ''}`;
+    }
   }
   showProfile(fieldMap);
+
+  function openProfileEditor(field = 'fullName') {
+    if (field === 'password') {
+      openModal('changePasswordModal');
+      return;
+    }
+    const input = $('editValue');
+    const fieldInput = $('editField');
+    if (!input || !fieldInput || !Object.prototype.hasOwnProperty.call(fieldMap, field)) return;
+    fieldInput.value = field;
+    input.type = field === 'email' ? 'email' : 'text';
+    input.value = fieldMap[field] || '';
+    input.autocomplete = field === 'email' ? 'email' : 'off';
+    const label = $('editFieldLabel');
+    if (label) label.textContent = field.replace(/([A-Z])/g, ' $1').replace(/^./, (letter) => letter.toUpperCase());
+    openModal('editProfileModal');
+  }
+
+  $('editProfileForm')?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const field = $('editField')?.value;
+    const next = $('editValue')?.value.trim();
+    if (!field || next === undefined || !Object.prototype.hasOwnProperty.call(fieldMap, field)) {
+      showToast('Choose a valid profile field.', 'error');
+      return;
+    }
+    if (field === 'fullName' && !next) { showToast('Full name is required.', 'error'); return; }
+    if (field === 'email' && !/^\S+@\S+\.\S+$/.test(next)) { showToast('Enter a valid email.', 'error'); return; }
+    const submit = event.currentTarget.querySelector('[type="submit"]');
+    if (submit) submit.disabled = true;
+    try {
+      await saveProfileToServer({ [field]: next });
+      persistLocally({ [field]: next });
+      fieldMap[field] = next;
+      showProfile(fieldMap);
+      if (field === 'fullName') refreshShellUser(next, undefined);
+      if (field === 'email') refreshShellUser(undefined, next);
+      closeModal('editProfileModal');
+      showToast('Profile updated.');
+    } catch (error) {
+      showToast(error.message || 'Profile could not be saved.', 'error');
+    } finally {
+      if (submit) submit.disabled = false;
+    }
+  });
 
   // Teacher: Save Changes on the profile form
   $('profileForm')?.addEventListener('submit', async (e) => {
@@ -168,27 +221,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Student: click a row to edit it (one field at a time)
   document.querySelectorAll('.settings-row[data-field]').forEach((row) => {
-    row.addEventListener('click', async () => {
-      const field = row.dataset.field;
-      const current = fieldMap[field] || '';
-      const raw = prompt(`Edit ${field}`, current);
-      if (raw === null) return;
-      const next = raw.trim();
-      if (next === current) return;
-      if (field === 'fullName' && !next) { showToast('Full name is required', 'error'); return; }
-      if (field === 'email' && !/^\S+@\S+\.\S+$/.test(next)) { showToast('Enter a valid email', 'error'); return; }
-
-      try {
-        await saveProfileToServer({ [field]: next });
-        persistLocally({ [field]: next });
-        fieldMap[field] = next;
-        showProfile(fieldMap);
-        if (field === 'fullName') refreshShellUser(next, undefined);
-        if (field === 'email') refreshShellUser(undefined, next);
-        showToast('Profile updated');
-      } catch (err) {
-        showToast(err.message, 'error');
-      }
+    const openEditor = () => openProfileEditor(row.dataset.field);
+    row.setAttribute('role', 'button');
+    row.setAttribute('tabindex', '0');
+    row.addEventListener('click', openEditor);
+    row.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openEditor(); }
     });
   });
 
@@ -270,6 +308,19 @@ document.addEventListener('DOMContentLoaded', () => {
   if (systemDark.addEventListener) systemDark.addEventListener('change', onSystemChange);
   else if (systemDark.addListener) systemDark.addListener(onSystemChange);
 
+  const privacy = { profileVisibility: 'classmates', showProgress: true, activityStatus: true, ...(settings.privacy || {}) };
+  if ($('profileVisibility')) $('profileVisibility').value = privacy.profileVisibility;
+  if ($('showProgress')) $('showProgress').checked = !!privacy.showProgress;
+  if ($('activityStatus')) $('activityStatus').checked = !!privacy.activityStatus;
+  const savePrivacy = () => {
+    privacy.profileVisibility = $('profileVisibility')?.value || privacy.profileVisibility;
+    privacy.showProgress = !!$('showProgress')?.checked;
+    privacy.activityStatus = !!$('activityStatus')?.checked;
+    updateSettings({ privacy });
+    showToast('Privacy preferences saved.');
+  };
+  ['profileVisibility', 'showProgress', 'activityStatus'].forEach((id) => $(id)?.addEventListener('change', savePrivacy));
+
   // ---------- Connected accounts ----------
   function refreshConnected() {
     const connected = getSettings().connected || {};
@@ -282,8 +333,12 @@ document.addEventListener('DOMContentLoaded', () => {
       if (el) el.checked = on;
     };
     setToggle('toggleGoogleClassroom', classroomOn);
-    setToggle('toggleGoogleCalendar', calOn);
-    setToggle('toggleGoogleDrive', driveOn);
+    setToggle('toggleGoogleCalendar', isTeacher && calOn);
+    setToggle('toggleGoogleDrive', isTeacher && driveOn);
+    if (!isTeacher) {
+      if ($('toggleGoogleCalendar')) $('toggleGoogleCalendar').disabled = true;
+      if ($('toggleGoogleDrive')) $('toggleGoogleDrive').disabled = true;
+    }
 
     const classroomStatus = $('classroomConnectStatus');
     const calStatus = $('calendarConnectStatus') || $('googleCalStatus');
@@ -295,8 +350,12 @@ document.addEventListener('DOMContentLoaded', () => {
           ? 'Not connected · Import classes, roster, and coursework'
           : 'Not connected · Import BSIT 4 classes from Classroom');
     }
-    if (calStatus) calStatus.textContent = calOn ? 'Connected' : 'Not connected · Optional schedule overlay';
-    if (driveStatus) driveStatus.textContent = driveOn ? 'Connected' : 'Not connected · Access your files';
+    if (calStatus) calStatus.textContent = !isTeacher
+      ? 'Not configured · Use the StudyBuddy schedule'
+      : calOn ? 'Connected' : 'Not connected · Optional schedule overlay';
+    if (driveStatus) driveStatus.textContent = !isTeacher
+      ? 'Not configured · Your files are stored in StudyBuddy'
+      : driveOn ? 'Connected' : 'Not connected · Access your files';
 
     const classroomBtn = $('toggleClassroom') || $('connectGoogleClassroom');
     const calBtn = $('toggleCalendar') || $('connectGoogleCalendar');
@@ -347,12 +406,29 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   $('editProfileBtn')?.addEventListener('click', () => openModal('editProfileModal'));
 
-  $('changePasswordForm')?.addEventListener('submit', (e) => {
+  $('changePasswordForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const pw = $('newPassword')?.value;
-    if (!pw || pw.length < 6) { showToast('Password must be at least 6 characters', 'error'); return; }
-    closeModal('changePasswordModal');
-    showToast('Password updated (demo)');
+    const form = e.currentTarget;
+    const currentPassword = $('currentPassword')?.value || '';
+    const newPassword = $('newPassword')?.value || '';
+    const confirmPassword = $('confirmPassword')?.value || '';
+    if (!currentPassword) { showToast('Enter your current password.', 'error'); return; }
+    if (newPassword.length < 8) { showToast('New password must be at least 8 characters.', 'error'); return; }
+    if (newPassword !== confirmPassword) { showToast('Passwords do not match.', 'error'); return; }
+    const submit = form.querySelector('[type="submit"]');
+    if (submit) submit.disabled = true;
+    try {
+      const response = await apiAuth('change-password', { currentPassword, newPassword });
+      const result = await response.json();
+      if (!response.ok || !result.ok) throw new Error(result.message || 'Password could not be updated.');
+      closeModal('changePasswordModal');
+      form.reset();
+      showToast('Password updated.');
+    } catch (error) {
+      showToast(error.message || 'Password could not be updated.', 'error');
+    } finally {
+      if (submit) submit.disabled = false;
+    }
   });
 
   $('passwordForm')?.addEventListener('submit', (e) => {
@@ -367,6 +443,28 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast('Checks passed, but password changes are not connected to the server yet', 'warning');
   });
 
+  $('deleteAccountBtn')?.addEventListener('click', () => openModal('deleteAccountModal'));
+  $('deleteAccountForm')?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const password = $('deleteAccountPassword')?.value || '';
+    const confirmation = $('deleteAccountConfirmation')?.value.trim() || '';
+    if (confirmation !== 'DELETE') { showToast('Type DELETE exactly to confirm.', 'error'); return; }
+    const submit = form.querySelector('[type="submit"]');
+    if (submit) submit.disabled = true;
+    try {
+      const response = await apiAuth('delete-account', { password, confirmation });
+      const result = await response.json();
+      if (!response.ok || !result.ok) throw new Error(result.message || 'Account could not be deleted.');
+      if (result.cleanupWarning) showToast('Account deleted, but some uploaded files could not be removed.', 'warning');
+      window.location.href = '../index.php';
+    } catch (error) {
+      showToast(error.message || 'Account could not be deleted.', 'error');
+    } finally {
+      if (submit) submit.disabled = false;
+    }
+  });
+
   $('clearDataBtn')?.addEventListener('click', () => {
     if (!confirm('Reset all StudyBuddy demo data?')) return;
     Object.values(SB_KEYS).forEach((k) => sbRemove(k));
@@ -375,11 +473,57 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => location.reload(), 500);
   });
 
+  function exportAccountData() {
+    const data = {
+      exportedAt: new Date().toISOString(),
+      profile: getSettings().profile || {},
+      subjects: getSubjects(),
+      assignments: getAssignments(),
+      tasks: getTasks(),
+      schedule: getSchedule(),
+      driveFiles: getDriveFiles().map(({ url, ...file }) => file),
+      progress: getProgress(),
+      settings: getSettings(),
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `studybuddy-data-${localDateStr()}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    showToast('Your data export has been downloaded.');
+  }
+  $('exportDataBtn')?.addEventListener('click', exportAccountData);
+
+  const subjectCount = $('settingsSubjectCount');
+  if (subjectCount) subjectCount.textContent = getSubjects().length;
+  const progressValue = $('settingsProgressValue');
+  if (progressValue) {
+    const subjects = getSubjects();
+    const average = subjects.length
+      ? Math.round(subjects.reduce((sum, subject) => sum + Math.min(Math.max(Number(subject.progress) || 0, 0), 100), 0) / subjects.length)
+      : 0;
+    progressValue.textContent = `${average}%`;
+  }
+  const storageValue = $('localStorageUsage');
+  const storageBar = $('storageBar');
+  if (storageValue && storageBar) {
+    const usedBytes = getDriveFiles().reduce((sum, file) => sum + (Number(file.sizeBytes) || 0), 0);
+    const totalGb = Math.max(Number(getSettings().storageTotal) || 50, 0.1);
+    const usedGb = usedBytes / (1024 ** 3);
+    storageValue.textContent = `${usedGb.toFixed(2)} GB of ${totalGb} GB`;
+    storageBar.style.width = `${Math.min((usedGb / totalGb) * 100, 100)}%`;
+  }
+
   document.querySelectorAll('[data-action]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const a = btn.dataset.action;
-      if (a === 'edit-profile') openModal('editProfileModal');
+      if (a === 'edit-profile') openProfileEditor('fullName');
       else if (a === 'change-password') openModal('changePasswordModal');
+      else if (a === 'connect-google') activatePanel('connected');
+      else if (a === 'export-data') exportAccountData();
+      else if (a === 'logout') logout();
       else if (a === 'connected') activatePanel('connected');
       else if (a === 'storage') activatePanel('storage');
     });

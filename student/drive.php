@@ -5,7 +5,7 @@
   <meta name="csrf-token" content="<?= e($_SESSION['csrf_token']) ?>">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>StudyBuddy — Google Drive</title>
+  <title>StudyBuddy — My Files</title>
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/components.css" />
   <link rel="stylesheet" href="../css/pages.css" />
@@ -19,9 +19,9 @@
         <div>
           <h1 class="page-title">
             <span class="title-icon"><i data-lucide="hard-drive"></i></span>
-            Google Drive
+            My Files
           </h1>
-          <p class="page-subtitle">Access, organize, and share your study files from Google Drive.</p>
+          <p class="page-subtitle">Upload and organize study files saved to your StudyBuddy account.</p>
         </div>
         <button type="button" class="btn btn-primary" id="uploadFileBtn">
           <i data-lucide="upload"></i> Upload
@@ -59,7 +59,12 @@
               <table class="data-table" id="driveTable">
                 <thead>
                   <tr>
-                    <th aria-label="Selection"></th>
+                    <th scope="col">
+                      <label class="custom-check">
+                        <input type="checkbox" id="driveSelectAll" aria-label="Select all files on this page" />
+                        <span class="box"></span>
+                      </label>
+                    </th>
                     <th>Name</th>
                     <th>Owner</th>
                     <th>Last Modified</th>
@@ -194,7 +199,7 @@
               </table>
             </div>
 
-            <div class="pagination">
+            <div class="pagination" id="drivePagination">
               <div class="pagination-info">Showing 7 files</div>
             </div>
           </div>
@@ -285,7 +290,7 @@
                 <i data-lucide="external-link"></i> Open in Google Drive
               </button>
               <button type="button" class="qa-btn orange" id="shareLinkBtn" data-action="share-link">
-                <i data-lucide="link"></i> Get Shareable Link
+                <i data-lucide="link"></i> Copy Selected Link
               </button>
             </div>
           </div>
@@ -306,7 +311,7 @@
         <div class="modal-body">
           <div class="form-group">
             <label for="uploadFile">Choose File</label>
-            <input type="file" class="form-control" id="uploadFile" name="file" multiple style="height:auto;padding:10px" />
+            <input type="file" class="form-control" id="uploadFile" name="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.png,.jpg,.jpeg" multiple required style="height:auto;padding:10px" />
           </div>
           <div class="form-group">
             <label for="uploadFolder">Destination Folder</label>
