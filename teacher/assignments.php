@@ -70,12 +70,12 @@
               <table class="data-table" id="assignmentsTable">
                 <thead>
                   <tr>
-                    <th>Assignment</th>
-                    <th>Class</th>
+                     <th style="width: 24%; text-align: center; padding: 10px 12px;">Assignment</th>
+                     <th style="width: 20%; text-align: center; padding: 10px 12px;">Class</th>
                     <th>Due Date</th>
                     <th>Points</th>
                     <th>Submissions</th>
-                    <th>Status</th>
+                     <th style="width: 17%; text-align: center; padding: 10px 12px;">Status</th>
                     <th></th>
                   </tr>
                 </thead>

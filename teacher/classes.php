@@ -74,10 +74,20 @@
               <i data-lucide="search"></i>
               <input type="search" id="classSearch" placeholder="Search classes..." />
             </div>
-            <div class="segmented" id="classViewToggle">
-              <button type="button" class="active" data-view="table"><i data-lucide="list"></i> Table</button>
-              <button type="button" data-view="grid"><i data-lucide="layout-grid"></i> Grid</button>
-            </div>
+           <div class="segmented" id="classViewToggle"
+     style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+
+    <button type="button" class="active" data-view="table"
+            style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+        <i data-lucide="list"></i> Table
+    </button>
+
+    <button type="button" data-view="grid"
+            style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+        <i data-lucide="layout-grid"></i> Grid
+    </button>
+
+</div>
           </div>
 
           <div class="card" id="classesTableView">
