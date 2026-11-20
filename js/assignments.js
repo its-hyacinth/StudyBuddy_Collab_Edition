@@ -9,10 +9,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let filter = 'all';
   let search = '';
-  let classFilter = 'all';
-  let sortBy = 'due';
+  let classFilter = '';
+  let sortBy = 'due-asc';
   let page = 1;
   const perPage = 8;
+
+  function escapeHtml(str) {
+    return String(str ?? '').replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
+
+  // First existing element's value from a list of possible IDs
+  function val(...ids) {
+    for (const id of ids) {
+      const el = document.getElementById(id);
+      if (el) return el.value;
+    }
+    return undefined;
+  }
+
+  // Same formula as My Classes / Dashboard: Classroom students + students you added
+  function enrolledCount(cls, students) {
+    return (Number(cls.students) || 0) + students.filter((s) => s.classId === cls.id).length;
+  }
+
+  function classOf(a, classes) {
+    return classes.find((c) => c.id === a.classId || c.id === a.subjectId)
+      || classes.find((c) => c.name === a.subject);
+  }
 
   function filtered() {
     let list = getAssignments();
@@ -21,12 +46,15 @@ document.addEventListener('DOMContentLoaded', () => {
       const q = search.toLowerCase();
       list = list.filter((a) => a.title.toLowerCase().includes(q) || a.subject.toLowerCase().includes(q));
     }
-    if (isTeacher && classFilter !== 'all') {
-      list = list.filter((a) => a.subject === classFilter || a.subjectId === classFilter);
+    if (isTeacher && classFilter) {
+      const cls = getClasses().find((c) => c.id === classFilter);
+      list = list.filter((a) => a.classId === classFilter || a.subjectId === classFilter || (cls && a.subject === cls.name));
     }
     list = [...list].sort((a, b) => {
-      if (sortBy === 'due') return a.dueDate.localeCompare(b.dueDate);
+      if (sortBy === 'due' || sortBy === 'due-asc') return a.dueDate.localeCompare(b.dueDate);
+      if (sortBy === 'due-desc') return b.dueDate.localeCompare(a.dueDate);
       if (sortBy === 'title') return a.title.localeCompare(b.title);
+      if (sortBy === 'points') return (Number(b.points) || 0) - (Number(a.points) || 0);
       return a.status.localeCompare(b.status);
     });
     return list;
@@ -42,7 +70,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     const el = document.getElementById('asgStats');
     if (!el) {
-      // Update individual stat values if present
       const map = [
         ['statTotal', stats.total],
         ['statCompleted', stats.completed],
@@ -52,8 +79,8 @@ document.addEventListener('DOMContentLoaded', () => {
       map.forEach(([id, v]) => {
         const node = document.getElementById(id);
         if (node) {
-          const val = node.querySelector('.stat-value');
-          if (val) val.textContent = v;
+          const inner = node.querySelector('.stat-value');
+          (inner || node).textContent = v;
         }
       });
       return;
@@ -73,7 +100,8 @@ document.addEventListener('DOMContentLoaded', () => {
       overdue: all.filter((a) => a.status === 'overdue').length,
       completed: all.filter((a) => a.status === 'completed').length,
     };
-    const tabs = document.getElementById('asgTabs');
+    // Student page uses #asgTabs, teacher page uses #asgFilterTabs
+    const tabs = document.getElementById('asgTabs') || document.getElementById('asgFilterTabs');
     if (!tabs) return;
     const items = [
       ['all', 'All'],
@@ -94,48 +122,88 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  function studentRow(a) {
+    const color = getSubjects().find((s) => s.id === a.subjectId)?.color || '#2563EB';
+    return `
+      <tr data-id="${escapeHtml(a.id)}">
+        <td><label class="custom-check"><input type="checkbox" class="row-check" /><span class="box"></span></label></td>
+        <td>
+          <div class="cell-title">
+            <div class="cell-icon" style="background:${color}22;color:${color}"><i data-lucide="file-text"></i></div>
+            <div>
+              <div class="title">${escapeHtml(a.title)}</div>
+              <div class="subtitle">${escapeHtml(a.description ? a.description.slice(0, 40) : a.subject)}</div>
+            </div>
+          </div>
+        </td>
+        <td><span class="subject-tag ${subjectShort(a.subject)}">${escapeHtml(a.subject)}</span></td>
+        <td>${formatDate(a.dueDate)}</td>
+        <td><span class="badge ${statusClass(a.status)}">${statusLabel(a.status)}</span></td>
+        <td>${actionMenu(a)}</td>
+      </tr>`;
+  }
+
+  function teacherRow(a, classes, students) {
+    const cls = classOf(a, classes);
+    const short = cls?.short || subjectShort(a.subject);
+    const enrolled = cls ? enrolledCount(cls, students) : '—';
+    return `
+      <tr data-id="${escapeHtml(a.id)}" data-status="${escapeHtml(a.status)}">
+        <td>
+          <div class="cell-title">
+            <div class="cell-icon" style="color:var(--${escapeHtml(short)}, #2563EB)"><i data-lucide="file-text"></i></div>
+            <div>
+              <div class="title">${escapeHtml(a.title)}</div>
+              <div class="subtitle">${escapeHtml(a.description ? a.description.slice(0, 40) : '')}</div>
+            </div>
+          </div>
+        </td>
+        <td><span class="subject-tag ${escapeHtml(short)}"><span class="dot ${escapeHtml(short)}"></span> ${escapeHtml(cls?.name || a.subject)}</span></td>
+        <td>${formatDate(a.dueDate)}</td>
+        <td>${a.points ? escapeHtml(a.points) + ' pts' : '—'}</td>
+        <td>${Number(a.submissions) || 0} / ${enrolled}</td>
+        <td><span class="badge ${statusClass(a.status)}">${statusLabel(a.status)}</span></td>
+        <td>${actionMenu(a)}</td>
+      </tr>`;
+  }
+
+  function actionMenu(a) {
+    return `
+      <div class="action-menu-wrap">
+        <button type="button" class="action-menu-btn" data-menu="${escapeHtml(a.id)}" aria-label="Actions"><i data-lucide="more-vertical"></i></button>
+        <div class="action-dropdown" id="amenu-${escapeHtml(a.id)}">
+          ${a.status !== 'completed' ? `<button type="button" data-complete="${escapeHtml(a.id)}"><i data-lucide="check"></i> Mark Complete</button>` : ''}
+          <button type="button" data-delete="${escapeHtml(a.id)}" class="danger"><i data-lucide="trash-2"></i> Delete</button>
+        </div>
+      </div>`;
+  }
+
   function renderTable() {
     const list = filtered();
-    const tbody = document.querySelector('#asgTable tbody') || document.getElementById('asgTableBody');
+    const tbody = document.getElementById('assignmentsTableBody')
+      || document.querySelector('#asgTable tbody')
+      || document.getElementById('asgTableBody');
     const table = document.getElementById('asgTable');
+    const colSpan = isTeacher ? 7 : 6;
+
     let start = 0, slice = list;
     if (isTeacher) {
       start = (page - 1) * perPage;
       slice = list.slice(start, start + perPage);
     }
 
-    const rows = slice.map((a) => `
-      <tr data-id="${a.id}">
-        <td><label class="custom-check"><input type="checkbox" class="row-check" /><span class="box"></span></label></td>
-        <td>
-          <div class="cell-title">
-            <div class="cell-icon" style="background:${getSubjects().find((s) => s.id === a.subjectId)?.color || '#2563EB'}22;color:${getSubjects().find((s) => s.id === a.subjectId)?.color || '#2563EB'}">
-              <i data-lucide="file-text"></i>
-            </div>
-            <div>
-              <div class="title">${a.title}</div>
-              <div class="subtitle">${a.description ? a.description.slice(0, 40) : a.subject}</div>
-            </div>
-          </div>
-        </td>
-        <td><span class="subject-tag ${subjectShort(a.subject)}">${a.subject}</span></td>
-        <td>${formatDate(a.dueDate)}</td>
-        <td><span class="badge ${statusClass(a.status)}">${statusLabel(a.status)}</span></td>
-        <td>
-          <div class="action-menu-wrap">
-            <button type="button" class="action-menu-btn" data-menu="${a.id}"><i data-lucide="more-vertical"></i></button>
-            <div class="action-dropdown" id="amenu-${a.id}">
-              ${a.status !== 'completed' ? `<button type="button" data-complete="${a.id}"><i data-lucide="check"></i> Mark Complete</button>` : ''}
-              <button type="button" data-delete="${a.id}" class="danger"><i data-lucide="trash-2"></i> Delete</button>
-            </div>
-          </div>
-        </td>
-      </tr>`).join('');
+    let rows;
+    if (isTeacher) {
+      const classes = getClasses();
+      const students = getStudents();
+      rows = slice.map((a) => teacherRow(a, classes, students)).join('');
+    } else {
+      rows = slice.map(studentRow).join('');
+    }
 
     if (tbody) {
-      tbody.innerHTML = rows || '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px">No assignments found.</td></tr>';
+      tbody.innerHTML = rows || `<tr><td colspan="${colSpan}" style="text-align:center;color:var(--text-muted);padding:24px">No assignments found.</td></tr>`;
     } else if (table) {
-      // Replace entire table content preserving header
       const thead = table.querySelector('thead');
       table.innerHTML = (thead ? thead.outerHTML : `
         <thead><tr>
@@ -171,7 +239,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('.row-check').forEach((c) => { c.checked = selectAll.checked; });
     });
 
-    // Pagination
+    // Pagination (teacher)
     const pag = document.getElementById('asgPagination');
     if (pag && isTeacher) {
       const total = list.length;
@@ -183,11 +251,11 @@ document.addEventListener('DOMContentLoaded', () => {
         btns += `<button type="button" class="page-btn ${i === page ? 'active' : ''}" data-page="${i}">${i}</button>`;
       }
       pag.innerHTML = `
-        <div class="pagination-info">Showing ${from}–${to} of ${total}</div>
+        <div class="pagination-info">Showing ${from}–${to} of ${total} assignments</div>
         <div class="pagination-controls">
-          <button type="button" class="page-btn" data-page="${page - 1}" ${page <= 1 ? 'disabled' : ''}><i data-lucide="chevron-left"></i></button>
+          <button type="button" class="page-btn" data-page="${page - 1}" ${page <= 1 ? 'disabled' : ''} aria-label="Previous page"><i data-lucide="chevron-left"></i></button>
           ${btns}
-          <button type="button" class="page-btn" data-page="${page + 1}" ${page >= pages ? 'disabled' : ''}><i data-lucide="chevron-right"></i></button>
+          <button type="button" class="page-btn" data-page="${page + 1}" ${page >= pages ? 'disabled' : ''} aria-label="Next page"><i data-lucide="chevron-right"></i></button>
         </div>`;
       pag.querySelectorAll('[data-page]').forEach((b) => {
         b.addEventListener('click', () => {
@@ -205,15 +273,17 @@ document.addEventListener('DOMContentLoaded', () => {
       .slice(0, 5);
     const dl = document.getElementById('upcomingDeadlines') || document.getElementById('asgDeadlines');
     if (dl) {
-      dl.innerHTML = deadlines.map((a) => `
+      dl.innerHTML = deadlines.length
+        ? deadlines.map((a) => `
         <div class="list-item">
           <span class="dot ${subjectShort(a.subject)}"></span>
           <div class="item-meta">
-            <div class="item-title">${a.title}</div>
-            <div class="item-sub">${formatDate(a.dueDate)}</div>
+            <div class="item-title">${escapeHtml(a.title)}</div>
+            <div class="item-sub">${escapeHtml(a.subject)} · ${formatDate(a.dueDate)}</div>
           </div>
           <span class="badge ${statusClass(a.status)}">${statusLabel(a.status)}</span>
-        </div>`).join('');
+        </div>`).join('')
+        : '<p class="empty-state" style="padding:16px">No upcoming deadlines.</p>';
     }
 
     const all = getAssignments();
@@ -244,7 +314,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   document.getElementById('asgSearch')?.addEventListener('input', (e) => {
-    search = e.target.value;
+    search = e.target.value.trim();
     page = 1;
     render();
   });
@@ -263,23 +333,60 @@ document.addEventListener('DOMContentLoaded', () => {
     if (result?.ok) render();
   });
 
-  const addBtn = document.getElementById('addAssignmentBtn') || document.getElementById('createAssignmentBtn');
-  addBtn?.addEventListener('click', () => {
-    openModal('addAssignmentModal');
-    openModal('createAsgModal');
+  // ---- Teacher: fill the class dropdowns from the real classes ----
+  if (isTeacher) {
+    const classes = getClasses();
+    const filterSel = document.getElementById('asgClassFilter');
+    if (filterSel) {
+      filterSel.innerHTML = '<option value="">All Classes</option>' +
+        classes.map((c) => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`).join('');
+    }
+    const classSel = document.getElementById('asgClass');
+    if (classSel) {
+      classSel.innerHTML = '<option value="">Select class</option>' +
+        classes.map((c) => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`).join('');
+    }
+  }
+
+  // ---- Open the create modal (all button IDs used by student + teacher pages) ----
+  ['addAssignmentBtn', 'createAssignmentBtn', 'createAsgBtn', 'qaCreateAsg'].forEach((id) => {
+    document.getElementById(id)?.addEventListener('click', () => {
+      openModal('addAssignmentModal');
+      openModal('createAsgModal');
+    });
   });
 
   const form = document.getElementById('addAssignmentForm') || document.getElementById('createAsgForm');
   form?.addEventListener('submit', (e) => {
     e.preventDefault();
-    const title = document.getElementById('asgTitle')?.value.trim();
-    const subjectSelect = document.getElementById('asgSubject');
-    const subjectId = subjectSelect?.value;
-    const subject = subjectSelect?.selectedOptions?.[0]?.text || subjectSelect?.value;
-    const dueDate = document.getElementById('asgDue')?.value;
-    const description = document.getElementById('asgDesc')?.value.trim();
+    const title = val('asgTitle')?.trim();
+    const dueDate = val('asgDueDate', 'asgDue');
+    const description = (val('asgDescription', 'asgDesc') || '').trim();
     if (!title || !dueDate) { showToast('Title and due date are required', 'error'); return; }
-    addAssignment({ title, subjectId, subject, dueDate, description, status: 'upcoming' });
+
+    let data;
+    if (isTeacher) {
+      const classId = val('asgClass');
+      const cls = getClasses().find((c) => c.id === classId);
+      if (!cls) { showToast('Please select a class', 'error'); return; }
+      data = {
+        title, description, dueDate, status: 'upcoming',
+        classId: cls.id,
+        subjectId: cls.id,
+        subject: cls.name,
+        points: Number(val('asgPoints')) || 0,
+        submissions: 0,
+      };
+    } else {
+      const subjectSelect = document.getElementById('asgSubject');
+      data = {
+        title, description, dueDate, status: 'upcoming',
+        subjectId: subjectSelect?.value,
+        subject: subjectSelect?.selectedOptions?.[0]?.text || subjectSelect?.value,
+      };
+    }
+
+    addAssignment(data);
     closeModal('addAssignmentModal');
     closeModal('createAsgModal');
     form.reset();
@@ -287,7 +394,7 @@ document.addEventListener('DOMContentLoaded', () => {
     render();
   });
 
-  // Populate subject select if empty
+  // Populate subject select (student page) if empty
   const subjSelect = document.getElementById('asgSubject');
   if (subjSelect && subjSelect.options.length <= 1) {
     getSubjects().forEach((s) => {
