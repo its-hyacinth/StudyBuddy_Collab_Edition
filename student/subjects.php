@@ -1,15 +1,18 @@
+<?php $expectedRole = 'student'; require_once __DIR__ . '/../includes/page_guard.php'; ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta name="csrf-token" content="<?= e($_SESSION['csrf_token']) ?>">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>StudyBuddy — Subjects</title>
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/components.css" />
   <link rel="stylesheet" href="../css/pages.css" />
+  <link rel="stylesheet" href="../css/student.css" />
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
-<body>
+<body class="student-app">
   <div class="app-shell" id="appShell">
     <div class="page-content">
       <div class="page-header">
@@ -110,11 +113,10 @@
             </div>
           </div>
 
-          <div class="subject-tabs" id="subjectTabs" role="tablist">
-            <button type="button" class="subject-tab active" data-tab="overview" role="tab">Overview</button>
-            <button type="button" class="subject-tab" data-tab="assignments" role="tab">Assignments</button>
-            <button type="button" class="subject-tab" data-tab="schedule" role="tab">Schedule</button>
-            <button type="button" class="subject-tab" data-tab="resources" role="tab">Resources</button>
+          <div class="subject-tabs" id="subjectTabs" role="group" aria-label="Filter subject assignments">
+            <button type="button" class="subject-tab active" data-filter="all" aria-pressed="true" aria-controls="subjectAssignmentList">All Subjects <span class="count">0</span></button>
+            <button type="button" class="subject-tab" data-filter="pending" aria-pressed="false" aria-controls="subjectAssignmentList">Pending <span class="count">0</span></button>
+            <button type="button" class="subject-tab" data-filter="completed" aria-pressed="false" aria-controls="subjectAssignmentList">Completed <span class="count">0</span></button>
           </div>
 
           <div class="card" id="subjectDetail">
@@ -137,12 +139,12 @@
               <div class="detail-stat-box">
                 <div class="ds-val">5</div>
                 <div class="ds-lbl">Assignments</div>
-                <a href="assignments.html">View all</a>
+                <a href="assignments.php">View all</a>
               </div>
               <div class="detail-stat-box">
                 <div class="ds-val">1</div>
                 <div class="ds-lbl">Pending</div>
-                <a href="todo.html">View tasks</a>
+                <a href="todo.php">View tasks</a>
               </div>
             </div>
             <h3 style="font-size:14px;margin:16px 0 12px">Recent Assignments</h3>

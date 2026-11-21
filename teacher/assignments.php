@@ -1,6 +1,8 @@
+<?php $expectedRole = 'teacher'; require_once __DIR__ . '/../includes/page_guard.php'; ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta name="csrf-token" content="<?= e($_SESSION['csrf_token']) ?>">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>StudyBuddy — Assignments</title>
@@ -68,12 +70,12 @@
               <table class="data-table" id="assignmentsTable">
                 <thead>
                   <tr>
-                    <th>Assignment</th>
-                    <th>Class</th>
+                     <th style="width: 24%; text-align: center; padding: 10px 12px;">Assignment</th>
+                     <th style="width: 20%; text-align: center; padding: 10px 12px;">Class</th>
                     <th>Due Date</th>
                     <th>Points</th>
                     <th>Submissions</th>
-                    <th>Status</th>
+                     <th style="width: 17%; text-align: center; padding: 10px 12px;">Status</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -276,8 +278,8 @@
             </div>
             <div class="qa-grid">
               <button type="button" class="qa-btn blue" id="qaCreateAsg"><i data-lucide="plus-circle"></i> New Assignment</button>
-              <a href="grades.html" class="qa-btn purple"><i data-lucide="pen-line"></i> Grade Work</a>
-              <a href="resources.html" class="qa-btn green"><i data-lucide="paperclip"></i> Attach Resource</a>
+              <a href="grades.php" class="qa-btn purple"><i data-lucide="pen-line"></i> Grade Work</a>
+              <a href="resources.php" class="qa-btn green"><i data-lucide="paperclip"></i> Attach Resource</a>
               <button type="button" class="qa-btn orange" id="qaDuplicateAsg"><i data-lucide="copy"></i> Duplicate</button>
             </div>
           </div>

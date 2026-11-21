@@ -1,24 +1,27 @@
+<?php $expectedRole = 'student'; require_once __DIR__ . '/../includes/page_guard.php'; ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta name="csrf-token" content="<?= e($_SESSION['csrf_token']) ?>">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>StudyBuddy — Google Drive</title>
+  <title>StudyBuddy — My Files</title>
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/components.css" />
   <link rel="stylesheet" href="../css/pages.css" />
+  <link rel="stylesheet" href="../css/student.css" />
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
-<body>
+<body class="student-app">
   <div class="app-shell" id="appShell">
     <div class="page-content">
       <div class="page-header">
         <div>
           <h1 class="page-title">
             <span class="title-icon"><i data-lucide="hard-drive"></i></span>
-            Google Drive
+            My Files
           </h1>
-          <p class="page-subtitle">Access, organize, and share your study files from Google Drive.</p>
+          <p class="page-subtitle">Upload and organize study files saved to your StudyBuddy account.</p>
         </div>
         <button type="button" class="btn btn-primary" id="uploadFileBtn">
           <i data-lucide="upload"></i> Upload
@@ -56,6 +59,12 @@
               <table class="data-table" id="driveTable">
                 <thead>
                   <tr>
+                    <th scope="col">
+                      <label class="custom-check">
+                        <input type="checkbox" id="driveSelectAll" aria-label="Select all files on this page" />
+                        <span class="box"></span>
+                      </label>
+                    </th>
                     <th>Name</th>
                     <th>Owner</th>
                     <th>Last Modified</th>
@@ -65,6 +74,7 @@
                 </thead>
                 <tbody>
                   <tr data-id="drv_1" data-type="folder">
+                    <td><label class="custom-check"><input type="checkbox" aria-label="Select Mathematics folder" /><span class="box"></span></label></td>
                     <td>
                       <div class="cell-title">
                         <div class="file-icon folder"><i data-lucide="folder"></i></div>
@@ -81,6 +91,7 @@
                     </td>
                   </tr>
                   <tr data-id="drv_2" data-type="folder">
+                    <td><label class="custom-check"><input type="checkbox" aria-label="Select Science Labs folder" /><span class="box"></span></label></td>
                     <td>
                       <div class="cell-title">
                         <div class="file-icon folder"><i data-lucide="folder"></i></div>
@@ -97,6 +108,7 @@
                     </td>
                   </tr>
                   <tr data-id="drv_3" data-type="doc">
+                    <td><label class="custom-check"><input type="checkbox" aria-label="Select Algebra Notes.docx" /><span class="box"></span></label></td>
                     <td>
                       <div class="cell-title">
                         <div class="file-icon doc"><i data-lucide="file-text"></i></div>
@@ -113,6 +125,7 @@
                     </td>
                   </tr>
                   <tr data-id="drv_4" data-type="sheet">
+                    <td><label class="custom-check"><input type="checkbox" aria-label="Select Lab Report Template.xlsx" /><span class="box"></span></label></td>
                     <td>
                       <div class="cell-title">
                         <div class="file-icon sheet"><i data-lucide="table"></i></div>
@@ -129,6 +142,7 @@
                     </td>
                   </tr>
                   <tr data-id="drv_5" data-type="slide">
+                    <td><label class="custom-check"><input type="checkbox" aria-label="Select Project Presentation.pptx" /><span class="box"></span></label></td>
                     <td>
                       <div class="cell-title">
                         <div class="file-icon slide"><i data-lucide="presentation"></i></div>
@@ -145,6 +159,7 @@
                     </td>
                   </tr>
                   <tr data-id="drv_6" data-type="pdf" data-shared="true">
+                    <td><label class="custom-check"><input type="checkbox" aria-label="Select Syllabus.pdf" /><span class="box"></span></label></td>
                     <td>
                       <div class="cell-title">
                         <div class="file-icon pdf"><i data-lucide="file"></i></div>
@@ -164,6 +179,7 @@
                     </td>
                   </tr>
                   <tr data-id="drv_9" data-type="pdf">
+                    <td><label class="custom-check"><input type="checkbox" aria-label="Select Study Schedule.pdf" /><span class="box"></span></label></td>
                     <td>
                       <div class="cell-title">
                         <div class="file-icon pdf"><i data-lucide="file"></i></div>
@@ -183,7 +199,7 @@
               </table>
             </div>
 
-            <div class="pagination">
+            <div class="pagination" id="drivePagination">
               <div class="pagination-info">Showing 7 files</div>
             </div>
           </div>
@@ -274,7 +290,7 @@
                 <i data-lucide="external-link"></i> Open in Google Drive
               </button>
               <button type="button" class="qa-btn orange" id="shareLinkBtn" data-action="share-link">
-                <i data-lucide="link"></i> Get Shareable Link
+                <i data-lucide="link"></i> Copy Selected Link
               </button>
             </div>
           </div>
@@ -295,7 +311,7 @@
         <div class="modal-body">
           <div class="form-group">
             <label for="uploadFile">Choose File</label>
-            <input type="file" class="form-control" id="uploadFile" name="file" multiple style="height:auto;padding:10px" />
+            <input type="file" class="form-control" id="uploadFile" name="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.png,.jpg,.jpeg" multiple required style="height:auto;padding:10px" />
           </div>
           <div class="form-group">
             <label for="uploadFolder">Destination Folder</label>

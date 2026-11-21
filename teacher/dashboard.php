@@ -1,6 +1,8 @@
+<?php $expectedRole = 'teacher'; require_once __DIR__ . '/../includes/page_guard.php'; ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta name="csrf-token" content="<?= e($_SESSION['csrf_token']) ?>">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>StudyBuddy — Dashboard</title>
@@ -23,7 +25,7 @@
       </div>
 
       <div class="stat-grid" id="dashStats">
-        <div class="stat-card">
+        <a href="students.php" class="stat-card">
           <div class="stat-icon blue"><i data-lucide="users"></i></div>
           <div class="stat-body">
             <div class="stat-label">Total Students</div>
@@ -31,8 +33,8 @@
             <div class="stat-delta up"><i data-lucide="trending-up"></i> +8 this semester</div>
           </div>
           <i data-lucide="chevron-right" class="stat-arrow"></i>
-        </div>
-        <div class="stat-card">
+        </a>
+        <a href="classes.php" class="stat-card">
           <div class="stat-icon purple"><i data-lucide="graduation-cap"></i></div>
           <div class="stat-body">
             <div class="stat-label">My Classes</div>
@@ -40,8 +42,8 @@
             <div class="stat-delta up"><i data-lucide="trending-up"></i> All active</div>
           </div>
           <i data-lucide="chevron-right" class="stat-arrow"></i>
-        </div>
-        <div class="stat-card">
+        </a>
+        <a href="assignments.php" class="stat-card">
           <div class="stat-icon green"><i data-lucide="clipboard-list"></i></div>
           <div class="stat-body">
             <div class="stat-label">Active Assignments</div>
@@ -49,8 +51,8 @@
             <div class="stat-delta up"><i data-lucide="trending-up"></i> +3 this week</div>
           </div>
           <i data-lucide="chevron-right" class="stat-arrow"></i>
-        </div>
-        <div class="stat-card">
+        </a>
+        <a href="grades.php" class="stat-card">
           <div class="stat-icon orange"><i data-lucide="pen-line"></i></div>
           <div class="stat-body">
             <div class="stat-label">Pending Grading</div>
@@ -58,7 +60,7 @@
             <div class="stat-delta down"><i data-lucide="trending-down"></i> 4 due today</div>
           </div>
           <i data-lucide="chevron-right" class="stat-arrow"></i>
-        </div>
+        </a>
       </div>
 
       <div class="page-layout">
@@ -69,7 +71,7 @@
                 <div class="card-icon blue"><i data-lucide="graduation-cap"></i></div>
                 <h2 class="card-title">My Classes</h2>
               </div>
-              <a href="classes.html" class="view-all">View all</a>
+              <a href="classes.php" class="view-all">View all</a>
             </div>
             <div class="table-wrap">
               <table class="data-table" id="classesTable">
@@ -106,7 +108,7 @@
                         <span class="progress-pct">75%</span>
                       </div>
                     </td>
-                    <td><a href="classes.html" class="btn btn-ghost btn-sm">Manage</a></td>
+                    <td><a href="classes.php" class="btn btn-ghost btn-sm">Manage</a></td>
                   </tr>
                   <tr>
                     <td>
@@ -130,7 +132,7 @@
                         <span class="progress-pct">68%</span>
                       </div>
                     </td>
-                    <td><a href="classes.html" class="btn btn-ghost btn-sm">Manage</a></td>
+                    <td><a href="classes.php" class="btn btn-ghost btn-sm">Manage</a></td>
                   </tr>
                   <tr>
                     <td>
@@ -154,7 +156,7 @@
                         <span class="progress-pct">82%</span>
                       </div>
                     </td>
-                    <td><a href="classes.html" class="btn btn-ghost btn-sm">Manage</a></td>
+                    <td><a href="classes.php" class="btn btn-ghost btn-sm">Manage</a></td>
                   </tr>
                   <tr>
                     <td>
@@ -178,7 +180,7 @@
                         <span class="progress-pct">60%</span>
                       </div>
                     </td>
-                    <td><a href="classes.html" class="btn btn-ghost btn-sm">Manage</a></td>
+                    <td><a href="classes.php" class="btn btn-ghost btn-sm">Manage</a></td>
                   </tr>
                   <tr>
                     <td>
@@ -202,7 +204,7 @@
                         <span class="progress-pct">52%</span>
                       </div>
                     </td>
-                    <td><a href="classes.html" class="btn btn-ghost btn-sm">Manage</a></td>
+                    <td><a href="classes.php" class="btn btn-ghost btn-sm">Manage</a></td>
                   </tr>
                 </tbody>
               </table>
@@ -306,7 +308,7 @@
                 <div class="card-icon blue"><i data-lucide="clock"></i></div>
                 <h2 class="card-title">Today's Schedule</h2>
               </div>
-              <a href="calendar.html" class="view-all">View all</a>
+              <a href="calendar.php" class="view-all">View all</a>
             </div>
             <div id="todaySchedule">
               <div class="schedule-item">
@@ -341,10 +343,10 @@
               </div>
             </div>
             <div class="qa-grid" id="quickActions">
-              <a href="assignments.html" class="qa-btn blue"><i data-lucide="plus-circle"></i> Create Assignment</a>
-              <a href="grades.html" class="qa-btn purple"><i data-lucide="pen-line"></i> Grade Submissions</a>
-              <a href="messages.html" class="qa-btn green"><i data-lucide="send"></i> Message Students</a>
-              <a href="resources.html" class="qa-btn orange"><i data-lucide="upload"></i> Upload Resource</a>
+              <a href="assignments.php" class="qa-btn blue"><i data-lucide="plus-circle"></i> Create Assignment</a>
+              <a href="grades.php" class="qa-btn purple"><i data-lucide="pen-line"></i> Grade Submissions</a>
+              <a href="messages.php" class="qa-btn green"><i data-lucide="send"></i> Message Students</a>
+              <a href="resources.php" class="qa-btn orange"><i data-lucide="upload"></i> Upload Resource</a>
             </div>
           </div>
 

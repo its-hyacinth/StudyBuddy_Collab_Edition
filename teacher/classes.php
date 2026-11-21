@@ -1,6 +1,8 @@
+<?php $expectedRole = 'teacher'; require_once __DIR__ . '/../includes/page_guard.php'; ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta name="csrf-token" content="<?= e($_SESSION['csrf_token']) ?>">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>StudyBuddy — My Classes</title>
@@ -39,22 +41,22 @@
             <div class="stat-delta up"><i data-lucide="trending-up"></i> All active</div>
           </div>
         </div>
-        <div class="stat-card">
+        <a href="students.php" class="stat-card">
           <div class="stat-icon green"><i data-lucide="users"></i></div>
           <div class="stat-body">
             <div class="stat-label">Total Students</div>
             <div class="stat-value" id="statTotalStudents">140</div>
             <div class="stat-delta up"><i data-lucide="trending-up"></i> +8 this semester</div>
           </div>
-        </div>
-        <div class="stat-card">
+        </a>
+        <a href="assignments.php" class="stat-card">
           <div class="stat-icon purple"><i data-lucide="clipboard-list"></i></div>
           <div class="stat-body">
             <div class="stat-label">Active Assignments</div>
             <div class="stat-value" id="statActiveAsg">16</div>
             <div class="stat-delta up"><i data-lucide="trending-up"></i> Across all classes</div>
           </div>
-        </div>
+        </a>
         <div class="stat-card">
           <div class="stat-icon orange"><i data-lucide="trending-up"></i></div>
           <div class="stat-body">
@@ -72,10 +74,20 @@
               <i data-lucide="search"></i>
               <input type="search" id="classSearch" placeholder="Search classes..." />
             </div>
-            <div class="segmented" id="classViewToggle">
-              <button type="button" class="active" data-view="table"><i data-lucide="list"></i> Table</button>
-              <button type="button" data-view="grid"><i data-lucide="layout-grid"></i> Grid</button>
-            </div>
+           <div class="segmented" id="classViewToggle"
+     style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+
+    <button type="button" class="active" data-view="table"
+            style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+        <i data-lucide="list"></i> Table
+    </button>
+
+    <button type="button" data-view="grid"
+            style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+        <i data-lucide="layout-grid"></i> Grid
+    </button>
+
+</div>
           </div>
 
           <div class="card" id="classesTableView">
@@ -83,8 +95,8 @@
               <table class="data-table" id="classesTable">
                 <thead>
                   <tr>
-                    <th>Class Name</th>
-                    <th>Subject</th>
+                     <th style="width: 24%; text-align: center; padding: 10px 12px;">Class Name</th>
+                     <th style="width: 20%; text-align: center; padding: 10px 12px;">Subject</th>
                     <th>Students</th>
                     <th>Next Activity</th>
                     <th>Progress</th>

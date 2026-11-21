@@ -1,15 +1,18 @@
+<?php $expectedRole = 'student'; require_once __DIR__ . '/../includes/page_guard.php'; ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta name="csrf-token" content="<?= e($_SESSION['csrf_token']) ?>">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>StudyBuddy — To-Do List</title>
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/components.css" />
   <link rel="stylesheet" href="../css/pages.css" />
+  <link rel="stylesheet" href="../css/student.css" />
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
-<body>
+<body class="student-app">
   <div class="app-shell" id="appShell">
     <div class="page-content">
       <div class="page-header">
@@ -41,7 +44,6 @@
                   <input type="checkbox" aria-label="Mark complete" />
                   <span class="box"></span>
                 </label>
-                <div class="todo-icon" style="background:#DBEAFE;color:#2563EB"><i data-lucide="calculator"></i></div>
                 <div class="todo-body">
                   <div class="todo-title">Review Algebra notes</div>
                   <div class="todo-meta">
@@ -60,7 +62,6 @@
                   <input type="checkbox" aria-label="Mark complete" />
                   <span class="box"></span>
                 </label>
-                <div class="todo-icon" style="background:#DCFCE7;color:#16A34A"><i data-lucide="flask-conical"></i></div>
                 <div class="todo-body">
                   <div class="todo-title">Finish lab report draft</div>
                   <div class="todo-meta">
@@ -79,7 +80,6 @@
                   <input type="checkbox" aria-label="Mark complete" />
                   <span class="box"></span>
                 </label>
-                <div class="todo-icon" style="background:#FFEDD5;color:#EA580C"><i data-lucide="code-2"></i></div>
                 <div class="todo-body">
                   <div class="todo-title">Debug Python project</div>
                   <div class="todo-meta">
@@ -98,7 +98,6 @@
                   <input type="checkbox" aria-label="Mark complete" />
                   <span class="box"></span>
                 </label>
-                <div class="todo-icon" style="background:#EDE9FE;color:#7C3AED"><i data-lucide="book-open"></i></div>
                 <div class="todo-body">
                   <div class="todo-title">Read Chapter 5</div>
                   <div class="todo-meta">
@@ -117,7 +116,6 @@
                   <input type="checkbox" checked aria-label="Mark complete" />
                   <span class="box"></span>
                 </label>
-                <div class="todo-icon" style="background:#EDE9FE;color:#7C3AED"><i data-lucide="book-open"></i></div>
                 <div class="todo-body">
                   <div class="todo-title">Memorize vocabulary list</div>
                   <div class="todo-meta">
@@ -253,6 +251,44 @@
           <button type="submit" class="btn btn-primary">Add Task</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="taskDetailsModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="taskDetailsTitle">
+      <div class="modal-header">
+        <h3 id="taskDetailsTitle">Task Details</h3>
+        <button type="button" class="modal-close" data-close-modal="taskDetailsModal" aria-label="Close task details">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="task-detail-status">
+          <span class="task-detail-label">Status</span>
+          <span class="badge" id="taskDetailsStatus"></span>
+        </div>
+        <div class="task-detail-grid">
+          <div class="task-detail-field">
+            <span class="task-detail-label">Subject</span>
+            <strong class="task-detail-value" id="taskDetailsSubject"></strong>
+          </div>
+          <div class="task-detail-field">
+            <span class="task-detail-label">Due date</span>
+            <strong class="task-detail-value" id="taskDetailsDueDate"></strong>
+          </div>
+          <div class="task-detail-field">
+            <span class="task-detail-label">Due time</span>
+            <strong class="task-detail-value" id="taskDetailsDueTime"></strong>
+          </div>
+          <div class="task-detail-field task-detail-notes-field">
+            <span class="task-detail-label">Notes</span>
+            <p class="task-detail-value" id="taskDetailsNotes"></p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-close-modal="taskDetailsModal">Close</button>
+      </div>
     </div>
   </div>
 

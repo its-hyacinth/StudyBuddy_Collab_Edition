@@ -1,15 +1,18 @@
+<?php $expectedRole = 'student'; require_once __DIR__ . '/../includes/page_guard.php'; ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta name="csrf-token" content="<?= e($_SESSION['csrf_token']) ?>">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>StudyBuddy — Assignments</title>
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/components.css" />
   <link rel="stylesheet" href="../css/pages.css" />
+  <link rel="stylesheet" href="../css/student.css" />
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
-<body>
+<body class="student-app">
   <div class="app-shell" id="appShell">
     <div class="page-content">
       <div class="page-header">
@@ -91,16 +94,22 @@
               <table class="data-table" id="asgTable">
                 <thead>
                   <tr>
+                    <th scope="col">
+                      <label class="custom-check">
+                        <input type="checkbox" id="selectAll" aria-label="Mark all assignments on this page as complete" />
+                        <span class="box"></span>
+                      </label>
+                    </th>
                     <th>Assignment</th>
                     <th>Subject</th>
                     <th>Due Date</th>
-                    <th>Points</th>
                     <th>Status</th>
-                    <th></th>
+                    <th aria-label="Actions"></th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr data-id="asg_1" data-status="upcoming">
+                    <td><label class="custom-check"><input type="checkbox" class="row-check" aria-label="Select Algebra Homework Set 3" /><span class="box"></span></label></td>
                     <td>
                       <div class="cell-title">
                         <div class="cell-icon" style="background:#DBEAFE;color:#2563EB"><i data-lucide="file-text"></i></div>
@@ -112,7 +121,6 @@
                     </td>
                     <td><span class="subject-tag math">Mathematics</span></td>
                     <td>Sep 12, 2025</td>
-                    <td>50 pts</td>
                     <td><span class="badge badge-upcoming">Upcoming</span></td>
                     <td>
                       <div class="action-menu-wrap">
@@ -121,6 +129,7 @@
                     </td>
                   </tr>
                   <tr data-id="asg_4" data-status="overdue">
+                    <td><label class="custom-check"><input type="checkbox" class="row-check" aria-label="Select Python Mini Project" /><span class="box"></span></label></td>
                     <td>
                       <div class="cell-title">
                         <div class="cell-icon" style="background:#FFEDD5;color:#EA580C"><i data-lucide="code-2"></i></div>
@@ -132,7 +141,6 @@
                     </td>
                     <td><span class="subject-tag cs">Computer Science</span></td>
                     <td>Sep 10, 2025</td>
-                    <td>100 pts</td>
                     <td><span class="badge badge-overdue">Overdue</span></td>
                     <td>
                       <div class="action-menu-wrap">
@@ -141,6 +149,7 @@
                     </td>
                   </tr>
                   <tr data-id="asg_5" data-status="completed">
+                    <td><label class="custom-check"><input type="checkbox" class="row-check" aria-label="Select Math Quiz 1" /><span class="box"></span></label></td>
                     <td>
                       <div class="cell-title">
                         <div class="cell-icon" style="background:#DBEAFE;color:#2563EB"><i data-lucide="check-circle"></i></div>
@@ -152,7 +161,6 @@
                     </td>
                     <td><span class="subject-tag math">Mathematics</span></td>
                     <td>Sep 5, 2025</td>
-                    <td>30 pts</td>
                     <td><span class="badge badge-completed">Completed</span></td>
                     <td>
                       <div class="action-menu-wrap">
@@ -161,6 +169,7 @@
                     </td>
                   </tr>
                   <tr data-id="asg_8" data-status="upcoming">
+                    <td><label class="custom-check"><input type="checkbox" class="row-check" aria-label="Select HTML/CSS Landing Page" /><span class="box"></span></label></td>
                     <td>
                       <div class="cell-title">
                         <div class="cell-icon" style="background:#FFEDD5;color:#EA580C"><i data-lucide="layout"></i></div>
@@ -172,7 +181,6 @@
                     </td>
                     <td><span class="subject-tag cs">Computer Science</span></td>
                     <td>Sep 20, 2025</td>
-                    <td>80 pts</td>
                     <td><span class="badge badge-upcoming">Upcoming</span></td>
                     <td>
                       <div class="action-menu-wrap">
@@ -184,7 +192,7 @@
               </table>
             </div>
 
-            <div class="pagination">
+            <div class="pagination" id="asgPagination">
               <div class="pagination-info">Showing 1–4 of 16 assignments</div>
               <div class="pagination-controls">
                 <button type="button" class="page-btn" disabled aria-label="Previous"><i data-lucide="chevron-left"></i></button>
@@ -333,6 +341,29 @@
           <button type="submit" class="btn btn-primary">Add Assignment</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="assignmentDetailsModal">
+    <div class="modal" role="dialog" aria-labelledby="assignmentDetailsTitle">
+      <div class="modal-header">
+        <h3 id="assignmentDetailsTitle">Assignment details</h3>
+        <button type="button" class="modal-close" data-close-modal="assignmentDetailsModal" aria-label="Close">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group"><span class="row-label">Subject</span><div id="assignmentDetailsSubject">—</div></div>
+        <div class="form-row">
+          <div class="form-group"><span class="row-label">Due date</span><div id="assignmentDetailsDueDate">—</div></div>
+          <div class="form-group"><span class="row-label">Points</span><div id="assignmentDetailsPoints">—</div></div>
+        </div>
+        <div class="form-group"><span class="row-label">Status</span><div><span class="badge badge-info" id="assignmentDetailsStatus">Upcoming</span></div></div>
+        <div class="form-group"><span class="row-label">Description</span><p id="assignmentDetailsDescription">—</p></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-close-modal="assignmentDetailsModal">Close</button>
+      </div>
     </div>
   </div>
 

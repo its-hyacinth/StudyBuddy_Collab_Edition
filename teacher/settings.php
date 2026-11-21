@@ -1,6 +1,133 @@
+<?php
+$expectedRole = 'teacher';
+require_once __DIR__ . '/../includes/page_guard.php';
+
+// ---------------------------------------------------------------------
+// Database settings (match your XAMPP / phpMyAdmin)
+// ---------------------------------------------------------------------
+$DB = ['host' => 'localhost', 'name' => 'Studybuddy', 'user' => 'root', 'pass' => ''];
+
+// name + email live in the `users` table
+$USER_COLS = ['fullName' => 'full_name', 'email' => 'email'];
+// everything else is stored as JSON in `app_state` (state_key = 'teacher_profile')
+$EXTRA_FIELDS = ['employeeId', 'phone', 'school', 'department'];
+$EXTRA_KEY    = 'teacher_profile';
+
+// Logged-in user id (tries the common session keys)
+$userId = $_SESSION['user_id'] ?? ($_SESSION['user']['id'] ?? ($_SESSION['id'] ?? null));
+
+// Connect (never fatal: the page still loads and shows what went wrong)
+$pdo = null;
+$dbError = null;
+try {
+  $pdo = new PDO(
+    "mysql:host={$DB['host']};dbname={$DB['name']};charset=utf8mb4",
+    $DB['user'], $DB['pass'],
+    [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]
+  );
+} catch (PDOException $e) {
+  $dbError = 'Database connection failed: ' . $e->getMessage();
+}
+
+// ---------------------------------------------------------------
+// 1) Save handler: JS posts JSON back to this same page
+// ---------------------------------------------------------------
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_SERVER['HTTP_X_PROFILE_SAVE'] ?? '') === '1') {
+  header('Content-Type: application/json');
+  $fail = function (int $code, string $msg) {
+    http_response_code($code);
+    echo json_encode(['success' => false, 'message' => $msg]);
+    exit;
+  };
+
+  if (!$pdo)    $fail(500, $dbError ?: 'Database not connected');
+  if (!$userId) $fail(401, 'Not logged in (no user id in session)');
+  if (!hash_equals($_SESSION['csrf_token'] ?? '', $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '')) $fail(403, 'Invalid CSRF token');
+
+  $in = json_decode(file_get_contents('php://input'), true);
+  if (!is_array($in)) $fail(400, 'Invalid request');
+
+  $sets = []; $vals = []; $extra = []; $clean = [];
+  foreach (array_merge(array_keys($USER_COLS), $EXTRA_FIELDS) as $key) {
+    if (!array_key_exists($key, $in)) continue;
+    $v = trim((string)$in[$key]);
+    if (mb_strlen($v) > 255) $fail(422, "$key is too long");
+    if ($key === 'fullName' && $v === '') $fail(422, 'Full name is required');
+    if ($key === 'email' && !filter_var($v, FILTER_VALIDATE_EMAIL)) $fail(422, 'Invalid email');
+    if (isset($USER_COLS[$key])) { $sets[] = "`{$USER_COLS[$key]}` = ?"; $vals[] = $v; }
+    else { $extra[$key] = $v; }
+    $clean[$key] = $v;
+  }
+  if (!$clean) $fail(422, 'Nothing to update');
+
+  try {
+    $pdo->beginTransaction();
+
+    if ($sets) {
+      $vals[] = $userId;
+      $pdo->prepare('UPDATE users SET ' . implode(', ', $sets) . ' WHERE id = ?')->execute($vals);
+    }
+
+    if ($extra) {
+      $q = $pdo->prepare('SELECT state_value FROM app_state WHERE user_id = ? AND state_key = ?');
+      $q->execute([$userId, $EXTRA_KEY]);
+      $current = json_decode((string)$q->fetchColumn(), true);
+      $merged = array_merge(is_array($current) ? $current : [], $extra);
+      $pdo->prepare(
+        'INSERT INTO app_state (user_id, state_key, state_value) VALUES (?, ?, ?)
+         ON DUPLICATE KEY UPDATE state_value = VALUES(state_value)'
+      )->execute([$userId, $EXTRA_KEY, json_encode($merged, JSON_UNESCAPED_UNICODE)]);
+    }
+
+    $pdo->commit();
+  } catch (PDOException $e) {
+    if ($pdo->inTransaction()) $pdo->rollBack();
+    if ($e->getCode() === '23000') $fail(409, 'That email is already in use');
+    error_log($e->getMessage());
+    $fail(500, 'Database error: ' . $e->getMessage()); // remove the detail once it works
+  }
+
+  // Keep other PHP-rendered pages in sync
+  if (isset($clean['fullName'])) { $_SESSION['name'] = $clean['fullName']; $_SESSION['user']['name'] = $clean['fullName']; }
+  if (isset($clean['email']))    { $_SESSION['email'] = $clean['email'];   $_SESSION['user']['email'] = $clean['email']; }
+
+  echo json_encode(['success' => true]);
+  exit;
+}
+
+// ---------------------------------------------------------------
+// 2) Load the current values for display
+// ---------------------------------------------------------------
+$user = array_fill_keys(array_merge(array_keys($USER_COLS), $EXTRA_FIELDS), '');
+$user['fullName'] = $_SESSION['name'] ?? ($_SESSION['user']['name'] ?? '');
+$user['email']    = $_SESSION['email'] ?? ($_SESSION['user']['email'] ?? '');
+
+if ($pdo && $userId) {
+  try {
+    $q = $pdo->prepare('SELECT full_name, email FROM users WHERE id = ?');
+    $q->execute([$userId]);
+    if ($row = $q->fetch()) {
+      $user['fullName'] = (string)$row['full_name'];
+      $user['email']    = (string)$row['email'];
+    }
+
+    $q = $pdo->prepare('SELECT state_value FROM app_state WHERE user_id = ? AND state_key = ?');
+    $q->execute([$userId, $EXTRA_KEY]);
+    $saved = json_decode((string)$q->fetchColumn(), true);
+    if (is_array($saved)) {
+      foreach ($EXTRA_FIELDS as $f) if (isset($saved[$f])) $user[$f] = (string)$saved[$f];
+    }
+  } catch (PDOException $e) {
+    $dbError = 'Could not load profile: ' . $e->getMessage();
+  }
+} elseif ($pdo && !$userId) {
+  $dbError = 'No user id found in the session (tried user_id, user.id, id).';
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta name="csrf-token" content="<?= e($_SESSION['csrf_token']) ?>">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>StudyBuddy — Settings</title>
@@ -8,6 +135,7 @@
   <link rel="stylesheet" href="../css/components.css" />
   <link rel="stylesheet" href="../css/pages.css" />
   <script src="https://unpkg.com/lucide@latest"></script>
+  <script>window.SB_USER = <?= json_encode($user, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
 </head>
 <body data-role="teacher">
   <div class="app-shell" id="appShell">
@@ -21,6 +149,12 @@
           <p class="page-subtitle">Manage your profile, notifications, and connected accounts.</p>
         </div>
       </div>
+
+      <?php if ($dbError): ?>
+        <div class="card" style="border:1px solid var(--danger);color:var(--danger);margin-bottom:16px;">
+          <?= e($dbError) ?>
+        </div>
+      <?php endif; ?>
 
       <div class="settings-layout">
         <nav class="settings-nav" id="settingsNav">
@@ -49,31 +183,31 @@
                 <div class="form-row">
                   <div class="form-group">
                     <label for="profileFullName">Full Name</label>
-                    <input class="form-control" type="text" id="profileFullName" value="Prof. Juan Dela Cruz" />
+                    <input class="form-control" type="text" id="profileFullName" value="<?= e($user['fullName']) ?>" />
                   </div>
                   <div class="form-group">
                     <label for="profileEmail">Email</label>
-                    <input class="form-control" type="email" id="profileEmail" value="prof.delacruz@email.com" />
+                    <input class="form-control" type="email" id="profileEmail" value="<?= e($user['email']) ?>" />
                   </div>
                 </div>
                 <div class="form-row">
                   <div class="form-group">
                     <label for="profileEmployeeId">Employee ID</label>
-                    <input class="form-control" type="text" id="profileEmployeeId" value="T-2019-088" />
+                    <input class="form-control" type="text" id="profileEmployeeId" value="<?= e($user['employeeId']) ?>" />
                   </div>
                   <div class="form-group">
                     <label for="profilePhone">Phone</label>
-                    <input class="form-control" type="tel" id="profilePhone" value="+63 917 111 2233" />
+                    <input class="form-control" type="tel" id="profilePhone" value="<?= e($user['phone']) ?>" />
                   </div>
                 </div>
                 <div class="form-row">
                   <div class="form-group">
                     <label for="profileSchool">School</label>
-                    <input class="form-control" type="text" id="profileSchool" value="State University" />
+                    <input class="form-control" type="text" id="profileSchool" value="<?= e($user['school']) ?>" />
                   </div>
                   <div class="form-group">
                     <label for="profileDepartment">Department</label>
-                    <input class="form-control" type="text" id="profileDepartment" value="College of Computing" />
+                    <input class="form-control" type="text" id="profileDepartment" value="<?= e($user['department']) ?>" />
                   </div>
                 </div>
                 <div style="display:flex;justify-content:flex-end;margin-top:8px;">
@@ -267,8 +401,8 @@
           <div class="card">
             <div style="text-align:center;padding:12px 0;">
               <div class="avatar" id="settingsAvatar" style="width:72px;height:72px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:24px;margin:0 auto 12px;">JD</div>
-              <h3 id="settingsDisplayName" style="font-size:16px;margin-bottom:4px;">Prof. Juan Dela Cruz</h3>
-              <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:8px;" id="settingsDisplayEmail">prof.delacruz@email.com</p>
+              <h3 id="settingsDisplayName" style="font-size:16px;margin-bottom:4px;"><?= e($user['fullName']) ?></h3>
+              <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:8px;" id="settingsDisplayEmail"><?= e($user['email']) ?></p>
               <span class="badge badge-verified"><i data-lucide="badge-check"></i> Verified Teacher</span>
             </div>
           </div>
@@ -284,13 +418,13 @@
               <div class="settings-row" style="cursor:default;">
                 <div>
                   <div class="row-label">Employee ID</div>
-                  <div class="row-value" id="infoEmployeeId">T-2019-088</div>
+                  <div class="row-value" id="infoEmployeeId"><?= e($user['employeeId']) ?></div>
                 </div>
               </div>
               <div class="settings-row" style="cursor:default;">
                 <div>
                   <div class="row-label">Department</div>
-                  <div class="row-value" id="infoDepartment">College of Computing</div>
+                  <div class="row-value" id="infoDepartment"><?= e($user['department']) ?></div>
                 </div>
               </div>
               <div class="settings-row" style="cursor:default;border:none;">

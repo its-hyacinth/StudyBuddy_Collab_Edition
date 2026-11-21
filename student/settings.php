@@ -1,15 +1,95 @@
+<?php
+$expectedRole = 'student';
+require_once __DIR__ . '/../includes/page_guard.php';
+require_once __DIR__ . '/../config/database.php';
+
+$studentUserId = (int)($_SESSION['user']['id'] ?? 0);
+$studentProfileFields = ['studentId', 'phone', 'school', 'course', 'yearLevel'];
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_SERVER['HTTP_X_PROFILE_SAVE'] ?? '') === '1') {
+  header('Content-Type: application/json; charset=utf-8');
+  verify_csrf();
+  $input = json_decode(file_get_contents('php://input'), true);
+  if (!is_array($input) || !$input) json_response(['success' => false, 'message' => 'No profile changes were submitted.'], 400);
+
+  $name = array_key_exists('fullName', $input) ? trim((string)$input['fullName']) : null;
+  $email = array_key_exists('email', $input) ? strtolower(trim((string)$input['email'])) : null;
+  if ($name !== null && ($name === '' || mb_strlen($name) > 120)) json_response(['success' => false, 'message' => 'Enter a name of 1–120 characters.'], 422);
+  if ($email !== null && (!filter_var($email, FILTER_VALIDATE_EMAIL) || mb_strlen($email) > 190)) json_response(['success' => false, 'message' => 'Enter a valid email address.'], 422);
+
+  $extras = [];
+  foreach ($studentProfileFields as $field) {
+    if (!array_key_exists($field, $input)) continue;
+    $value = trim((string)$input[$field]);
+    if (mb_strlen($value) > 255) json_response(['success' => false, 'message' => 'Profile values must be 255 characters or fewer.'], 422);
+    $extras[$field] = $value;
+  }
+  if ($name === null && $email === null && !$extras) json_response(['success' => false, 'message' => 'No supported profile fields were submitted.'], 422);
+
+  $pdo = db();
+  try {
+    $pdo->beginTransaction();
+    if ($name !== null || $email !== null) {
+      $sets = [];
+      $values = [];
+      if ($name !== null) { $sets[] = 'full_name = ?'; $values[] = $name; }
+      if ($email !== null) { $sets[] = 'email = ?'; $values[] = $email; }
+      $values[] = $studentUserId;
+      $pdo->prepare('UPDATE users SET ' . implode(', ', $sets) . ' WHERE id = ?')->execute($values);
+    }
+    if ($extras) {
+      $statement = $pdo->prepare('SELECT state_value FROM app_state WHERE user_id = ? AND state_key = ?');
+      $statement->execute([$studentUserId, 'student_profile']);
+      $existing = json_decode((string)$statement->fetchColumn(), true);
+      $profile = array_merge(is_array($existing) ? $existing : [], $extras);
+      $pdo->prepare(
+        'INSERT INTO app_state (user_id, state_key, state_value) VALUES (?, ?, ?)
+         ON DUPLICATE KEY UPDATE state_value = VALUES(state_value)'
+      )->execute([$studentUserId, 'student_profile', json_encode($profile, JSON_UNESCAPED_UNICODE)]);
+    }
+    $pdo->commit();
+  } catch (PDOException $error) {
+    if ($pdo->inTransaction()) $pdo->rollBack();
+    if ($error->getCode() === '23000') json_response(['success' => false, 'message' => 'That email address is already in use.'], 409);
+    error_log($error->getMessage());
+    json_response(['success' => false, 'message' => 'Profile could not be saved. Please try again.'], 500);
+  }
+
+  if ($name !== null) $_SESSION['user']['name'] = $name;
+  if ($email !== null) $_SESSION['user']['email'] = $email;
+  json_response(['success' => true]);
+}
+
+$pdo = db();
+$studentProfile = [
+  'fullName' => (string)($_SESSION['user']['name'] ?? ''),
+  'email' => (string)($_SESSION['user']['email'] ?? ''),
+];
+$statement = $pdo->prepare('SELECT full_name, email FROM users WHERE id = ?');
+$statement->execute([$studentUserId]);
+if ($row = $statement->fetch()) {
+  $studentProfile['fullName'] = (string)$row['full_name'];
+  $studentProfile['email'] = (string)$row['email'];
+}
+$statement = $pdo->prepare('SELECT state_value FROM app_state WHERE user_id = ? AND state_key = ?');
+$statement->execute([$studentUserId, 'student_profile']);
+$savedStudentProfile = json_decode((string)$statement->fetchColumn(), true);
+if (is_array($savedStudentProfile)) $studentProfile = array_merge($studentProfile, $savedStudentProfile);
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta name="csrf-token" content="<?= e($_SESSION['csrf_token']) ?>">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>StudyBuddy — Settings</title>
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/components.css" />
   <link rel="stylesheet" href="../css/pages.css" />
+  <link rel="stylesheet" href="../css/student.css" />
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
-<body>
+<body class="student-app">
   <div class="app-shell" id="appShell">
     <div class="page-content">
       <div class="page-header">
@@ -327,17 +407,16 @@
             </div>
             <div class="settings-row">
               <div>
-                <div class="row-label">Clear Cache</div>
-                <div class="row-value">Remove temporary cached data</div>
+                <div class="row-label">Data Sync</div>
+                <div class="row-value">Study data is saved directly to your account.</div>
               </div>
-              <button type="button" class="btn btn-ghost btn-sm" id="clearCacheBtn">Clear</button>
             </div>
             <div class="settings-row">
               <div>
                 <div class="row-label" style="color:var(--danger)">Delete Account</div>
                 <div class="row-value">Permanently delete your account and data</div>
               </div>
-              <button type="button" class="btn btn-danger btn-sm" id="deleteAccountBtn">Delete</button>
+              <button type="button" class="btn btn-ghost btn-sm danger" id="deleteAccountBtn"><i data-lucide="trash-2"></i> Delete</button>
             </div>
           </div>
 
@@ -389,11 +468,11 @@
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12.5px;margin-top:12px">
               <div style="padding:10px;background:var(--page-bg);border-radius:8px;text-align:center">
-                <div style="font-weight:700;font-size:18px;color:var(--text-heading)">6</div>
+                <div style="font-weight:700;font-size:18px;color:var(--text-heading)" id="settingsSubjectCount">0</div>
                 <div style="color:var(--text-muted)">Subjects</div>
               </div>
               <div style="padding:10px;background:var(--page-bg);border-radius:8px;text-align:center">
-                <div style="font-weight:700;font-size:18px;color:var(--text-heading)">68%</div>
+                <div style="font-weight:700;font-size:18px;color:var(--text-heading)" id="settingsProgressValue">0%</div>
                 <div style="color:var(--text-muted)">Progress</div>
               </div>
             </div>
@@ -450,6 +529,66 @@
     </div>
   </div>
 
+  <div class="modal-backdrop" id="changePasswordModal">
+    <div class="modal" role="dialog" aria-labelledby="changePasswordTitle">
+      <div class="modal-header">
+        <h3 id="changePasswordTitle">Change Password</h3>
+        <button type="button" class="modal-close" data-close-modal="changePasswordModal" aria-label="Close">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <form id="changePasswordForm">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="currentPassword">Current password</label>
+            <input type="password" class="form-control" id="currentPassword" autocomplete="current-password" required />
+          </div>
+          <div class="form-group">
+            <label for="newPassword">New password</label>
+            <input type="password" class="form-control" id="newPassword" autocomplete="new-password" minlength="8" required />
+          </div>
+          <div class="form-group">
+            <label for="confirmPassword">Confirm new password</label>
+            <input type="password" class="form-control" id="confirmPassword" autocomplete="new-password" minlength="8" required />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-close-modal="changePasswordModal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Update Password</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="deleteAccountModal">
+    <div class="modal" role="dialog" aria-labelledby="deleteAccountTitle">
+      <div class="modal-header">
+        <h3 id="deleteAccountTitle">Delete Account</h3>
+        <button type="button" class="modal-close" data-close-modal="deleteAccountModal" aria-label="Close">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <form id="deleteAccountForm">
+        <div class="modal-body">
+          <p>This permanently deletes your account and StudyBuddy data. This cannot be undone.</p>
+          <div class="form-group">
+            <label for="deleteAccountPassword">Current password</label>
+            <input type="password" class="form-control" id="deleteAccountPassword" autocomplete="current-password" required />
+          </div>
+          <div class="form-group">
+            <label for="deleteAccountConfirmation">Type DELETE to confirm</label>
+            <input type="text" class="form-control" id="deleteAccountConfirmation" autocomplete="off" required />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-close-modal="deleteAccountModal">Cancel</button>
+          <button type="submit" class="btn btn-danger">Delete Account</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>window.SB_USER = <?= json_encode($studentProfile, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;</script>
   <script src="../js/data.js"></script>
   <script src="../js/auth.js"></script>
   <script src="../js/sidebar.js"></script>

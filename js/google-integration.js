@@ -58,6 +58,7 @@ function classroomCourseworkMock() {
       classroomId: course.id,
       subjectId: course.subjectId,
       subject: course.name,
+      source: 'classroom',
     }))
   );
 }
@@ -174,7 +175,7 @@ async function fetchLiveClassroomPayload() {
   const token = await requestClassroomAccessToken(clientId);
   const list = await classroomApi('courses?courseStates=ACTIVE&pageSize=50', token);
   const courses = list.courses || [];
-  if (!courses.length) return { courses: [], assignments: [], empty: true };
+  if (!courses.length) return { courses: [], assignments: [], empty: true, live: true };
 
   const subjects = [];
   const assignments = [];
@@ -200,14 +201,21 @@ async function fetchLiveClassroomPayload() {
 }
 
 function applyClassroomPayload(payload) {
-  const courses = payload.courses && payload.courses.length
-    ? payload.courses
-    : CLASSROOM_COURSES.map(catalogCourseToSubject);
+  const isLivePayload = !!payload.live;
+  const courses = isLivePayload
+    ? (payload.courses || [])
+    : payload.courses && payload.courses.length
+      ? payload.courses
+      : CLASSROOM_COURSES.map(catalogCourseToSubject);
 
-  const existingAsg = getAssignments().filter((a) => a.source !== 'classroom');
-  const classroomAsg = (payload.assignments && payload.assignments.length)
-    ? payload.assignments
-    : classroomCourseworkMock();
+  const existingAsg = getAssignments().filter((a) =>
+    a.source !== 'classroom' && !a.classroomId && !a.classroomWorkId
+  );
+  const classroomAsg = isLivePayload
+    ? (payload.assignments || [])
+    : payload.assignments && payload.assignments.length
+      ? payload.assignments
+      : classroomCourseworkMock();
 
   const withCounts = courses.map((s) => {
     const asgs = classroomAsg.filter((a) => a.subjectId === s.id);
