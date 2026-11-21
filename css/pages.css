@@ -170,6 +170,25 @@
 }
 .btn-google:hover { background: var(--page-bg); }
 .btn-google svg { width: 20px; height: 20px; }
+.google-button-host { display: flex; justify-content: center; min-height: 0; }
+.google-button-host:empty { display: none; }
+.google-button-host[hidden], .auth-form[hidden], .auth-divider[hidden] { display: none !important; }
+.authenticator-secret {
+  display: inline-block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: 0.08em;
+  background: var(--page-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.backup-codes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
 
 .auth-footer {
   margin-top: 24px;

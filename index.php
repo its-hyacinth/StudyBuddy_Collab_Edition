@@ -1,8 +1,13 @@
-<?php require_once __DIR__ . '/includes/bootstrap.php'; if (!empty($_SESSION['user'])) { header('Location: ' . ($_SESSION['user']['role']==='teacher'?'teacher/dashboard.php':'student/dashboard.php')); exit; } ?>
+<?php
+require_once __DIR__ . '/includes/bootstrap.php';
+require_once __DIR__ . '/config/google.php';
+if (!empty($_SESSION['user'])) { header('Location: ' . ($_SESSION['user']['role']==='teacher'?'teacher/dashboard.php':'student/dashboard.php')); exit; }
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta name="csrf-token" content="<?= e($_SESSION['csrf_token']) ?>">
+  <meta name="google-client-id" content="<?= e(GOOGLE_CLIENT_ID) ?>">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>StudyBuddy — Log In</title>
@@ -72,8 +77,33 @@
           </button>
         </form>
 
+        <form class="auth-form" id="totpForm" hidden>
+          <p class="sub" style="margin-bottom:14px">Enter the 6-digit code from Google Authenticator, or one of your backup codes.</p>
+          <div class="form-group">
+            <div class="input-icon-wrap">
+              <i data-lucide="shield-check" class="input-icon"></i>
+              <input class="form-control" type="text" id="totpCode" inputmode="numeric" autocomplete="one-time-code" placeholder="Authenticator or backup code" required />
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-lg btn-block">Verify code</button>
+          <button type="button" class="btn btn-ghost btn-block" id="totpBack" style="margin-top:8px">Use a different account</button>
+        </form>
+
+        <form class="auth-form" id="googleRoleForm" hidden>
+          <p class="sub" id="googleRoleText" style="margin-bottom:14px">Choose how you will use StudyBuddy.</p>
+          <div class="form-group">
+            <label for="googleRole">I am a...</label>
+            <select class="form-control" id="googleRole">
+              <option value="student">Student</option>
+              <option value="teacher">Teacher</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary btn-lg btn-block">Continue</button>
+        </form>
+
         <div class="auth-divider">or</div>
 
+        <div id="googleButtonHost" class="google-button-host"></div>
         <button type="button" class="btn-google" id="googleLogin">
           <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>

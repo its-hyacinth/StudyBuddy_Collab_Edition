@@ -320,6 +320,7 @@ if (is_array($savedStudentProfile)) $studentProfile = array_merge($studentProfil
                 <span class="slider"></span>
               </label>
             </div>
+            <?php require __DIR__ . '/../includes/authenticator_panel.php'; ?>
           </div>
 
           <!-- Connected Accounts -->
@@ -573,7 +574,11 @@ if (is_array($savedStudentProfile)) $studentProfile = array_merge($studentProfil
           <p>This permanently deletes your account and StudyBuddy data. This cannot be undone.</p>
           <div class="form-group">
             <label for="deleteAccountPassword">Current password</label>
-            <input type="password" class="form-control" id="deleteAccountPassword" autocomplete="current-password" required />
+            <input type="password" class="form-control" id="deleteAccountPassword" autocomplete="current-password" />
+          </div>
+          <div class="form-group" id="deleteAccountTotpWrap">
+            <label for="deleteAccountCode">Authenticator or backup code, if enabled</label>
+            <input type="text" class="form-control" id="deleteAccountCode" autocomplete="one-time-code" />
           </div>
           <div class="form-group">
             <label for="deleteAccountConfirmation">Type DELETE to confirm</label>
@@ -591,6 +596,7 @@ if (is_array($savedStudentProfile)) $studentProfile = array_merge($studentProfil
   <script>window.SB_USER = <?= json_encode($studentProfile, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;</script>
   <script src="../js/data.js"></script>
   <script src="../js/auth.js"></script>
+  <script src="../js/authenticator.js"></script>
   <script src="../js/sidebar.js"></script>
   <script src="../js/google-integration.js"></script>
   <script src="../js/settings.js"></script>

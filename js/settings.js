@@ -418,7 +418,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const submit = form.querySelector('[type="submit"]');
     if (submit) submit.disabled = true;
     try {
-      const response = await apiAuth('change-password', { currentPassword, newPassword });
+      const response = await apiAuth('change-password', { currentPassword, newPassword, code: $('passwordAuthenticatorCode')?.value || '' });
       const result = await response.json();
       if (!response.ok || !result.ok) throw new Error(result.message || 'Password could not be updated.');
       closeModal('changePasswordModal');
@@ -431,16 +431,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  $('passwordForm')?.addEventListener('submit', (e) => {
+  $('passwordForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const current = $('currentPassword')?.value;
-    const pw = $('newPassword')?.value;
-    const confirmPw = $('confirmPassword')?.value;
-    if (!current) { showToast('Enter your current password', 'error'); return; }
-    if (!pw || pw.length < 6) { showToast('New password must be at least 6 characters', 'error'); return; }
+    const current = $('currentPassword')?.value || '';
+    const pw = $('newPassword')?.value || '';
+    const confirmPw = $('confirmPassword')?.value || '';
+    if (pw.length < 8) { showToast('New password must be at least 8 characters', 'error'); return; }
     if (pw !== confirmPw) { showToast('Passwords do not match', 'error'); return; }
-    // Nothing is stored here: a real password change has to be done by the PHP server.
-    showToast('Checks passed, but password changes are not connected to the server yet', 'warning');
+    try {
+      const response = await apiAuth('change-password', { currentPassword: current, newPassword: pw, code: $('passwordAuthenticatorCode')?.value || '' });
+      const result = await response.json();
+      if (!response.ok || !result.ok) throw new Error(result.message || 'Password could not be updated.');
+      e.currentTarget.reset();
+      showToast('Password updated.');
+    } catch (error) {
+      showToast(error.message || 'Password could not be updated.', 'error');
+    }
   });
 
   $('deleteAccountBtn')?.addEventListener('click', () => openModal('deleteAccountModal'));
@@ -453,7 +459,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const submit = form.querySelector('[type="submit"]');
     if (submit) submit.disabled = true;
     try {
-      const response = await apiAuth('delete-account', { password, confirmation });
+      const response = await apiAuth('delete-account', { password, confirmation, code: $('deleteAccountCode')?.value.trim() || '' });
       const result = await response.json();
       if (!response.ok || !result.ok) throw new Error(result.message || 'Account could not be deleted.');
       if (result.cleanupWarning) showToast('Account deleted, but some uploaded files could not be removed.', 'warning');

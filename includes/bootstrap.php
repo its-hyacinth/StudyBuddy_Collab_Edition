@@ -1,8 +1,24 @@
 <?php
 declare(strict_types=1);
 if (session_status() !== PHP_SESSION_ACTIVE) {
-    session_set_cookie_params(['httponly'=>true, 'secure'=>!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off', 'samesite'=>'Lax']);
+    require_once __DIR__ . '/auth_lib.php';
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path' => app_cookie_path(),
+        'httponly' => true,
+        'secure' => request_is_https(),
+        'samesite' => 'Lax',
+    ]);
     session_start();
+    if (empty($_SESSION['user']) && !empty($_COOKIE['sb_remember'])) {
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            require_once __DIR__ . '/remember.php';
+            remember_restore(db());
+        } catch (Throwable $error) {
+            error_log($error->getMessage());
+        }
+    }
 }
 if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 function json_response(array $data, int $status=200): never {

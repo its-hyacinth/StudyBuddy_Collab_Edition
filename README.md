@@ -4,15 +4,14 @@ A fully static **student / teacher study & class management** demo built with **
 
 ## Quick start
 
-1. Place the project under a web root (e.g. XAMPP `htdocs/StudyBuddy`).
-2. Open in a browser:
-   - `http://localhost/StudyBuddy/` or
-   - `http://localhost/StudyBuddy/index.html`
-3. On the login page use:
-   - **Demo as Student** / **Demo as Teacher**, or
-   - Any email/password (emails containing `prof`, `teacher`, or `admin` open the teacher portal).
+1. Start Apache and MySQL in XAMPP.
+2. The MySQL database is `Studybuddy`. Import `Studybuddy.sql` in phpMyAdmin if it is not already there.
+3. Open `http://localhost/StudyBuddy_Collab_Edition/`.
+4. Create an account on the sign-up page. Sign-in uses that email and password.
+5. Optional: Settings → Privacy (student) or Security (teacher) → **Set up Google Authenticator**. After that, sign-in asks for the 6-digit code.
+6. Optional: put a Google OAuth **Web client ID** in `config/google.php` to enable **Continue with Google**. Authorized JavaScript origins must include `http://localhost`.
 
-No build step or npm install is required. Lucide icons and Google Fonts load from CDNs.
+Demo buttons do not sign you in. Email password reset is not configured.
 
 ## Project structure
 

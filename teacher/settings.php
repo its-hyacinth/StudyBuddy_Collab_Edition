@@ -384,6 +384,7 @@ if ($pdo && $userId) {
                   <button type="submit" class="btn btn-primary" id="changePasswordBtn">Update Password</button>
                 </div>
               </form>
+              <?php require __DIR__ . '/../includes/authenticator_panel.php'; ?>
               <div style="margin-top:24px;padding-top:24px;border-top:1px solid var(--border);">
                 <div class="settings-row" style="border:none;padding:0;">
                   <div>
@@ -446,8 +447,39 @@ if ($pdo && $userId) {
     </div>
   </div>
 
+  <div class="modal-backdrop" id="deleteAccountModal">
+    <div class="modal" role="dialog" aria-labelledby="deleteAccountTitle">
+      <div class="modal-header">
+        <h3 id="deleteAccountTitle">Delete Account</h3>
+        <button type="button" class="modal-close" data-close-modal="deleteAccountModal" aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <form id="deleteAccountForm">
+        <div class="modal-body">
+          <p>This permanently deletes your account and StudyBuddy data. This cannot be undone.</p>
+          <div class="form-group">
+            <label for="deleteAccountPassword">Current password</label>
+            <input type="password" class="form-control" id="deleteAccountPassword" autocomplete="current-password" />
+          </div>
+          <div class="form-group">
+            <label for="deleteAccountCode">Authenticator or backup code, if enabled</label>
+            <input type="text" class="form-control" id="deleteAccountCode" autocomplete="one-time-code" />
+          </div>
+          <div class="form-group">
+            <label for="deleteAccountConfirmation">Type DELETE to confirm</label>
+            <input type="text" class="form-control" id="deleteAccountConfirmation" autocomplete="off" required />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-close-modal="deleteAccountModal">Cancel</button>
+          <button type="submit" class="btn btn-danger">Delete Account</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script src="../js/data.js"></script>
   <script src="../js/auth.js"></script>
+  <script src="../js/authenticator.js"></script>
   <script src="../js/sidebar.js"></script>
   <script src="../js/google-integration.js"></script>
   <script src="../js/settings.js"></script>

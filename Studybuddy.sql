@@ -7,10 +7,19 @@ CREATE TABLE IF NOT EXISTS users (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   full_name VARCHAR(150) NOT NULL,
   email VARCHAR(190) NOT NULL UNIQUE,
-  password_hash VARCHAR(255) NOT NULL,
+  password_hash VARCHAR(255) NULL,
   role ENUM('student','teacher') NOT NULL DEFAULT 'student',
+  google_sub VARCHAR(255) NULL,
+  avatar_url VARCHAR(500) NULL,
+  email_verified TINYINT(1) NOT NULL DEFAULT 0,
+  totp_secret VARCHAR(255) NULL,
+  totp_pending_secret VARCHAR(255) NULL,
+  totp_enabled TINYINT(1) NOT NULL DEFAULT 0,
+  totp_last_step BIGINT NULL,
+  last_login_at DATETIME NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_users_google_sub (google_sub)
 ) ENGINE=InnoDB;
 
 -- Compatibility store for settings/progress and the existing JavaScript data-helper contract.
@@ -209,7 +218,64 @@ CREATE TABLE IF NOT EXISTS drive_files (
   INDEX idx_drive_file_owner (user_id,external_id)
 ) ENGINE=InnoDB;
 
+-- Sign-in security: Google Authenticator challenges, one-time backup codes,
+-- persistent "remember me" tokens, and failed-login tracking.
+CREATE TABLE IF NOT EXISTS auth_challenges (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT UNSIGNED NOT NULL,
+  token_hash CHAR(64) NOT NULL,
+  purpose ENUM('totp_login') NOT NULL,
+  attempts TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  expires_at DATETIME NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_challenge_token (token_hash),
+  INDEX idx_challenge_user (user_id, purpose),
+  CONSTRAINT fk_challenge_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS totp_backup_codes (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT UNSIGNED NOT NULL,
+  code_hash VARCHAR(255) NOT NULL,
+  used_at DATETIME NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_backup_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_backup_user (user_id, used_at)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS remember_tokens (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT UNSIGNED NOT NULL,
+  selector CHAR(24) NOT NULL,
+  validator_hash CHAR(64) NOT NULL,
+  previous_validator_hash CHAR(64) NULL,
+  rotated_at DATETIME NULL,
+  expires_at DATETIME NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_remember_selector (selector),
+  CONSTRAINT fk_remember_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS login_attempts (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  email VARCHAR(190) NOT NULL,
+  ip_address VARCHAR(45) NOT NULL,
+  succeeded TINYINT(1) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_attempt_email_time (email, created_at)
+) ENGINE=InnoDB;
+
 -- Upgrade columns for users importing over the earlier PHP/MySQL draft.
+ALTER TABLE users MODIFY password_hash VARCHAR(255) NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub VARCHAR(255) NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(500) NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified TINYINT(1) NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_secret VARCHAR(255) NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_pending_secret VARCHAR(255) NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_enabled TINYINT(1) NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_last_step BIGINT NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at DATETIME NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_users_google_sub ON users (google_sub);
 ALTER TABLE subjects ADD COLUMN IF NOT EXISTS external_id VARCHAR(120) NULL;
 ALTER TABLE subjects ADD COLUMN IF NOT EXISTS payload_json LONGTEXT NULL;
 ALTER TABLE subjects ADD COLUMN IF NOT EXISTS sort_order INT NOT NULL DEFAULT 0;
