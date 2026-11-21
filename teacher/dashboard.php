@@ -25,7 +25,7 @@
       </div>
 
       <div class="stat-grid" id="dashStats">
-        <div class="stat-card">
+        <a href="students.php" class="stat-card">
           <div class="stat-icon blue"><i data-lucide="users"></i></div>
           <div class="stat-body">
             <div class="stat-label">Total Students</div>
@@ -33,8 +33,8 @@
             <div class="stat-delta up"><i data-lucide="trending-up"></i> +8 this semester</div>
           </div>
           <i data-lucide="chevron-right" class="stat-arrow"></i>
-        </div>
-        <div class="stat-card">
+        </a>
+        <a href="classes.php" class="stat-card">
           <div class="stat-icon purple"><i data-lucide="graduation-cap"></i></div>
           <div class="stat-body">
             <div class="stat-label">My Classes</div>
@@ -42,8 +42,8 @@
             <div class="stat-delta up"><i data-lucide="trending-up"></i> All active</div>
           </div>
           <i data-lucide="chevron-right" class="stat-arrow"></i>
-        </div>
-        <div class="stat-card">
+        </a>
+        <a href="assignments.php" class="stat-card">
           <div class="stat-icon green"><i data-lucide="clipboard-list"></i></div>
           <div class="stat-body">
             <div class="stat-label">Active Assignments</div>
@@ -51,8 +51,8 @@
             <div class="stat-delta up"><i data-lucide="trending-up"></i> +3 this week</div>
           </div>
           <i data-lucide="chevron-right" class="stat-arrow"></i>
-        </div>
-        <div class="stat-card">
+        </a>
+        <a href="grades.php" class="stat-card">
           <div class="stat-icon orange"><i data-lucide="pen-line"></i></div>
           <div class="stat-body">
             <div class="stat-label">Pending Grading</div>
@@ -60,7 +60,7 @@
             <div class="stat-delta down"><i data-lucide="trending-down"></i> 4 due today</div>
           </div>
           <i data-lucide="chevron-right" class="stat-arrow"></i>
-        </div>
+        </a>
       </div>
 
       <div class="page-layout">

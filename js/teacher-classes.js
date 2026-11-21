@@ -90,9 +90,9 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="subj-info"><h3>${escapeHtml(c.name)}</h3><p>${escapeHtml(c.subject)}</p></div>
             <span class="badge badge-success">Active</span>
           </div>
-          <div class="subject-card-stats">
-            <div class="ss"><div class="ss-val">${enrolledCount(c, students)}</div><div class="ss-lbl">Students</div></div>
-            <div class="ss"><div class="ss-val">${Number(c.progress) || 0}%</div><div class="ss-lbl">Progress</div></div>
+          <div class="subject-card-stats" style="display:grid;grid-template-columns:repeat(2,1fr);justify-items:center;text-align:center;width:100%">
+            <div class="ss" style="width:100%;text-align:center;margin:0"><div class="ss-val">${enrolledCount(c, students)}</div><div class="ss-lbl">Students</div></div>
+            <div class="ss" style="width:100%;text-align:center;margin:0"><div class="ss-val">${Number(c.progress) || 0}%</div><div class="ss-lbl">Progress</div></div>
           </div>
         </div>`).join('');
     }

@@ -41,22 +41,22 @@
             <div class="stat-delta up"><i data-lucide="trending-up"></i> All active</div>
           </div>
         </div>
-        <div class="stat-card">
+        <a href="students.php" class="stat-card">
           <div class="stat-icon green"><i data-lucide="users"></i></div>
           <div class="stat-body">
             <div class="stat-label">Total Students</div>
             <div class="stat-value" id="statTotalStudents">140</div>
             <div class="stat-delta up"><i data-lucide="trending-up"></i> +8 this semester</div>
           </div>
-        </div>
-        <div class="stat-card">
+        </a>
+        <a href="assignments.php" class="stat-card">
           <div class="stat-icon purple"><i data-lucide="clipboard-list"></i></div>
           <div class="stat-body">
             <div class="stat-label">Active Assignments</div>
             <div class="stat-value" id="statActiveAsg">16</div>
             <div class="stat-delta up"><i data-lucide="trending-up"></i> Across all classes</div>
           </div>
-        </div>
+        </a>
         <div class="stat-card">
           <div class="stat-icon orange"><i data-lucide="trending-up"></i></div>
           <div class="stat-body">
