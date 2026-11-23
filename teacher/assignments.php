@@ -298,7 +298,7 @@
   <div class="modal-backdrop" id="createAsgModal">
     <div class="modal">
       <div class="modal-header">
-        <h3>Create Assignment</h3>
+        <h3 id="asgModalTitle">Create Assignment</h3>
         <button type="button" class="modal-close" data-close-modal="createAsgModal" aria-label="Close">
           <i data-lucide="x"></i>
         </button>
@@ -320,15 +320,20 @@
               <option value="cls_5">Filipino 101</option>
             </select>
           </div>
+          <!-- NEW: due date + due time -->
           <div class="form-row">
             <div class="form-group">
               <label for="asgDueDate">Due Date</label>
               <input class="form-control" type="date" id="asgDueDate" required />
             </div>
             <div class="form-group">
-              <label for="asgPoints">Points</label>
-              <input class="form-control" type="number" id="asgPoints" placeholder="50" min="1" required />
+              <label for="asgDueTime">Due Time</label>
+              <input class="form-control" type="time" id="asgDueTime" value="23:59" required />
             </div>
+          </div>
+          <div class="form-group">
+            <label for="asgPoints">Points</label>
+            <input class="form-control" type="number" id="asgPoints" placeholder="50" min="1" required />
           </div>
           <div class="form-group">
             <label for="asgDescription">Description</label>
@@ -340,6 +345,35 @@
           <button type="submit" class="btn btn-primary" id="saveAsgBtn">Create Assignment</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Assignment Details Modal -->
+  <div class="modal-backdrop" id="asgDetailsModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="tAsgTitle">Assignment Details</h3>
+        <button type="button" class="modal-close" data-close-modal="asgDetailsModal" aria-label="Close">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px 16px">
+          <div><div class="stat-label">Class</div><div class="title" id="tAsgClass"></div></div>
+          <div><div class="stat-label">Status</div><div><span class="badge" id="tAsgStatus"></span></div></div>
+          <div><div class="stat-label">Due</div><div class="title" id="tAsgDue"></div></div>
+          <div><div class="stat-label">Points</div><div class="title" id="tAsgPoints"></div></div>
+          <div><div class="stat-label">Submissions</div><div class="title" id="tAsgSubmissions"></div></div>
+        </div>
+        <div style="margin-top:18px">
+          <div class="stat-label">Description</div>
+          <div class="subtitle" id="tAsgDescription" style="margin-top:4px"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-close-modal="asgDetailsModal">Close</button>
+        <button type="button" class="btn btn-primary" id="editAsgBtn"><i data-lucide="edit"></i> Edit Assignment</button>
+      </div>
     </div>
   </div>
 

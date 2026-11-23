@@ -448,7 +448,7 @@
   <div class="modal-backdrop" id="addClassModal">
     <div class="modal">
       <div class="modal-header">
-        <h3>Add New Class</h3>
+        <h3 id="addClassTitle">Add New Class</h3>
         <button type="button" class="modal-close" data-close-modal="addClassModal" aria-label="Close">
           <i data-lucide="x"></i>
         </button>
@@ -481,6 +481,17 @@
               <input class="form-control" type="text" id="classSchedule" placeholder="Mon/Wed/Fri" />
             </div>
           </div>
+          <!-- NEW: class time -->
+          <div class="form-row">
+            <div class="form-group">
+              <label for="classStartTime">Start Time</label>
+              <input class="form-control" type="time" id="classStartTime" value="09:00" required />
+            </div>
+            <div class="form-group">
+              <label for="classEndTime">End Time</label>
+              <input class="form-control" type="time" id="classEndTime" value="10:00" required />
+            </div>
+          </div>
           <div class="form-group">
             <label for="classDescription">Description</label>
             <textarea class="form-control" id="classDescription" placeholder="Brief course description..."></textarea>
@@ -491,6 +502,37 @@
           <button type="submit" class="btn btn-primary" id="saveClassBtn">Create Class</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Class Details Modal -->
+  <div class="modal-backdrop" id="classDetailsModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="detailName">Class Details</h3>
+        <button type="button" class="modal-close" data-close-modal="classDetailsModal" aria-label="Close">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px 16px">
+          <div><div class="stat-label">Subject</div><div class="title" id="detailSubject"></div></div>
+          <div><div class="stat-label">Instructor</div><div class="title" id="detailInstructor"></div></div>
+          <div><div class="stat-label">Room</div><div class="title" id="detailRoom"></div></div>
+          <div><div class="stat-label">Days</div><div class="title" id="detailDays"></div></div>
+          <div><div class="stat-label">Time</div><div class="title" id="detailTime"></div></div>
+          <div><div class="stat-label">Students</div><div class="title" id="detailStudents"></div></div>
+          <div><div class="stat-label">Progress</div><div class="title" id="detailProgress"></div></div>
+        </div>
+        <div style="margin-top:18px">
+          <div class="stat-label">Description</div>
+          <div class="subtitle" id="detailDescription" style="margin-top:4px"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-close-modal="classDetailsModal">Close</button>
+        <button type="button" class="btn btn-primary" id="editClassBtn"><i data-lucide="edit"></i> Edit Class</button>
+      </div>
     </div>
   </div>
 
