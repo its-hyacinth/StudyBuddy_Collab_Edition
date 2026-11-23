@@ -1,16 +1,12 @@
 {
   "functions": {
-    "*.php": {
-      "runtime": "vercel-php@0.7.4"
-    },
-    "api/**/*.php": {
-      "runtime": "vercel-php@0.7.4"
-    },
-    "student/**/*.php": {
-      "runtime": "vercel-php@0.7.4"
-    },
-    "teacher/**/*.php": {
-      "runtime": "vercel-php@0.7.4"
+    "api/index.php": {
+      "runtime": "vercel-php@0.7.4",
+      "includeFiles": "{index.php,signup.php,student/**,teacher/**,includes/**,config/**,api/*.php}"
     }
-  }
+  },
+  "routes": [
+    { "src": "/(.*)\\.(css|js|mjs|png|jpe?g|gif|svg|ico|webp|woff2?|map|txt)$", "dest": "/$1.$2" },
+    { "src": "/(.*)", "dest": "/api/index.php?__path=/$1" }
+  ]
 }
