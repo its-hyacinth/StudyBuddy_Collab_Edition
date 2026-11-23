@@ -296,7 +296,11 @@ try {
 } catch (Throwable $error) {
     if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) $pdo->rollBack();
     error_log($error->__toString());
-    json_response(['ok' => false, 'message' => 'A server error occurred. Check the PHP error log.'], 500);
+    $message = 'A server error occurred. Check the PHP error log.';
+    if ($error instanceof PDOException) {
+        $message = 'Sign-in cannot reach the StudyBuddy database. The hosted site needs SB_DB_HOST, SB_DB_NAME, SB_DB_USER, and SB_DB_PASS in its project settings. On this computer, start MySQL in XAMPP.';
+    }
+    json_response(['ok' => false, 'message' => $message], 500);
 }
 
 function google_signup_pending(): ?array {
