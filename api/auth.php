@@ -10,6 +10,25 @@ require_once __DIR__ . '/../includes/google_token.php';
 $action = (string)($_GET['action'] ?? $_POST['action'] ?? '');
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
+function auth_signup_profile(array $fields): ?array
+{
+    $profile = [];
+    foreach ($fields as $field) {
+        $value = trim((string)($_POST[$field] ?? ''));
+        if ($value === '' || mb_strlen($value) > 255) return null;
+        $profile[$field] = $value;
+    }
+    return $profile;
+}
+
+function auth_save_signup_profile(PDO $pdo, int $userId, string $stateKey, array $profile): void
+{
+    $pdo->prepare(
+        'INSERT INTO app_state (user_id, state_key, state_value) VALUES (?, ?, ?)
+         ON DUPLICATE KEY UPDATE state_value = VALUES(state_value)'
+    )->execute([$userId, $stateKey, json_encode($profile, JSON_UNESCAPED_UNICODE)]);
+}
+
 try {
     $pdo = db();
     if ($method === 'GET' && $action === 'session') {
@@ -50,14 +69,28 @@ try {
         if ($name === '' || mb_strlen($name) > 150 || !filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($password) < 8 || !in_array($role, ['student', 'teacher'], true)) {
             json_response(['ok' => false, 'message' => 'Enter a valid name, email, role, and a password of at least 8 characters.'], 422);
         }
+        $profileFields = $role === 'student'
+            ? ['studentId', 'phone', 'school', 'course', 'yearLevel']
+            : ['employeeId', 'phone', 'school', 'department'];
+        $signupProfile = auth_signup_profile($profileFields);
+        if ($signupProfile === null) {
+            $roleLabel = $role === 'student' ? 'student' : 'teacher';
+            json_response(['ok' => false, 'message' => "Enter all required {$roleLabel} details. Each value must be 255 characters or fewer."], 422);
+        }
         $stmt = $pdo->prepare('INSERT INTO users (full_name, email, password_hash, role) VALUES (?, ?, ?, ?)');
         try {
+            $pdo->beginTransaction();
             $stmt->execute([$name, $email, password_hash($password, PASSWORD_DEFAULT), $role]);
+            $userId = sb_last_insert_id($pdo);
+            $stateKey = $role === 'student' ? 'student_profile' : 'teacher_profile';
+            auth_save_signup_profile($pdo, $userId, $stateKey, $signupProfile);
+            $pdo->commit();
         } catch (PDOException $error) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
             if (sb_is_duplicate($error)) json_response(['ok' => false, 'message' => 'An account with this email already exists.'], 409);
             throw $error;
         }
-        $row = fetch_user_by_id($pdo, sb_last_insert_id($pdo));
+        $row = fetch_user_by_id($pdo, $userId);
         $user = establish_session($pdo, $row);
         json_response(['ok' => true, 'user' => $user, 'redirect' => role_redirect($role)]);
     }
@@ -153,15 +186,29 @@ try {
         if (!$pending) json_response(['ok' => false, 'message' => 'The Google sign-in step expired. Choose Continue with Google again.'], 401);
         $role = (string)($_POST['role'] ?? '');
         if (!in_array($role, ['student', 'teacher'], true)) json_response(['ok' => false, 'message' => 'Choose student or teacher.'], 422);
+        $profileFields = $role === 'student'
+            ? ['studentId', 'phone', 'school', 'course', 'yearLevel']
+            : ['employeeId', 'phone', 'school', 'department'];
+        $signupProfile = auth_signup_profile($profileFields);
+        if ($signupProfile === null) {
+            $roleLabel = $role === 'student' ? 'student' : 'teacher';
+            json_response(['ok' => false, 'message' => "Enter all required {$roleLabel} details. Each value must be 255 characters or fewer."], 422);
+        }
         $stmt = $pdo->prepare('INSERT INTO users (full_name, email, password_hash, role, google_sub, avatar_url, email_verified) VALUES (?, ?, NULL, ?, ?, ?, 1)');
         try {
+            $pdo->beginTransaction();
             $stmt->execute([$pending['name'], $pending['email'], $role, $pending['sub'], $pending['picture'] !== '' ? $pending['picture'] : null]);
+            $userId = sb_last_insert_id($pdo);
+            $stateKey = $role === 'student' ? 'student_profile' : 'teacher_profile';
+            auth_save_signup_profile($pdo, $userId, $stateKey, $signupProfile);
+            $pdo->commit();
         } catch (PDOException $error) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
             if (sb_is_duplicate($error)) json_response(['ok' => false, 'message' => 'An account with this email already exists. Sign in with your password instead.'], 409);
             throw $error;
         }
         unset($_SESSION['google_signup']);
-        $row = fetch_user_by_id($pdo, sb_last_insert_id($pdo));
+        $row = fetch_user_by_id($pdo, $userId);
         $user = establish_session($pdo, $row);
         json_response(['ok' => true, 'user' => $user, 'redirect' => role_redirect($role)]);
     }

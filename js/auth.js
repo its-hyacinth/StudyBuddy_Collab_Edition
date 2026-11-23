@@ -59,6 +59,116 @@ function showAuthStep(step) {
   document.querySelector('.demo-toggles')?.toggleAttribute('hidden', step !== 'login');
 }
 
+function configureSignupRoleFields(roleId, studentFieldsId, teacherFieldsId) {
+  const isStudent = document.getElementById(roleId)?.value === 'student';
+  [[studentFieldsId, isStudent], [teacherFieldsId, !isStudent]].forEach(([fieldsId, visible]) => {
+    const fields = document.getElementById(fieldsId);
+    if (!fields) return;
+    fields.hidden = !visible;
+    fields.querySelectorAll('input[name]').forEach((input) => {
+      input.required = visible;
+      input.disabled = !visible;
+    });
+  });
+}
+
+function readStudentSignupFields(fieldsId) {
+  const fields = document.getElementById(fieldsId);
+  const value = (name) => fields?.querySelector(`[name="${name}"]`)?.value.trim() || '';
+  return {
+    studentId: value('studentId'),
+    phone: value('phone'),
+    school: value('school'),
+    course: value('course'),
+    yearLevel: value('yearLevel'),
+  };
+}
+
+function hasSignupProfileFields(profile) {
+  return Object.values(profile).every((value) => value !== '');
+}
+
+function readTeacherSignupFields(fieldsId) {
+  const fields = document.getElementById(fieldsId);
+  const value = (name) => fields?.querySelector(`[name="${name}"]`)?.value.trim() || '';
+  return {
+    employeeId: value('employeeId'),
+    phone: value('phone'),
+    school: value('school'),
+    department: value('department'),
+  };
+}
+
+function focusFirstMissingSignupField(fieldsId, profile) {
+  const fields = document.getElementById(fieldsId);
+  for (const [name, value] of Object.entries(profile)) {
+    if (!value) {
+      fields?.querySelector(`[name="${name}"]`)?.focus();
+      return;
+    }
+  }
+}
+
+function wireGoogleRoleForm(errorEl) {
+  const form = document.getElementById('googleRoleForm');
+  if (!form) return;
+  const roleStep = document.getElementById('googleRoleStep');
+  const detailsStep = document.getElementById('googleDetailsStep');
+  const role = document.getElementById('googleRole');
+  const continueButton = document.getElementById('googleContinueBtn');
+  const backButton = document.getElementById('googleBackBtn');
+  const showDetails = () => {
+    clearAuthError(errorEl);
+    configureSignupRoleFields('googleRole', 'googleStudentFields', 'googleTeacherFields');
+    if (roleStep) roleStep.hidden = true;
+    if (detailsStep) detailsStep.hidden = false;
+    (role?.value === 'student'
+      ? document.querySelector('#googleStudentFields input[name="studentId"]')
+      : document.querySelector('#googleTeacherFields input[name="employeeId"]')
+    )?.focus();
+  };
+  continueButton?.addEventListener('click', showDetails);
+  backButton?.addEventListener('click', () => {
+    clearAuthError(errorEl);
+    if (detailsStep) detailsStep.hidden = true;
+    if (roleStep) roleStep.hidden = false;
+    role?.focus();
+  });
+  role?.addEventListener('change', () => {
+    configureSignupRoleFields('googleRole', 'googleStudentFields', 'googleTeacherFields');
+  });
+  configureSignupRoleFields('googleRole', 'googleStudentFields', 'googleTeacherFields');
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    clearAuthError(errorEl);
+    if (detailsStep?.hidden) {
+      showDetails();
+      return;
+    }
+    const selectedRole = role?.value || 'student';
+    const isStudent = selectedRole === 'student';
+    const profileFieldsId = isStudent ? 'googleStudentFields' : 'googleTeacherFields';
+    const profile = isStudent ? readStudentSignupFields(profileFieldsId) : readTeacherSignupFields(profileFieldsId);
+    if (!hasSignupProfileFields(profile)) {
+      showAuthError(errorEl, `Please fill in all ${isStudent ? 'student' : 'teacher'} information fields.`);
+      focusFirstMissingSignupField(profileFieldsId, profile);
+      return;
+    }
+    const submit = form.querySelector('[type="submit"]');
+    if (submit) submit.disabled = true;
+    try {
+      const response = await apiAuth('google-complete', { role: selectedRole, ...profile });
+      const result = await response.json();
+      if (!response.ok || !result.ok) { showAuthError(errorEl, result.message || 'Could not finish Google sign-in.'); return; }
+      finishAuth(result);
+    } catch {
+      showAuthError(errorEl, 'Unable to connect to the server.');
+    } finally {
+      if (submit) submit.disabled = false;
+    }
+  });
+}
+
 function finishAuth(result) {
   if (result.redirect) location.href = result.redirect;
 }
@@ -159,19 +269,7 @@ function initLoginPage() {
     clearAuthError(errorEl);
     showAuthStep('login');
   });
-  document.getElementById('googleRoleForm')?.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    clearAuthError(errorEl);
-    const role = document.getElementById('googleRole')?.value || 'student';
-    try {
-      const response = await apiAuth('google-complete', { role });
-      const result = await response.json();
-      if (!response.ok || !result.ok) { showAuthError(errorEl, result.message || 'Could not finish Google sign-in.'); return; }
-      finishAuth(result);
-    } catch {
-      showAuthError(errorEl, 'Unable to connect to the server.');
-    }
-  });
+  wireGoogleRoleForm(errorEl);
   document.getElementById('demoStudent')?.addEventListener('click', () => showAuthError(errorEl, 'Demo accounts are disabled. Please register a student account.'));
   document.getElementById('demoTeacher')?.addEventListener('click', () => showAuthError(errorEl, 'Demo accounts are disabled. Please register a teacher account.'));
   document.querySelector('.auth-options a')?.addEventListener('click', (event) => {
@@ -208,29 +306,90 @@ function initSignupPage() {
   const errorEl = document.getElementById('signupError');
   wirePasswordToggle('password', 'togglePassword');
   wirePasswordToggle('confirmPassword', 'toggleConfirmPassword', 'confirm password');
+  const credentialsStep = document.getElementById('signupCredentialsStep');
+  const detailsStep = document.getElementById('signupDetailsStep');
+  const role = document.getElementById('role');
+  const validateCredentials = () => {
+    const name = document.getElementById('fullName').value.trim();
+    const email = document.getElementById('email');
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    if (!name || !email.value.trim() || !password || !confirmPassword) {
+      showAuthError(errorEl, 'Please fill in all required fields.');
+      return false;
+    }
+    if (!email.validity.valid) {
+      showAuthError(errorEl, 'Enter a valid email address.');
+      email.focus();
+      return false;
+    }
+    if (password.length < 8) { showAuthError(errorEl, 'Password must be at least 8 characters.'); return false; }
+    if (password !== confirmPassword) { showAuthError(errorEl, 'Passwords do not match.'); return false; }
+    return true;
+  };
+  const showDetailsStep = () => {
+    clearAuthError(errorEl);
+    if (!validateCredentials()) return;
+    configureSignupRoleFields('role', 'signupStudentFields', 'signupTeacherFields');
+    if (credentialsStep) credentialsStep.hidden = true;
+    if (detailsStep) detailsStep.hidden = false;
+    (role?.value === 'student'
+      ? document.querySelector('#signupStudentFields input[name="studentId"]')
+      : document.querySelector('#signupTeacherFields input[name="employeeId"]'))?.focus();
+  };
+  document.getElementById('signupContinueBtn')?.addEventListener('click', showDetailsStep);
+  document.getElementById('signupBackBtn')?.addEventListener('click', () => {
+    clearAuthError(errorEl);
+    if (detailsStep) detailsStep.hidden = true;
+    if (credentialsStep) credentialsStep.hidden = false;
+    role?.focus();
+  });
+  role?.addEventListener('change', () => {
+    configureSignupRoleFields('role', 'signupStudentFields', 'signupTeacherFields');
+  });
+  configureSignupRoleFields('role', 'signupStudentFields', 'signupTeacherFields');
   form?.addEventListener('submit', async (event) => {
     event.preventDefault();
     clearAuthError(errorEl);
+    if (detailsStep?.hidden) {
+      showDetailsStep();
+      return;
+    }
+    if (!validateCredentials()) {
+      if (detailsStep) detailsStep.hidden = true;
+      if (credentialsStep) credentialsStep.hidden = false;
+      return;
+    }
     const name = document.getElementById('fullName').value.trim();
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
     const confirmPassword = document.getElementById('confirmPassword').value;
-    const role = document.getElementById('role')?.value || 'student';
-    if (!name || !email || !password || !confirmPassword) { showAuthError(errorEl, 'Please fill in all required fields.'); return; }
-    if (password.length < 8) { showAuthError(errorEl, 'Password must be at least 8 characters.'); return; }
-    if (password !== confirmPassword) { showAuthError(errorEl, 'Passwords do not match.'); return; }
+    const selectedRole = role?.value || 'student';
+    const isStudent = selectedRole === 'student';
+    const profileFieldsId = isStudent ? 'signupStudentFields' : 'signupTeacherFields';
+    const profile = isStudent ? readStudentSignupFields(profileFieldsId) : readTeacherSignupFields(profileFieldsId);
+    if (!hasSignupProfileFields(profile)) {
+      showAuthError(errorEl, `Please fill in all ${isStudent ? 'student' : 'teacher'} information fields.`);
+      focusFirstMissingSignupField(profileFieldsId, profile);
+      return;
+    }
+    const submit = form.querySelector('[type="submit"]');
+    if (submit) submit.disabled = true;
     try {
-      const response = await apiAuth('register', { name, email, password, role });
+      const response = await apiAuth('register', { name, email, password, role: selectedRole, ...profile });
       const result = await response.json();
       if (!response.ok || !result.ok) { showAuthError(errorEl, result.message || 'Unable to create account.'); return; }
       finishAuth(result);
     } catch {
       showAuthError(errorEl, 'Unable to connect to the server.');
+    } finally {
+      if (submit) submit.disabled = false;
     }
   });
   const signupRole = document.getElementById('googleRole');
   const accountRole = document.getElementById('role');
   if (signupRole && accountRole) signupRole.value = accountRole.value;
+  wireGoogleRoleForm(errorEl);
   document.getElementById('totpForm')?.addEventListener('submit', async (event) => {
     event.preventDefault();
     clearAuthError(errorEl);
@@ -245,18 +404,6 @@ function initSignupPage() {
     }
   });
   document.getElementById('totpBack')?.addEventListener('click', () => { pendingChallenge = ''; clearAuthError(errorEl); showAuthStep('login'); });
-  document.getElementById('googleRoleForm')?.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    clearAuthError(errorEl);
-    try {
-      const response = await apiAuth('google-complete', { role: document.getElementById('googleRole')?.value || 'student' });
-      const result = await response.json();
-      if (!response.ok || !result.ok) { showAuthError(errorEl, result.message || 'Could not finish Google sign-in.'); return; }
-      finishAuth(result);
-    } catch {
-      showAuthError(errorEl, 'Unable to connect to the server.');
-    }
-  });
   initGoogleButton();
 }
 

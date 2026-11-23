@@ -21,7 +21,6 @@
             <span class="title-icon"><i data-lucide="book-open"></i></span>
             My Subjects
           </h1>
-          <p class="page-subtitle">BSIT_DAY_4-B · 1st Semester SY 2026-2027 · Synced from Google Classroom. Professors show as TBA until Classroom lists them.</p>
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <button type="button" class="btn btn-outline" id="syncClassroomBtn">

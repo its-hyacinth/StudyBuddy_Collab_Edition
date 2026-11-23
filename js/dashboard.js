@@ -7,9 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const firstName = (session.name || 'Juan').split(' ')[0].replace('Prof.', '').trim() || 'Juan';
   const greeting = document.getElementById('greeting');
-  const greetingSub = document.getElementById('greetingSub');
   if (greeting) greeting.textContent = `${greetingTime()}, ${firstName}! 👋`;
-  if (greetingSub) greetingSub.textContent = `${CLASSROOM_META.section} · ${CLASSROOM_META.term} · ${CLASSROOM_META.campus}`;
 
   const subjects = getSubjects();
   const assignments = getAssignments();

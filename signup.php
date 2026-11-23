@@ -49,50 +49,103 @@ if (!empty($_SESSION['user'])) { header('Location: ' . ($_SESSION['user']['role'
         <div class="auth-error" id="signupError"></div>
 
         <form id="signupForm" novalidate>
-          <div class="form-group">
-            <label for="fullName">Full Name</label>
-            <div class="input-icon-wrap">
-              <i data-lucide="user" class="input-icon"></i>
-              <input class="form-control" type="text" id="fullName" placeholder="Juan Dela Cruz" required />
+          <div id="signupCredentialsStep">
+            <div class="form-group">
+              <label for="fullName">Full Name</label>
+              <div class="input-icon-wrap">
+                <i data-lucide="user" class="input-icon"></i>
+                <input class="form-control" type="text" id="fullName" placeholder="Full name" autocomplete="name" required />
+              </div>
             </div>
-          </div>
-          <div class="form-group">
-            <label for="email">Email</label>
-            <div class="input-icon-wrap">
-              <i data-lucide="mail" class="input-icon"></i>
-              <input class="form-control" type="email" id="email" placeholder="you@email.com" required />
+            <div class="form-group">
+              <label for="email">Email</label>
+              <div class="input-icon-wrap">
+                <i data-lucide="mail" class="input-icon"></i>
+                <input class="form-control" type="email" id="email" placeholder="you@email.com" autocomplete="email" required />
+              </div>
             </div>
+            <div class="form-group">
+              <label for="password">Password</label>
+              <div class="input-icon-wrap has-password-toggle">
+                <i data-lucide="lock" class="input-icon"></i>
+                <input class="form-control" type="password" id="password" placeholder="At least 8 characters" autocomplete="new-password" minlength="8" required />
+                <button type="button" class="input-action" id="togglePassword" aria-label="Show password" aria-controls="password" aria-pressed="false">
+                  <i data-lucide="eye"></i>
+                </button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="confirmPassword">Confirm Password</label>
+              <div class="input-icon-wrap has-password-toggle">
+                <i data-lucide="lock" class="input-icon"></i>
+                <input class="form-control" type="password" id="confirmPassword" placeholder="Re-enter your password" autocomplete="new-password" required />
+                <button type="button" class="input-action" id="toggleConfirmPassword" aria-label="Show confirm password" aria-controls="confirmPassword" aria-pressed="false">
+                  <i data-lucide="eye"></i>
+                </button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="role">I am a...</label>
+              <select class="form-control" id="role">
+                <option value="student">Student</option>
+                <option value="teacher">Teacher</option>
+              </select>
+            </div>
+            <button type="button" class="btn btn-primary btn-lg btn-block" id="signupContinueBtn">
+              Continue <i data-lucide="arrow-right"></i>
+            </button>
           </div>
-          <div class="form-group">
-            <label for="password">Password</label>
-            <div class="input-icon-wrap has-password-toggle">
-              <i data-lucide="lock" class="input-icon"></i>
-              <input class="form-control" type="password" id="password" placeholder="At least 8 characters" autocomplete="new-password" minlength="8" required />
-              <button type="button" class="input-action" id="togglePassword" aria-label="Show password" aria-controls="password" aria-pressed="false">
-                <i data-lucide="eye"></i>
+
+          <div id="signupDetailsStep" hidden>
+            <div id="signupStudentFields">
+              <div class="form-group">
+                <label for="signupStudentId">Student ID</label>
+                <input class="form-control" type="text" id="signupStudentId" name="studentId" maxlength="255" autocomplete="off" required />
+              </div>
+              <div class="form-group">
+                <label for="signupPhone">Phone</label>
+                <input class="form-control" type="tel" id="signupPhone" name="phone" maxlength="255" autocomplete="tel" required />
+              </div>
+              <div class="form-group">
+                <label for="signupSchool">School</label>
+                <input class="form-control" type="text" id="signupSchool" name="school" maxlength="255" autocomplete="organization" required />
+              </div>
+              <div class="form-group">
+                <label for="signupCourse">Course</label>
+                <input class="form-control" type="text" id="signupCourse" name="course" maxlength="255" autocomplete="off" required />
+              </div>
+              <div class="form-group">
+                <label for="signupYearLevel">School Level</label>
+                <input class="form-control" type="text" id="signupYearLevel" name="yearLevel" maxlength="255" autocomplete="off" required />
+              </div>
+            </div>
+            <div id="signupTeacherFields" hidden>
+              <div class="form-group">
+                <label for="signupEmployeeId">Employee ID</label>
+                <input class="form-control" type="text" id="signupEmployeeId" name="employeeId" maxlength="255" autocomplete="off" required />
+              </div>
+              <div class="form-group">
+                <label for="signupTeacherPhone">Phone</label>
+                <input class="form-control" type="tel" id="signupTeacherPhone" name="phone" maxlength="255" autocomplete="tel" required />
+              </div>
+              <div class="form-group">
+                <label for="signupTeacherSchool">School</label>
+                <input class="form-control" type="text" id="signupTeacherSchool" name="school" maxlength="255" autocomplete="organization" required />
+              </div>
+              <div class="form-group">
+                <label for="signupDepartment">Department</label>
+                <input class="form-control" type="text" id="signupDepartment" name="department" maxlength="255" autocomplete="organization-title" required />
+              </div>
+            </div>
+            <div class="auth-signup-actions">
+              <button type="button" class="btn btn-ghost btn-lg btn-block" id="signupBackBtn">
+                <i data-lucide="arrow-left"></i> Back
+              </button>
+              <button type="submit" class="btn btn-primary btn-lg btn-block">
+                Create Account <i data-lucide="arrow-right"></i>
               </button>
             </div>
           </div>
-          <div class="form-group">
-            <label for="confirmPassword">Confirm Password</label>
-            <div class="input-icon-wrap has-password-toggle">
-              <i data-lucide="lock" class="input-icon"></i>
-              <input class="form-control" type="password" id="confirmPassword" placeholder="Re-enter your password" autocomplete="new-password" required />
-              <button type="button" class="input-action" id="toggleConfirmPassword" aria-label="Show confirm password" aria-controls="confirmPassword" aria-pressed="false">
-                <i data-lucide="eye"></i>
-              </button>
-            </div>
-          </div>
-          <div class="form-group">
-            <label for="role">I am a...</label>
-            <select class="form-control" id="role">
-              <option value="student">Student</option>
-              <option value="teacher">Teacher</option>
-            </select>
-          </div>
-          <button type="submit" class="btn btn-primary btn-lg btn-block">
-            Create Account <i data-lucide="arrow-right"></i>
-          </button>
         </form>
 
         <form class="auth-form" id="totpForm" hidden>
@@ -104,16 +157,64 @@ if (!empty($_SESSION['user'])) { header('Location: ' . ($_SESSION['user']['role'
           <button type="button" class="btn btn-ghost btn-block" id="totpBack" style="margin-top:8px">Back</button>
         </form>
 
-        <form class="auth-form" id="googleRoleForm" hidden>
+        <form class="auth-form" id="googleRoleForm" novalidate hidden>
           <p class="sub" id="googleRoleText" style="margin-bottom:14px">Choose how you will use StudyBuddy.</p>
-          <div class="form-group">
-            <label for="googleRole">I am a...</label>
-            <select class="form-control" id="googleRole">
-              <option value="student">Student</option>
-              <option value="teacher">Teacher</option>
-            </select>
+          <div id="googleRoleStep">
+            <div class="form-group">
+              <label for="googleRole">I am a...</label>
+              <select class="form-control" id="googleRole">
+                <option value="student">Student</option>
+                <option value="teacher">Teacher</option>
+              </select>
+            </div>
+            <button type="button" class="btn btn-primary btn-lg btn-block" id="googleContinueBtn">Continue</button>
           </div>
-          <button type="submit" class="btn btn-primary btn-lg btn-block">Continue</button>
+          <div id="googleDetailsStep" hidden>
+            <div id="googleStudentFields">
+              <div class="form-group">
+                <label for="googleStudentId">Student ID</label>
+                <input class="form-control" type="text" id="googleStudentId" name="studentId" maxlength="255" autocomplete="off" required />
+              </div>
+              <div class="form-group">
+                <label for="googlePhone">Phone</label>
+                <input class="form-control" type="tel" id="googlePhone" name="phone" maxlength="255" autocomplete="tel" required />
+              </div>
+              <div class="form-group">
+                <label for="googleSchool">School</label>
+                <input class="form-control" type="text" id="googleSchool" name="school" maxlength="255" autocomplete="organization" required />
+              </div>
+              <div class="form-group">
+                <label for="googleCourse">Course</label>
+                <input class="form-control" type="text" id="googleCourse" name="course" maxlength="255" autocomplete="off" required />
+              </div>
+              <div class="form-group">
+                <label for="googleYearLevel">School Level</label>
+                <input class="form-control" type="text" id="googleYearLevel" name="yearLevel" maxlength="255" autocomplete="off" required />
+              </div>
+            </div>
+            <div id="googleTeacherFields" hidden>
+              <div class="form-group">
+                <label for="googleEmployeeId">Employee ID</label>
+                <input class="form-control" type="text" id="googleEmployeeId" name="employeeId" maxlength="255" autocomplete="off" required />
+              </div>
+              <div class="form-group">
+                <label for="googleTeacherPhone">Phone</label>
+                <input class="form-control" type="tel" id="googleTeacherPhone" name="phone" maxlength="255" autocomplete="tel" required />
+              </div>
+              <div class="form-group">
+                <label for="googleTeacherSchool">School</label>
+                <input class="form-control" type="text" id="googleTeacherSchool" name="school" maxlength="255" autocomplete="organization" required />
+              </div>
+              <div class="form-group">
+                <label for="googleDepartment">Department</label>
+                <input class="form-control" type="text" id="googleDepartment" name="department" maxlength="255" autocomplete="organization-title" required />
+              </div>
+            </div>
+            <div class="auth-signup-actions">
+              <button type="button" class="btn btn-ghost btn-lg btn-block" id="googleBackBtn">Back</button>
+              <button type="submit" class="btn btn-primary btn-lg btn-block">Create Account</button>
+            </div>
+          </div>
         </form>
 
         <div class="auth-divider">or</div>

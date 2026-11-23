@@ -171,41 +171,57 @@ if ($pdo && $userId) {
                   <h2 class="card-title">Teacher Profile</h2>
                 </div>
               </div>
-              <form id="profileForm">
-                <div class="form-row">
-                  <div class="form-group">
-                    <label for="profileFullName">Full Name</label>
-                    <input class="form-control" type="text" id="profileFullName" value="<?= e($user['fullName']) ?>" />
+              <div id="profileRows">
+                <div class="settings-row" data-field="fullName">
+                  <div>
+                    <div class="row-label">Full Name</div>
+                    <div class="row-value" id="profileFullName"><?= e($user['fullName'] ?: '—') ?></div>
                   </div>
-                  <div class="form-group">
-                    <label for="profileEmail">Email</label>
-                    <input class="form-control" type="email" id="profileEmail" value="<?= e($user['email']) ?>" />
-                  </div>
+                  <i data-lucide="chevron-right" class="chevron"></i>
                 </div>
-                <div class="form-row">
-                  <div class="form-group">
-                    <label for="profileEmployeeId">Employee ID</label>
-                    <input class="form-control" type="text" id="profileEmployeeId" value="<?= e($user['employeeId']) ?>" />
+                <div class="settings-row" data-field="email">
+                  <div>
+                    <div class="row-label">Email</div>
+                    <div class="row-value" id="profileEmail"><?= e($user['email'] ?: '—') ?></div>
                   </div>
-                  <div class="form-group">
-                    <label for="profilePhone">Phone</label>
-                    <input class="form-control" type="tel" id="profilePhone" value="<?= e($user['phone']) ?>" />
-                  </div>
+                  <i data-lucide="chevron-right" class="chevron"></i>
                 </div>
-                <div class="form-row">
-                  <div class="form-group">
-                    <label for="profileSchool">School</label>
-                    <input class="form-control" type="text" id="profileSchool" value="<?= e($user['school']) ?>" />
+                <div class="settings-row" data-field="employeeId">
+                  <div>
+                    <div class="row-label">Employee ID</div>
+                    <div class="row-value" id="profileEmployeeId"><?= e($user['employeeId'] ?: '—') ?></div>
                   </div>
-                  <div class="form-group">
-                    <label for="profileDepartment">Department</label>
-                    <input class="form-control" type="text" id="profileDepartment" value="<?= e($user['department']) ?>" />
+                  <i data-lucide="chevron-right" class="chevron"></i>
+                </div>
+                <div class="settings-row" data-field="phone">
+                  <div>
+                    <div class="row-label">Phone</div>
+                    <div class="row-value" id="profilePhone"><?= e($user['phone'] ?: '—') ?></div>
                   </div>
+                  <i data-lucide="chevron-right" class="chevron"></i>
                 </div>
-                <div style="display:flex;justify-content:flex-end;margin-top:8px;">
-                  <button type="submit" class="btn btn-primary" id="saveProfileBtn">Save Changes</button>
+                <div class="settings-row" data-field="school">
+                  <div>
+                    <div class="row-label">School</div>
+                    <div class="row-value" id="profileSchool"><?= e($user['school'] ?: '—') ?></div>
+                  </div>
+                  <i data-lucide="chevron-right" class="chevron"></i>
                 </div>
-              </form>
+                <div class="settings-row" data-field="department">
+                  <div>
+                    <div class="row-label">Department</div>
+                    <div class="row-value" id="profileDepartment"><?= e($user['department'] ?: '—') ?></div>
+                  </div>
+                  <i data-lucide="chevron-right" class="chevron"></i>
+                </div>
+                <div class="settings-row" data-field="password">
+                  <div>
+                    <div class="row-label">Password</div>
+                    <div class="row-value">••••••••</div>
+                  </div>
+                  <i data-lucide="chevron-right" class="chevron"></i>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -365,25 +381,13 @@ if ($pdo && $userId) {
                   <h2 class="card-title">Security</h2>
                 </div>
               </div>
-              <form id="passwordForm">
-                <div class="form-group">
-                  <label for="currentPassword">Current Password</label>
-                  <input class="form-control" type="password" id="currentPassword" placeholder="Enter current password" />
+              <div class="settings-row" style="cursor:default;">
+                <div>
+                  <div class="row-label">Password</div>
+                  <div class="row-value">Update your account password</div>
                 </div>
-                <div class="form-row">
-                  <div class="form-group">
-                    <label for="newPassword">New Password</label>
-                    <input class="form-control" type="password" id="newPassword" placeholder="New password" />
-                  </div>
-                  <div class="form-group">
-                    <label for="confirmPassword">Confirm Password</label>
-                    <input class="form-control" type="password" id="confirmPassword" placeholder="Confirm new password" />
-                  </div>
-                </div>
-                <div style="display:flex;justify-content:flex-end;">
-                  <button type="submit" class="btn btn-primary" id="changePasswordBtn">Update Password</button>
-                </div>
-              </form>
+                <button type="button" class="btn btn-primary btn-sm" id="changePasswordOptionBtn">Change Password</button>
+              </div>
               <?php require __DIR__ . '/../includes/authenticator_panel.php'; ?>
               <div style="margin-top:24px;padding-top:24px;border-top:1px solid var(--border);">
                 <div class="settings-row" style="border:none;padding:0;">
@@ -419,19 +423,25 @@ if ($pdo && $userId) {
               <div class="settings-row" style="cursor:default;">
                 <div>
                   <div class="row-label">Employee ID</div>
-                  <div class="row-value" id="infoEmployeeId"><?= e($user['employeeId']) ?></div>
+                  <div class="row-value" id="infoEmployeeId"><?= e($user['employeeId'] ?: '—') ?></div>
+                </div>
+              </div>
+              <div class="settings-row" style="cursor:default;">
+                <div>
+                  <div class="row-label">Phone</div>
+                  <div class="row-value" id="infoPhone"><?= e($user['phone'] ?: '—') ?></div>
+                </div>
+              </div>
+              <div class="settings-row" style="cursor:default;">
+                <div>
+                  <div class="row-label">School</div>
+                  <div class="row-value" id="infoSchool"><?= e($user['school'] ?: '—') ?></div>
                 </div>
               </div>
               <div class="settings-row" style="cursor:default;">
                 <div>
                   <div class="row-label">Department</div>
-                  <div class="row-value" id="infoDepartment"><?= e($user['department']) ?></div>
-                </div>
-              </div>
-              <div class="settings-row" style="cursor:default;border:none;">
-                <div>
-                  <div class="row-label">Member Since</div>
-                  <div class="row-value">August 2019</div>
+                  <div class="row-value" id="infoDepartment"><?= e($user['department'] ?: '—') ?></div>
                 </div>
               </div>
             </div>
@@ -444,6 +454,79 @@ if ($pdo && $userId) {
           </div>
         </aside>
       </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="editProfileModal">
+    <div class="modal" role="dialog" aria-labelledby="editProfileTitle">
+      <div class="modal-header">
+        <h3 id="editProfileTitle">Edit Profile</h3>
+        <button type="button" class="modal-close" data-close-modal="editProfileModal" aria-label="Close">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <form id="editProfileForm">
+        <div class="modal-body">
+          <input type="hidden" id="editField" name="field" />
+          <div class="form-group">
+            <label for="editValue" id="editFieldLabel">Value</label>
+            <input type="text" class="form-control" id="editValue" name="value" required />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-close-modal="editProfileModal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="changePasswordModal">
+    <div class="modal" role="dialog" aria-labelledby="changePasswordTitle">
+      <div class="modal-header">
+        <h3 id="changePasswordTitle">Change Password</h3>
+        <button type="button" class="modal-close" data-close-modal="changePasswordModal" aria-label="Close">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <form id="changePasswordForm">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="currentPassword">Current password</label>
+            <div class="input-icon-wrap has-password-toggle">
+              <i data-lucide="lock" class="input-icon"></i>
+              <input type="password" class="form-control" id="currentPassword" autocomplete="current-password" required />
+              <button type="button" class="input-action" id="toggleCurrentPassword" aria-label="Show current password" aria-controls="currentPassword" aria-pressed="false">
+                <i data-lucide="eye"></i>
+              </button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="newPassword">New password</label>
+            <div class="input-icon-wrap has-password-toggle">
+              <i data-lucide="lock" class="input-icon"></i>
+              <input type="password" class="form-control" id="newPassword" autocomplete="new-password" minlength="8" required />
+              <button type="button" class="input-action" id="toggleNewPassword" aria-label="Show new password" aria-controls="newPassword" aria-pressed="false">
+                <i data-lucide="eye"></i>
+              </button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="confirmPassword">Confirm new password</label>
+            <div class="input-icon-wrap has-password-toggle">
+              <i data-lucide="lock" class="input-icon"></i>
+              <input type="password" class="form-control" id="confirmPassword" autocomplete="new-password" minlength="8" required />
+              <button type="button" class="input-action" id="toggleConfirmPassword" aria-label="Show confirm password" aria-controls="confirmPassword" aria-pressed="false">
+                <i data-lucide="eye"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-close-modal="changePasswordModal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Update Password</button>
+        </div>
+      </form>
     </div>
   </div>
 

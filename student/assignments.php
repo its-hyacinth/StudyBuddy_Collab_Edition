@@ -21,7 +21,6 @@
             <span class="title-icon"><i data-lucide="clipboard-list"></i></span>
             Assignments
           </h1>
-          <p class="page-subtitle">Coursework from Google Classroom for BSIT_DAY_4-B, 1st Sem SY 2026-2027.</p>
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <button type="button" class="btn btn-outline" id="syncClassroomBtn">
