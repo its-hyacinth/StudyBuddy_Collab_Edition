@@ -100,11 +100,17 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       return;
     }
-    el.innerHTML = `
-      <div class="stat-card"><div class="stat-icon blue"><i data-lucide="clipboard-list"></i></div><div class="stat-body"><div class="stat-label">Total</div><div class="stat-value">${stats.total}</div></div></div>
-      <div class="stat-card"><div class="stat-icon green"><i data-lucide="check-circle"></i></div><div class="stat-body"><div class="stat-label">Completed</div><div class="stat-value">${stats.completed}</div></div></div>
-      <div class="stat-card"><div class="stat-icon purple"><i data-lucide="clock"></i></div><div class="stat-body"><div class="stat-label">${isTeacher ? 'Upcoming' : 'Pending'}</div><div class="stat-value">${stats.upcoming}</div></div></div>
-      <div class="stat-card"><div class="stat-icon red"><i data-lucide="alert-circle"></i></div><div class="stat-body"><div class="stat-label">Overdue</div><div class="stat-value">${stats.overdue}</div></div></div>`;
+    const cards = [
+      { filter: 'all', label: 'Total', value: stats.total, icon: 'clipboard-list', color: 'blue' },
+      { filter: 'completed', label: 'Completed', value: stats.completed, icon: 'check-circle', color: 'green' },
+      { filter: 'upcoming', label: isTeacher ? 'Upcoming' : 'Pending', value: stats.upcoming, icon: 'clock', color: 'purple' },
+      { filter: 'overdue', label: 'Overdue', value: stats.overdue, icon: 'alert-circle', color: 'red' },
+    ];
+    el.innerHTML = cards.map((card) => `
+      <div class="stat-card" role="button" tabindex="0" data-filter="${card.filter}" aria-pressed="${filter === card.filter}" aria-label="${card.label}: ${card.value} assignments">
+        <div class="stat-icon ${card.color}"><i data-lucide="${card.icon}"></i></div>
+        <div class="stat-body"><div class="stat-label">${card.label}</div><div class="stat-value">${card.value}</div></div>
+      </div>`).join('');
   }
 
   function renderTabs() {
@@ -389,6 +395,23 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof lucide !== 'undefined') lucide.createIcons();
   }
 
+  const statsElement = document.getElementById('asgStats');
+  statsElement?.addEventListener('click', (event) => {
+    const card = event.target.closest('.stat-card[data-filter]');
+    if (!card || !statsElement.contains(card)) return;
+    filter = card.dataset.filter;
+    page = 1;
+    render();
+  });
+  statsElement?.addEventListener('keydown', (event) => {
+    const card = event.target.closest('.stat-card[data-filter]');
+    if (!card || !statsElement.contains(card) || !['Enter', ' '].includes(event.key)) return;
+    event.preventDefault();
+    filter = card.dataset.filter;
+    page = 1;
+    render();
+  });
+
   document.getElementById('asgSearch')?.addEventListener('input', (e) => {
     search = e.target.value.trim();
     page = 1;
@@ -419,7 +442,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const result = await syncGoogleClassroom(e.currentTarget);
     if (result?.ok) render();
   });
-
   // ---- Teacher: fill the class dropdowns from the real classes ----
   if (isTeacher) {
     const classes = getClasses();
