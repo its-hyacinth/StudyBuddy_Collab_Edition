@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <tr data-id="${escapeHtml(s.id)}" data-status="${escapeHtml(s.status)}">
           <td>
             <div class="cell-title">
-              <div class="avatar" style="width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:12px">
+              <div class="avatar" style="width:36px;height:36px;flex-shrink:0;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:12px">
                 ${escapeHtml(initials(s.name))}
               </div>
               <div>
@@ -84,7 +84,19 @@ document.addEventListener('DOMContentLoaded', () => {
           <td>${escapeHtml(classes.find((c) => c.id === s.classId)?.name || '—')}</td>
           <td><strong>${escapeHtml(s.gpa)}</strong></td>
           <td><span class="badge ${statusClass(s.status)}">${statusLabel(s.status)}</span></td>
-          <td></td>
+          <td>
+            <div class="action-menu-wrap">
+              <button type="button" class="action-menu-btn" data-student-menu
+                aria-label="Actions for ${escapeHtml(s.name)}" aria-expanded="false">
+                <i data-lucide="more-horizontal"></i>
+              </button>
+              <div class="action-dropdown">
+                <button type="button" class="danger" data-unenroll="${escapeHtml(s.id)}">
+                  <i data-lucide="user-minus"></i> Unenroll
+                </button>
+              </div>
+            </div>
+          </td>
         </tr>`).join('')
         : '<tr><td colspan="8" style="text-align:center;padding:24px">No students found.</td></tr>';
     }
@@ -172,6 +184,94 @@ document.addEventListener('DOMContentLoaded', () => {
         getClasses().map((c) => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`).join('');
     }
     openModal('addStudentModal');
+  });
+
+  // ---- Unenroll: removes the student from their class and from the students list ----
+  // Confirmation popup built with the app's own modal styles (instead of the browser's plain dialog)
+  let pendingUnenrollId = null;
+  const unenrollModal = document.createElement('div');
+  unenrollModal.className = 'modal-backdrop';
+  unenrollModal.id = 'unenrollModal';
+  unenrollModal.innerHTML = `
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Unenroll Student</h3>
+        <button type="button" class="modal-close" id="unenrollCloseBtn" aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <p id="unenrollMessage" style="margin:0;line-height:1.6"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" id="unenrollCancelBtn">Cancel</button>
+        <button type="button" class="btn" id="unenrollConfirmBtn"
+          style="background:#DC2626;color:#fff;border:none;font-weight:600">Unenroll</button>
+      </div>
+    </div>`;
+  document.body.appendChild(unenrollModal);
+
+  const closeUnenroll = () => { pendingUnenrollId = null; closeModal('unenrollModal'); };
+  document.getElementById('unenrollCloseBtn').addEventListener('click', closeUnenroll);
+  document.getElementById('unenrollCancelBtn').addEventListener('click', closeUnenroll);
+
+  document.getElementById('unenrollConfirmBtn').addEventListener('click', () => {
+    const id = pendingUnenrollId;
+    const student = getStudents().find((s) => s.id === id);
+    closeUnenroll();
+    if (!student) return;
+
+    const cls = getClasses().find((c) => c.id === student.classId);
+    sbSet(SB_KEYS.STUDENTS, getStudents().filter((s) => s.id !== id));
+    showToast(`${student.name} unenrolled${cls ? ' from ' + cls.name : ''}`, 'warning');
+    render();
+  });
+
+  document.getElementById('studentsTableBody')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-unenroll]');
+    if (btn) {
+      btn.closest('.action-dropdown')?.classList.remove('open');
+      btn.closest('.action-menu-wrap')?.querySelector('[data-student-menu]')?.setAttribute('aria-expanded', 'false');
+    } else {
+      const menuButton = e.target.closest('[data-student-menu]');
+      if (!menuButton) return;
+
+      const menu = menuButton.nextElementSibling;
+      const willOpen = !menu.classList.contains('open');
+      document.querySelectorAll('#studentsTableBody .action-dropdown.open').forEach((openMenu) => {
+        openMenu.classList.remove('open');
+        openMenu.previousElementSibling.setAttribute('aria-expanded', 'false');
+      });
+      menu.classList.toggle('open', willOpen);
+      menuButton.setAttribute('aria-expanded', String(willOpen));
+      return;
+    }
+
+    const student = getStudents().find((s) => s.id === btn.dataset.unenroll);
+    if (!student) return;
+
+    const cls = getClasses().find((c) => c.id === student.classId);
+    pendingUnenrollId = student.id;
+    document.getElementById('unenrollMessage').innerHTML =
+      `Are you sure you want to unenroll <strong>${escapeHtml(student.name)}</strong>` +
+      (cls ? ` from <strong>${escapeHtml(cls.name)}</strong>` : '') +
+      `? They will be removed from the list.`;
+    openModal('unenrollModal');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  });
+
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('#studentsTableBody .action-menu-wrap')) return;
+    document.querySelectorAll('#studentsTableBody .action-dropdown.open').forEach((menu) => {
+      menu.classList.remove('open');
+      menu.previousElementSibling.setAttribute('aria-expanded', 'false');
+    });
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    document.querySelectorAll('#studentsTableBody .action-dropdown.open').forEach((menu) => {
+      menu.classList.remove('open');
+      menu.previousElementSibling.setAttribute('aria-expanded', 'false');
+    });
   });
 
   document.getElementById('addStudentForm')?.addEventListener('submit', (e) => {
