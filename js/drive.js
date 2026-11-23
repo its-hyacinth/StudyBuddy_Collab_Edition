@@ -2,7 +2,8 @@
  * StudyBuddy — files stored locally, or in Google Drive once the account is connected.
  */
 document.addEventListener('DOMContentLoaded', () => {
-  const session = initShell('student');
+  const isTeacherDrive = window.location.pathname.includes('/teacher/');
+  const session = initShell(isTeacherDrive ? 'teacher' : 'student');
   if (!session) return;
   wireModalClosers();
 
@@ -617,6 +618,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const query = params.toString();
     window.history.replaceState({}, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`);
   }
+  if (isTeacherDrive) {
+    document.querySelector('#driveTabs [data-tab="shared"]')?.remove();
+  }
   render();
   window.refreshDriveFromGoogle = async () => {
     const status = window.SB_GOOGLE;
@@ -637,7 +641,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     render();
   };
-  loadSharedResources().catch((error) => {
-    showToast(error instanceof Error ? error.message : 'Unable to load shared resources.', 'error');
-  });
+  if (!isTeacherDrive) {
+    loadSharedResources().catch((error) => {
+      showToast(error instanceof Error ? error.message : 'Unable to load shared resources.', 'error');
+    });
+  }
 });

@@ -427,7 +427,13 @@
       </div>
       <form id="driveResourceForm">
         <div class="modal-body">
-          <p class="form-hint">Paste a share link from Google Drive. The file's Drive sharing settings must allow your students to open it.</p>
+          <p class="form-hint">Choose a file from your connected Google Drive, or paste a share link. Students can open it only if the Drive sharing settings allow them.</p>
+          <div class="form-group">
+            <label for="driveResourcePick">Your Google Drive</label>
+            <select class="form-control" id="driveResourcePick">
+              <option value="">Loading your Drive files…</option>
+            </select>
+          </div>
           <div class="form-group">
             <label for="driveResourceName">Resource title</label>
             <input class="form-control" type="text" id="driveResourceName" required />

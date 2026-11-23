@@ -20,6 +20,7 @@ const TEACHER_NAV = [
   { href: 'students.php', icon: 'users', label: 'Students' },
   { href: 'messages.php', icon: 'message-square', label: 'Messages' },
   { href: 'calendar.php', icon: 'calendar', label: 'Calendar' },
+  { href: 'drive.php', icon: 'hard-drive', label: 'Google Drive' },
   { href: 'resources.php', icon: 'folder-open', label: 'Resources' },
 ];
 

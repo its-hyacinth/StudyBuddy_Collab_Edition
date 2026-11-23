@@ -274,11 +274,34 @@ document.addEventListener('DOMContentLoaded', () => {
     openModal('uploadResourceModal');
   }
 
+  async function loadDriveFileChoices() {
+    const select = document.getElementById('driveResourcePick');
+    if (!select) return;
+    select.innerHTML = '<option value="">Loading your Drive files…</option>';
+    try {
+      const status = window.SB_GOOGLE || await googleConnectionStatus(true);
+      if (!status?.connected) {
+        select.innerHTML = '<option value="">Connect Google Drive in Settings first</option>';
+        return;
+      }
+      const response = await fetch(`${SB_API_BASE}google.php?action=drive&view=recent`, { credentials: 'same-origin' });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.ok) throw new Error(result.message || 'Could not load Google Drive.');
+      const files = (result.files || []).filter((file) => file.type !== 'folder' && file.url);
+      select.innerHTML = '<option value="">Choose a file, or paste a link below</option>' + files.map((file) =>
+        `<option value="${escapeHtml(file.url)}" data-name="${escapeHtml(file.name)}">${escapeHtml(file.name)}</option>`
+      ).join('');
+    } catch (error) {
+      select.innerHTML = `<option value="">${escapeHtml(error.message || 'Could not load Google Drive.')}</option>`;
+    }
+  }
+
   function openDriveResourceModal() {
     populateResourceSelects();
     const folder = document.getElementById('driveResourceFolder');
     if (folder) folder.value = folderFilter === 'all' ? '' : folderFilter;
     openModal('driveResourceModal');
+    loadDriveFileChoices();
   }
 
   function render() {
@@ -577,6 +600,16 @@ document.addEventListener('DOMContentLoaded', () => {
     } finally {
       if (button) button.disabled = false;
     }
+  });
+
+  document.getElementById('driveResourcePick')?.addEventListener('change', (event) => {
+    const option = event.target.selectedOptions?.[0];
+    const url = event.target.value;
+    if (!url) return;
+    const link = document.getElementById('driveResourceUrl');
+    const title = document.getElementById('driveResourceName');
+    if (link) link.value = url;
+    if (title && !title.value.trim()) title.value = option?.dataset.name || option?.textContent || '';
   });
 
   document.getElementById('driveResourceForm')?.addEventListener('submit', (event) => {
