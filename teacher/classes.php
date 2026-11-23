@@ -404,10 +404,10 @@
 
           <div class="card">
             <div class="card-header">
-              <div class="card-header-left">
+              <a href="assignments.php" class="card-header-left" style="text-decoration:none;" aria-label="Go to Assignments">
                 <div class="card-icon green"><i data-lucide="calendar"></i></div>
                 <h2 class="card-title">Upcoming Deadlines</h2>
-              </div>
+              </a>
             </div>
             <div id="upcomingDeadlines">
               <p class="empty-state" style="padding:16px">Loading deadlines...</p>

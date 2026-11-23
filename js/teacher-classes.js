@@ -121,10 +121,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (grid) {
       grid.innerHTML = list.map((c) => {
         return `
-        <div class="subject-card" data-id="${escapeHtml(c.id)}" style="cursor:pointer" title="Click for class details">
+        <div class="subject-card ${escapeHtml(c.short)}" data-id="${escapeHtml(c.id)}" style="cursor:pointer" title="Click for class details">
           <div class="subject-card-top">
             <div class="subj-icon" style="background:var(--page-bg)"><i data-lucide="graduation-cap"></i></div>
-            <div class="subj-info"><h3>${escapeHtml(c.name)}</h3><p>${escapeHtml(c.subject)}</p></div>
+            <div class="subj-info"><h3>${escapeHtml(c.name)}</h3><p><span class="subject-tag ${escapeHtml(c.short)}">${escapeHtml(c.subject)}</span></p></div>
             <span class="badge badge-success">Active</span>
           </div>
           <div class="subject-card-stats" style="display:grid;grid-template-columns:repeat(2,1fr);justify-items:center;text-align:center;width:100%">
@@ -167,13 +167,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const subject = assignment.subject || classInfo?.subject || classInfo?.name || 'General';
         const dueTime = assignment.dueTime ? formatTime(assignment.dueTime) : '';
         return `
-          <div class="list-item">
+          <a href="assignments.php" class="list-item list-item-link" aria-label="Go to Assignments for ${escapeHtml(assignment.title || 'Untitled assignment')}">
             <div class="item-meta">
               <div class="item-title">${escapeHtml(assignment.title || 'Untitled assignment')}</div>
               <div class="item-sub">${escapeHtml(subject)} · ${escapeHtml(formatDate(assignment.dueDate))}${dueTime ? ` · ${escapeHtml(dueTime)}` : ''}</div>
             </div>
             <span class="badge badge-upcoming">${dueLabel}</span>
-          </div>`;
+          </a>`;
       }).join('') : '<p class="empty-state" style="padding:16px">No upcoming deadlines.</p>';
     }
 

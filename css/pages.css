@@ -390,10 +390,38 @@
   padding: 20px;
   transition: box-shadow var(--transition), transform var(--transition);
 }
+#classesGridView .subject-card {
+  display: flex;
+  flex-direction: column;
+}
 .subject-card:hover {
   box-shadow: var(--card-shadow-hover);
   transform: translateY(-2px);
 }
+#classesGridView .subject-card.ias,
+#classesGridView .subject-card.math { background: #DBEAFE; border-color: #BFDBFE; }
+#classesGridView .subject-card.iaslab,
+#classesGridView .subject-card.science { background: #DCFCE7; border-color: #BBF7D0; }
+#classesGridView .subject-card.sysad,
+#classesGridView .subject-card.english { background: #EDE9FE; border-color: #DDD6FE; }
+#classesGridView .subject-card.capstone,
+#classesGridView .subject-card.cs { background: #FFEDD5; border-color: #FED7AA; }
+#classesGridView .subject-card.sia,
+#classesGridView .subject-card.filipino { background: #CCFBF1; border-color: #99F6E4; }
+#classesGridView .subject-card.xplat,
+#classesGridView .subject-card.history { background: #FCE7F3; border-color: #FBCFE8; }
+:root[data-theme="dark"] #classesGridView .subject-card.ias,
+:root[data-theme="dark"] #classesGridView .subject-card.math { background: #10244C; border-color: #1D3B72; }
+:root[data-theme="dark"] #classesGridView .subject-card.iaslab,
+:root[data-theme="dark"] #classesGridView .subject-card.science { background: #052E1A; border-color: #14532D; }
+:root[data-theme="dark"] #classesGridView .subject-card.sysad,
+:root[data-theme="dark"] #classesGridView .subject-card.english { background: #2E1065; border-color: #4C1D95; }
+:root[data-theme="dark"] #classesGridView .subject-card.capstone,
+:root[data-theme="dark"] #classesGridView .subject-card.cs { background: #431407; border-color: #7C2D12; }
+:root[data-theme="dark"] #classesGridView .subject-card.sia,
+:root[data-theme="dark"] #classesGridView .subject-card.filipino { background: #042F2E; border-color: #115E59; }
+:root[data-theme="dark"] #classesGridView .subject-card.xplat,
+:root[data-theme="dark"] #classesGridView .subject-card.history { background: #500724; border-color: #9D174D; }
 .subject-card-top {
   display: flex;
   align-items: flex-start;
@@ -425,6 +453,7 @@
   padding-top: 14px;
   border-top: 1px solid var(--border);
 }
+#classesGridView .subject-card-stats { margin-top: auto; }
 .subject-card-stats .ss {
   text-align: center;
 }

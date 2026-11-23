@@ -77,9 +77,9 @@
               <table class="data-table" id="classesTable">
                 <thead>
                   <tr>
-                    <th>Class</th>
-                    <th>Subject</th>
-                    <th>Students</th>
+                    <th><span style="display:block;text-align:center;">Class</span></th>
+                    <th><span style="display:block;text-align:center;">Subject</span></th>
+                    <th><span style="display:block;text-align:center;">Students</span></th>
                     <th>Next Activity</th>
                     <th>Progress</th>
                     <th></th>
