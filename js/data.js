@@ -380,13 +380,6 @@ const SEED_SETTINGS = {
   profile: {
     fullName: 'Juan Dela Cruz',
     email: 'juan.delacruz@email.com',
-    studentId: '2023-04521',
-    phone: '+63 912 345 6789',
-    school: CLASSROOM_META.school,
-    course: CLASSROOM_META.course,
-    yearLevel: CLASSROOM_META.yearLevel,
-    section: CLASSROOM_META.section,
-    term: CLASSROOM_META.term,
     verified: true,
   },
   teacherProfile: {

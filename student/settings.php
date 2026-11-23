@@ -158,35 +158,35 @@ if (is_array($savedStudentProfile)) $studentProfile = array_merge($studentProfil
               <div class="settings-row" data-field="studentId">
                 <div>
                   <div class="row-label">Student ID</div>
-                  <div class="row-value" id="profileStudentId">2023-04521</div>
+                  <div class="row-value" id="profileStudentId">—</div>
                 </div>
                 <i data-lucide="chevron-right" class="chevron"></i>
               </div>
               <div class="settings-row" data-field="phone">
                 <div>
                   <div class="row-label">Phone</div>
-                  <div class="row-value" id="profilePhone">+63 912 345 6789</div>
+                  <div class="row-value" id="profilePhone">—</div>
                 </div>
                 <i data-lucide="chevron-right" class="chevron"></i>
               </div>
               <div class="settings-row" data-field="school">
                 <div>
                   <div class="row-label">School</div>
-                  <div class="row-value" id="profileSchool">State University</div>
+                  <div class="row-value" id="profileSchool">—</div>
                 </div>
                 <i data-lucide="chevron-right" class="chevron"></i>
               </div>
               <div class="settings-row" data-field="course">
                 <div>
                   <div class="row-label">Course</div>
-                  <div class="row-value" id="profileCourse">BS Information Technology</div>
+                  <div class="row-value" id="profileCourse">—</div>
                 </div>
                 <i data-lucide="chevron-right" class="chevron"></i>
               </div>
               <div class="settings-row" data-field="yearLevel">
                 <div>
                   <div class="row-label">Year Level</div>
-                  <div class="row-value" id="profileYearLevel">2nd Year</div>
+                  <div class="row-value" id="profileYearLevel">—</div>
                 </div>
                 <i data-lucide="chevron-right" class="chevron"></i>
               </div>
@@ -457,7 +457,7 @@ if (is_array($savedStudentProfile)) $studentProfile = array_merge($studentProfil
             <div style="text-align:center;padding:8px 0 16px">
               <div class="avatar" style="width:72px;height:72px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;margin:0 auto 12px" id="settingsAvatar">JD</div>
               <h3 style="font-size:16px;margin-bottom:4px" id="settingsName">Juan Dela Cruz</h3>
-              <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:8px" id="settingsRole">Student · BSIT 2nd Year</p>
+              <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:8px" id="settingsRole">Student</p>
               <span class="badge badge-verified"><i data-lucide="badge-check"></i> Verified</span>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12.5px;margin-top:12px">

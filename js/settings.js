@@ -10,7 +10,23 @@ document.addEventListener('DOMContentLoaded', () => {
   wireModalClosers();
 
   const settings = getSettings();
-  const profile = (isTeacher ? settings.teacherProfile : settings.profile) || {};
+  function cleanStudentProfile(values) {
+    const cleaned = { ...values };
+    const sampleValues = {
+      studentId: '2023-04521',
+      phone: '+63 912 345 6789',
+      school: CLASSROOM_META.school,
+      course: CLASSROOM_META.course,
+      yearLevel: CLASSROOM_META.yearLevel,
+    };
+    Object.entries(sampleValues).forEach(([key, value]) => {
+      if (cleaned[key] === value) delete cleaned[key];
+    });
+    return cleaned;
+  }
+  const profile = isTeacher
+    ? { ...(settings.teacherProfile || {}) }
+    : cleanStudentProfile(settings.profile || {});
   // Real values injected by PHP (see settings page snippet). Falls back to {} if absent.
   const server = window.SB_USER || {};
 
@@ -55,7 +71,11 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const key = isTeacher ? 'teacherProfile' : 'profile';
       if (typeof updateSettings === 'function' && typeof getSettings === 'function') {
-        updateSettings({ [key]: { ...(getSettings()[key] || {}), ...next } });
+        const currentSettings = getSettings();
+        const currentProfile = isTeacher
+          ? currentSettings.teacherProfile || {}
+          : cleanStudentProfile(currentSettings.profile || {});
+        updateSettings({ [key]: { ...currentProfile, ...next } });
       }
       if (typeof getSession === 'function' && typeof setSession === 'function') {
         const user = getSession();
