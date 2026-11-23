@@ -78,6 +78,7 @@ class StudyBuddyPdo extends PDO {
     }
 }
 
+// Hosted sign-in uses the Postgres database connected to the Vercel project.
 function db(): PDO {
     static $pdo = null;
     if ($pdo instanceof PDO) return $pdo;
