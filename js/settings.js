@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
   wirePasswordToggle('currentPassword', 'toggleCurrentPassword', 'current password');
   wirePasswordToggle('newPassword', 'toggleNewPassword', 'new password');
   wirePasswordToggle('confirmPassword', 'toggleConfirmPassword', 'confirm password');
+  wirePasswordToggle('deleteAccountPassword', 'toggleDeleteAccountPassword', 'current password');
 
   const settings = getSettings();
   function cleanStudentProfile(values) {
