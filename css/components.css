@@ -578,6 +578,7 @@ textarea.form-control {
   position: relative;
 }
 .input-icon-wrap .form-control { padding-left: 42px; }
+.input-icon-wrap.has-password-toggle .form-control { padding-right: 44px; }
 .input-icon-wrap .input-icon {
   position: absolute;
   left: 14px;
@@ -597,6 +598,11 @@ textarea.form-control {
   cursor: pointer;
   color: var(--text-muted);
   padding: 4px;
+}
+.input-icon-wrap .input-action:focus-visible {
+  outline: 2px solid rgba(37, 99, 235, 0.4);
+  outline-offset: 1px;
+  border-radius: 6px;
 }
 .color-picker {
   display: flex;
