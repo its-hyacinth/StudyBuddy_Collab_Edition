@@ -8,20 +8,27 @@ declare(strict_types=1);
  * 2. OAuth consent screen → External → Testing. Add the Google account you will sign in with as a test user.
  * 3. Credentials → Create credentials → OAuth client ID → Web application.
  *    Authorized JavaScript origins: http://localhost
- *    Authorized redirect URI (copy exactly, no extra slash or query):
+ *    and https://studybuddy-zeta-umber.vercel.app
+ *    Authorized redirect URIs (copy exactly, no extra slash or query):
  *    http://localhost/StudyBuddy_Collab_Edition/api/google-callback.php
- * 4. Paste the client ID and client secret below, or into config/google.local.php
- *    (that file overrides this one and should stay off any shared copy).
+ *    https://studybuddy-zeta-umber.vercel.app/api/google-callback.php
+ * 4. For this computer, put the client ID and secret in config/google.local.php
+ *    (that file stays off GitHub). For the hosted site, set GOOGLE_CLIENT_ID and
+ *    GOOGLE_CLIENT_SECRET in the Vercel project environment.
  */
 $googleLocal = __DIR__ . '/google.local.php';
 if (is_file($googleLocal)) {
     require_once $googleLocal;
 }
 if (!defined('GOOGLE_CLIENT_ID')) {
-    define('GOOGLE_CLIENT_ID', '');
+    $googleClientId = getenv('GOOGLE_CLIENT_ID');
+    if (!is_string($googleClientId) || $googleClientId === '') $googleClientId = (string)($_ENV['GOOGLE_CLIENT_ID'] ?? $_SERVER['GOOGLE_CLIENT_ID'] ?? '');
+    define('GOOGLE_CLIENT_ID', $googleClientId);
 }
 if (!defined('GOOGLE_CLIENT_SECRET')) {
-    define('GOOGLE_CLIENT_SECRET', '');
+    $googleClientSecret = getenv('GOOGLE_CLIENT_SECRET');
+    if (!is_string($googleClientSecret) || $googleClientSecret === '') $googleClientSecret = (string)($_ENV['GOOGLE_CLIENT_SECRET'] ?? $_SERVER['GOOGLE_CLIENT_SECRET'] ?? '');
+    define('GOOGLE_CLIENT_SECRET', $googleClientSecret);
 }
 
 function google_is_configured(): bool {
