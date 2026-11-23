@@ -24,6 +24,78 @@ document.addEventListener('DOMContentLoaded', () => {
     return name.split(' ').filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
   }
 
+  function studentGpa(student) {
+    return student.gpa !== null && student.gpa !== undefined && Number.isFinite(Number(student.gpa))
+      ? Number(student.gpa).toFixed(2)
+      : 'N/A';
+  }
+
+  function showStudentInsight(title, content) {
+    document.getElementById('studentInsightsTitle').textContent = title;
+    document.getElementById('studentInsightsBody').innerHTML = content;
+    openModal('studentInsightsModal');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }
+
+  function openStudentDetails(student) {
+    const cls = getClasses().find((item) => item.id === student.classId);
+    const status = student.status || 'inactive';
+    const details = [
+      ['Email', student.email || 'Not provided'],
+      ['Course', student.course || 'Not provided'],
+      ['Year level', student.year || 'Not provided'],
+      ['Class', cls?.name || 'No class assigned'],
+      ['Student ID', student.studentId || 'Not provided'],
+      ['GPA', studentGpa(student)],
+    ];
+    showStudentInsight(student.name || 'Student details', `
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px">
+        ${details.map(([label, value]) => `
+          <div>
+            <div class="stat-label">${escapeHtml(label)}</div>
+            <div class="title">${escapeHtml(value)}</div>
+          </div>`).join('')}
+        <div>
+          <div class="stat-label">Status</div>
+          <span class="badge ${statusClass(status)}">${escapeHtml(statusLabel(status))}</span>
+        </div>
+      </div>`);
+  }
+
+  function openStudentOverview() {
+    const students = getStudents();
+    const classes = getClasses();
+    const roster = students.length ? students.map((student) => {
+      const cls = classes.find((item) => item.id === student.classId);
+      return `
+        <div class="list-item">
+          <div class="item-meta">
+            <div class="item-title">${escapeHtml(student.name)}</div>
+            <div class="item-sub">${escapeHtml(student.course || 'Course not set')} · ${escapeHtml(student.year || 'Year not set')} · ${escapeHtml(cls?.name || 'No class assigned')}</div>
+          </div>
+          <span class="badge ${statusClass(student.status || 'inactive')}">${escapeHtml(statusLabel(student.status || 'inactive'))}</span>
+        </div>`;
+    }).join('') : '<p class="empty-state">No student records available.</p>';
+
+    showStudentInsight('Student overview', `
+      <div>${roster}</div>`);
+  }
+
+  function openTopPerformers() {
+    const students = getStudents().slice()
+      .sort((a, b) => (Number(b.gpa) || 0) - (Number(a.gpa) || 0));
+    const content = students.length ? students.map((student, index) => `
+      <div class="list-item">
+        <span class="badge badge-info">${index + 1}</span>
+        <div class="item-meta">
+          <div class="item-title">${escapeHtml(student.name)}</div>
+          <div class="item-sub">GPA ${escapeHtml(studentGpa(student))} · ${escapeHtml(student.course || 'Course not set')} · ${escapeHtml(student.year || 'Year not set')}</div>
+        </div>
+        <span class="badge ${statusClass(student.status || 'inactive')}">${escapeHtml(statusLabel(student.status || 'inactive'))}</span>
+      </div>`).join('') : '<p class="empty-state">No student performance data available.</p>';
+    showStudentInsight('Student performance', content);
+  }
+
   function render() {
     const all = getStudents();
 
@@ -133,7 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
         .sort((a, b) => (Number(b.gpa) || 0) - (Number(a.gpa) || 0))
         .slice(0, 3)
         .map((s, i) => `
-        <div class="list-item">
+        <div class="list-item" role="button" tabindex="0" data-student-details="${escapeHtml(s.id)}" aria-label="View details for ${escapeHtml(s.name)}">
           <div class="cell-icon" style="background:${colors[i][0]};color:${colors[i][1]};width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px">${i + 1}</div>
           <div class="item-meta">
             <div class="item-title">${escapeHtml(s.name)}</div>
@@ -176,6 +248,34 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('studentYearFilter')?.addEventListener('change', (e) => {
     yearFilter = e.target.value;
     render();
+  });
+  const wireInsightCard = (card, showDetails) => {
+    if (!card) return;
+    card.addEventListener('click', (event) => {
+      if (event.target.closest('[data-student-details]')) return;
+      showDetails();
+    });
+    card.querySelector('.card-header')?.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      showDetails();
+    });
+  };
+  wireInsightCard(document.querySelector('[data-student-insight-card="overview"]'), openStudentOverview);
+  wireInsightCard(document.querySelector('[data-student-insight-card="top-performers"]'), openTopPerformers);
+  const topPerformers = document.getElementById('topPerformers');
+  topPerformers?.addEventListener('click', (event) => {
+    const row = event.target.closest('[data-student-details]');
+    if (!row) return;
+    const student = getStudents().find((item) => item.id === row.dataset.studentDetails);
+    if (student) openStudentDetails(student);
+  });
+  topPerformers?.addEventListener('keydown', (event) => {
+    const row = event.target.closest('[data-student-details]');
+    if (!row || (event.key !== 'Enter' && event.key !== ' ')) return;
+    event.preventDefault();
+    const student = getStudents().find((item) => item.id === row.dataset.studentDetails);
+    if (student) openStudentDetails(student);
   });
   document.getElementById('addStudentBtn')?.addEventListener('click', () => {
     const sel = document.getElementById('studentClass');

@@ -397,26 +397,50 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderAside() {
-    const deadlines = getAssignments()
-      .filter((a) => a.status !== 'completed')
-      .sort((a, b) => String(dueKey(a, '9999-12-31')).localeCompare(String(dueKey(b, '9999-12-31'))))
-      .slice(0, 5);
-    const dl = document.getElementById('upcomingDeadlines') || document.getElementById('asgDeadlines');
+    const all = getAssignments();
+    const classes = isTeacher ? getClasses() : [];
+    const deadlines = isTeacher
+      ? getUpcomingAssignments(all)
+      : all.filter((a) => a.status !== 'completed')
+        .sort((a, b) => String(dueKey(a, '9999-12-31')).localeCompare(String(dueKey(b, '9999-12-31'))))
+        .slice(0, 5);
+    const dl = document.getElementById('upcomingDeadlines')
+      || document.getElementById(isTeacher ? 'asgDeadlines' : 'deadlineList');
     if (dl) {
       dl.innerHTML = deadlines.length
-        ? deadlines.map((a) => `
-        <div class="list-item">
-          <span class="dot ${subjectShort(a.subject)}"></span>
-          <div class="item-meta">
-            <div class="item-title">${escapeHtml(a.title)}</div>
-            <div class="item-sub">${escapeHtml(a.subject)} · ${a.dueDate ? escapeHtml(formatDate(a.dueDate)) : 'No due date'}${isTeacher && a.dueTime ? ' · ' + escapeHtml(formatTimeOfDay(a.dueTime)) : ''}</div>
-          </div>
-          <span class="badge ${statusClass(displayStatus(a))}">${statusLabel(displayStatus(a))}</span>
-        </div>`).join('')
+        ? deadlines.map((a) => {
+          const classInfo = isTeacher ? classOf(a, classes) : null;
+          const subject = a.subject || classInfo?.subject || classInfo?.name || 'General';
+          if (isTeacher) {
+            const daysUntilDue = Math.round(
+              (new Date(`${a.dueDate}T00:00:00`) - new Date(`${localDateStr()}T00:00:00`)) / 86400000
+            );
+            const dueLabel = daysUntilDue === 0 ? 'Due today'
+              : daysUntilDue === 1 ? 'Tomorrow'
+                : `${daysUntilDue} days`;
+            return `
+              <div class="list-item">
+                <span class="dot ${escapeHtml(subjectShort(subject))}"></span>
+                <div class="item-meta">
+                  <div class="item-title">${escapeHtml(a.title || 'Untitled assignment')}</div>
+                  <div class="item-sub">${escapeHtml(subject)} · ${escapeHtml(formatDate(a.dueDate))}${a.dueTime ? ` · ${escapeHtml(formatTimeOfDay(a.dueTime))}` : ''}</div>
+                </div>
+                <span class="badge badge-upcoming">${dueLabel}</span>
+              </div>`;
+          }
+          return `
+            <div class="list-item">
+              <span class="dot ${escapeHtml(subjectShort(subject))}"></span>
+              <div class="item-meta">
+                <div class="item-title">${escapeHtml(a.title)}</div>
+                <div class="item-sub">${escapeHtml(subject)} · ${a.dueDate ? escapeHtml(formatDate(a.dueDate)) : 'No due date'}</div>
+              </div>
+              <span class="badge ${statusClass(displayStatus(a))}">${statusLabel(displayStatus(a))}</span>
+            </div>`;
+        }).join('')
         : '<p class="empty-state" style="padding:16px">No upcoming deadlines.</p>';
     }
 
-    const all = getAssignments();
     const completed = all.filter((a) => a.status === 'completed').length;
     const pending = all.filter((a) => displayStatus(a) === 'upcoming' || displayStatus(a) === 'pending').length;
     const overdue = all.filter((a) => displayStatus(a) === 'overdue').length;

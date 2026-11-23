@@ -422,6 +422,24 @@ function deleteSubject(id) {
 }
 
 function getAssignments() { return sbGet(SB_KEYS.ASSIGNMENTS, []); }
+function getUpcomingAssignments(assignments = getAssignments(), limit = 5) {
+  const today = localDateStr();
+  const now = new Date();
+  const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  const maxItems = Math.max(0, Math.floor(Number(limit) || 0));
+  return (Array.isArray(assignments) ? assignments : [])
+    .filter((assignment) => {
+      const dueDate = assignment.dueDate || '';
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dueDate) || assignment.status === 'completed') return false;
+      const [year, month, day] = dueDate.split('-').map(Number);
+      const parsed = new Date(year, month - 1, day);
+      if (parsed.getFullYear() !== year || parsed.getMonth() !== month - 1 || parsed.getDate() !== day) return false;
+      return dueDate > today
+        || (dueDate === today && (!assignment.dueTime || assignment.dueTime >= currentTime));
+    })
+    .sort((a, b) => `${a.dueDate}T${a.dueTime || '23:59'}`.localeCompare(`${b.dueDate}T${b.dueTime || '23:59'}`))
+    .slice(0, maxItems);
+}
 function addAssignment(asg) {
   const list = getAssignments();
   const item = { id: uid('asg'), status: 'upcoming', points: 50, ...asg };

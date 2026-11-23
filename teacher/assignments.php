@@ -245,27 +245,7 @@
               </div>
             </div>
             <div id="asgDeadlines">
-              <div class="list-item">
-                <div class="item-meta">
-                  <div class="item-title">Algebra Homework Set 3</div>
-                  <div class="item-sub">Math 101 · Sep 12</div>
-                </div>
-                <span class="badge badge-upcoming">Today</span>
-              </div>
-              <div class="list-item">
-                <div class="item-meta">
-                  <div class="item-title">Science Lab Report</div>
-                  <div class="item-sub">Science 205 · Sep 14</div>
-                </div>
-                <span class="badge badge-upcoming">2 days</span>
-              </div>
-              <div class="list-item">
-                <div class="item-meta">
-                  <div class="item-title">Essay: Modern Literature</div>
-                  <div class="item-sub">English 101 · Sep 18</div>
-                </div>
-                <span class="badge badge-upcoming">6 days</span>
-              </div>
+              <p class="empty-state" style="padding:16px">Loading deadlines...</p>
             </div>
           </div>
 

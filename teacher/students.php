@@ -112,8 +112,8 @@
         </div>
 
         <aside class="page-aside">
-          <div class="card">
-            <div class="card-header">
+          <div class="card insight-card" data-student-insight-card="overview">
+            <div class="card-header" role="button" tabindex="0" aria-label="Show more student overview information">
               <div class="card-header-left">
                 <div class="card-icon blue"><i data-lucide="pie-chart"></i></div>
                 <h2 class="card-title">Student Overview</h2>
@@ -143,8 +143,8 @@
             </div>
           </div>
 
-          <div class="card">
-            <div class="card-header">
+          <div class="card insight-card" data-student-insight-card="top-performers">
+            <div class="card-header" role="button" tabindex="0" aria-label="Show more top performer information">
               <div class="card-header-left">
                 <div class="card-icon green"><i data-lucide="trophy"></i></div>
                 <h2 class="card-title">Top Performers</h2>
@@ -226,6 +226,21 @@
           <button type="submit" class="btn btn-primary" id="saveStudentBtn">Add Student</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="studentInsightsModal" role="dialog" aria-modal="true" aria-labelledby="studentInsightsTitle">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="studentInsightsTitle">Student details</h3>
+        <button type="button" class="modal-close" data-close-modal="studentInsightsModal" aria-label="Close">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="modal-body" id="studentInsightsBody"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-close-modal="studentInsightsModal">Close</button>
+      </div>
     </div>
   </div>
 
