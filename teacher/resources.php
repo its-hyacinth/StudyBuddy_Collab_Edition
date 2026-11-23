@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="../css/pages.css" />
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
-<body>
+<body class="teacher-resources-page">
   <div class="app-shell" id="appShell">
     <div class="page-content">
       <div class="page-header">
@@ -22,9 +22,6 @@
           </h1>
           <p class="page-subtitle">Upload and share learning materials with your classes.</p>
         </div>
-        <button type="button" class="btn btn-primary" id="uploadResourceBtn">
-          <i data-lucide="upload"></i> Upload Resource
-        </button>
       </div>
 
       <div class="stat-grid" id="resourceStats">
@@ -83,10 +80,30 @@
               <option value="doc">Document</option>
               <option value="slide">Slides</option>
               <option value="zip">Archive</option>
+              <option value="link">Drive Link</option>
+              <option value="folder">Folder</option>
             </select>
           </div>
 
           <div class="card">
+            <div class="resource-folder-header">
+              <div class="resource-folder-path">
+                <button type="button" class="btn btn-ghost btn-sm resource-folder-back" id="resourceFolderBack" aria-label="Go to parent folder">
+                  <i data-lucide="arrow-left"></i> Back
+                </button>
+                <nav class="breadcrumb" id="resourceBreadcrumb" aria-label="Resource folder location"></nav>
+                <span class="resource-folder-count" id="resourceFolderCount"></span>
+              </div>
+              <div class="resource-folder-actions">
+                <button type="button" class="btn btn-primary btn-sm" id="uploadResourceBtn">
+                  <i data-lucide="upload"></i> Upload Resource
+                </button>
+                <button type="button" class="btn btn-ghost btn-sm" id="resourceNewFolderBtn">
+                  <i data-lucide="folder-plus"></i> New folder
+                </button>
+              </div>
+            </div>
+            <p class="resource-folder-hint">Click a row or Open to view it. Use the three-dot menu for Details or Delete; drag a row onto a folder to move it.</p>
             <div class="table-wrap">
               <table class="data-table" id="resourcesTable">
                 <thead>
@@ -97,7 +114,7 @@
                     <th>Size</th>
                     <th>Uploaded</th>
                     <th>Downloads</th>
-                    <th></th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody id="resourcesTableBody">
@@ -330,6 +347,25 @@
     </div>
   </div>
 
+  <div class="modal-backdrop" id="resourceDetailsModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="resourceDetailsTitle">
+      <div class="modal-header">
+        <h3 id="resourceDetailsTitle">Resource details</h3>
+        <button type="button" class="modal-close" data-close-modal="resourceDetailsModal" aria-label="Close details">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="form-hint" id="resourceDetailsHint">Details for this resource.</p>
+        <div id="resourceDetailsContent"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-close-modal="resourceDetailsModal">Close</button>
+        <button type="button" class="btn btn-primary" id="resourceDetailsOpenBtn">Open resource</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Upload Resource Modal -->
   <div class="modal-backdrop" id="uploadResourceModal">
     <div class="modal">
@@ -361,6 +397,12 @@
             <input class="form-control" type="file" id="resourceFile" accept=".pdf,.doc,.docx,.ppt,.pptx,.zip,.png,.jpg" required />
           </div>
           <div class="form-group">
+            <label for="resourceFolder">Folder (optional)</label>
+            <select class="form-control" id="resourceFolder">
+              <option value="">All resources</option>
+            </select>
+          </div>
+          <div class="form-group">
             <label for="resourceDescription">Description (optional)</label>
             <textarea class="form-control" id="resourceDescription" placeholder="Brief description of this resource..."></textarea>
           </div>
@@ -372,6 +414,92 @@
           </button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="driveResourceModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="driveResourceTitle">
+      <div class="modal-header">
+        <h3 id="driveResourceTitle">Add from Google Drive</h3>
+        <button type="button" class="modal-close" data-close-modal="driveResourceModal" aria-label="Close">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <form id="driveResourceForm">
+        <div class="modal-body">
+          <p class="form-hint">Paste a share link from Google Drive. The file's Drive sharing settings must allow your students to open it.</p>
+          <div class="form-group">
+            <label for="driveResourceName">Resource title</label>
+            <input class="form-control" type="text" id="driveResourceName" required />
+          </div>
+          <div class="form-group">
+            <label for="driveResourceClass">Class</label>
+            <select class="form-control" id="driveResourceClass" required>
+              <option value="">Select class</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="driveResourceUrl">Google Drive link</label>
+            <input class="form-control" type="url" id="driveResourceUrl" placeholder="https://drive.google.com/..." required />
+          </div>
+          <div class="form-group">
+            <label for="driveResourceFolder">Folder (optional)</label>
+            <select class="form-control" id="driveResourceFolder">
+              <option value="">All resources</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="driveResourceDescription">Description (optional)</label>
+            <textarea class="form-control" id="driveResourceDescription"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-close-modal="driveResourceModal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="saveDriveResourceBtn">Add resource</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="newResourceFolderModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="newResourceFolderTitle">
+      <div class="modal-header">
+        <h3 id="newResourceFolderTitle">Create resource folder</h3>
+        <button type="button" class="modal-close" data-close-modal="newResourceFolderModal" aria-label="Close">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <form id="newResourceFolderForm">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="newResourceFolderName">Folder name</label>
+            <input class="form-control" type="text" id="newResourceFolderName" maxlength="120" required />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-close-modal="newResourceFolderModal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create folder</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="shareAllResourcesModal">
+    <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="shareAllResourcesTitle" aria-describedby="shareAllResourcesDescription">
+      <div class="modal-header">
+        <h3 id="shareAllResourcesTitle">Share all resources?</h3>
+        <button type="button" class="modal-close" data-close-modal="shareAllResourcesModal" aria-label="Cancel sharing">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p id="shareAllResourcesDescription">Resources with an attached file or Drive link will be visible to enrolled students whose account email matches a class roster.</p>
+        <p id="shareAllResourcesCount" class="form-hint"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-close-modal="shareAllResourcesModal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="confirmShareAllResourcesBtn">Share all</button>
+      </div>
     </div>
   </div>
 

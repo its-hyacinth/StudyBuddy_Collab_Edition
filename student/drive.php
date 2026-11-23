@@ -32,7 +32,7 @@
         <div class="page-main">
           <div class="filter-tabs" id="driveTabs" role="tablist">
             <button type="button" class="filter-tab active" data-tab="my-drive">My Drive</button>
-            <button type="button" class="filter-tab" data-tab="shared">Shared</button>
+            <button type="button" class="filter-tab" data-tab="shared">Shared with me</button>
             <button type="button" class="filter-tab" data-tab="recent">Recent</button>
             <button type="button" class="filter-tab" data-tab="starred">Starred</button>
             <button type="button" class="filter-tab" data-tab="trash">Trash</button>

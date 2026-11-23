@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const perPage = 8;
   let currentFolderId = null;
   const selectedIds = new Set();
+  let sharedResources = [];
 
   function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, (char) => ({
@@ -20,10 +21,26 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function filtered() {
-    let list = getDriveFiles();
-    if (tab === 'trash') list = list.filter((f) => f.trashed);
-    else list = list.filter((f) => !f.trashed);
-    if (tab === 'shared') list = list.filter((f) => f.shared);
+    let list;
+    if (tab === 'shared') {
+      list = [
+        ...getDriveFiles().filter((file) => file.shared && !file.trashed),
+        ...sharedResources.map((resource) => ({
+          id: `shared_resource_${resource.id}`,
+          name: resource.title || 'Shared resource',
+          owner: resource.teacherName || 'Teacher',
+          modified: resource.uploaded || '',
+          size: resource.size || 'Link',
+          type: resource.type || 'link',
+          url: resource.url,
+          sharedResource: true,
+        })),
+      ];
+    } else {
+      list = getDriveFiles();
+      if (tab === 'trash') list = list.filter((file) => file.trashed);
+      else list = list.filter((file) => !file.trashed);
+    }
     if (tab === 'starred') list = list.filter((f) => f.starred);
     if (tab === 'recent') {
       list = [...list].sort((a, b) => String(b.modified || '').localeCompare(String(a.modified || ''))).slice(0, 8);
@@ -37,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return list;
   }
 
-  const typeIcon = { folder: 'folder', doc: 'file-text', sheet: 'table', slide: 'presentation', pdf: 'file', image: 'image' };
+  const typeIcon = { folder: 'folder', doc: 'file-text', sheet: 'table', slide: 'presentation', pdf: 'file', image: 'image', link: 'external-link' };
   const typeFromFile = (file) => {
     const ext = file.name.split('.').pop().toLowerCase();
     if (['doc', 'docx', 'txt'].includes(ext)) return 'doc';
@@ -64,7 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const tbody = document.querySelector('#driveTable tbody') || document.getElementById('driveTableBody');
     const rows = slice.map((f) => `
       <tr data-id="${escapeHtml(f.id)}" data-type="${escapeHtml(f.type)}">
-        <td><label class="custom-check"><input type="checkbox" data-select="${escapeHtml(f.id)}" aria-label="Select ${escapeHtml(f.name)}" ${selectedIds.has(f.id) ? 'checked' : ''} /><span class="box"></span></label></td>
+        <td><label class="custom-check"><input type="checkbox" data-select="${escapeHtml(f.id)}" aria-label="Select ${escapeHtml(f.name)}" ${selectedIds.has(f.id) ? 'checked' : ''} ${f.sharedResource ? 'disabled' : ''} /><span class="box"></span></label></td>
         <td>
           <div class="cell-title" style="cursor:pointer" data-open="${escapeHtml(f.id)}" role="button" tabindex="0">
             <div class="file-icon ${f.type}"><i data-lucide="${typeIcon[f.type] || 'file'}"></i></div>
@@ -75,31 +92,50 @@ document.addEventListener('DOMContentLoaded', () => {
         <td>${escapeHtml(f.modified ? formatDate(f.modified) : '—')}</td>
         <td>${escapeHtml(f.size || '—')}</td>
         <td>
-          <div class="action-menu-wrap">
-            <button type="button" class="action-menu-btn" data-menu="${escapeHtml(f.id)}" aria-label="Actions for ${escapeHtml(f.name)}"><i data-lucide="more-vertical"></i></button>
-            <div class="action-dropdown" id="dmenu-${escapeHtml(f.id)}">
-              ${f.trashed
-                ? `<button type="button" data-restore="${escapeHtml(f.id)}"><i data-lucide="rotate-ccw"></i> Restore</button>`
-                : `<button type="button" data-star="${escapeHtml(f.id)}"><i data-lucide="${f.starred ? 'star-off' : 'star'}"></i> ${f.starred ? 'Remove star' : 'Add star'}</button>
-                   <button type="button" data-trash="${escapeHtml(f.id)}" class="danger"><i data-lucide="trash-2"></i> Move to trash</button>`}
-              ${f.url ? `<a href="${escapeHtml(f.url)}" target="_blank" rel="noopener"><i data-lucide="external-link"></i> Open file</a>` : ''}
-            </div>
-          </div>
+          ${f.sharedResource
+            ? '<span class="badge badge-info">Shared</span>'
+            : `<div class="action-menu-wrap">
+                <button type="button" class="action-menu-btn" data-menu="${escapeHtml(f.id)}" aria-label="Actions for ${escapeHtml(f.name)}"><i data-lucide="more-vertical"></i></button>
+                <div class="action-dropdown" id="dmenu-${escapeHtml(f.id)}">
+                  ${f.trashed
+                    ? `<button type="button" data-restore="${escapeHtml(f.id)}"><i data-lucide="rotate-ccw"></i> Restore</button>`
+                    : `<button type="button" data-star="${escapeHtml(f.id)}"><i data-lucide="${f.starred ? 'star-off' : 'star'}"></i> ${f.starred ? 'Remove star' : 'Add star'}</button>
+                       <button type="button" data-trash="${escapeHtml(f.id)}" class="danger"><i data-lucide="trash-2"></i> Move to trash</button>`}
+                  ${f.url ? `<a href="${escapeHtml(f.url)}" target="_blank" rel="noopener"><i data-lucide="external-link"></i> Open file</a>` : ''}
+                </div>
+              </div>`}
         </td>
       </tr>`).join('');
 
-    if (tbody) tbody.innerHTML = rows || '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted)">No files found.</td></tr>';
+    if (tbody) {
+      const emptyMessage = tab === 'shared' ? 'No files have been shared with you yet.' : 'No files found.';
+      tbody.innerHTML = rows || `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted)">${emptyMessage}</td></tr>`;
+    }
 
     document.querySelectorAll('[data-open]').forEach((el) => {
       const open = () => {
-        const file = getDriveFiles().find((item) => item.id === el.dataset.open);
+        const file = slice.find((item) => item.id === el.dataset.open)
+          || getDriveFiles().find((item) => item.id === el.dataset.open);
         if (!file) return;
         if (file.type === 'folder') {
           currentFolderId = file.id;
           page = 1;
           render();
         } else if (file.url) {
-          window.open(file.url, '_blank', 'noopener');
+          let url;
+          try {
+            url = new URL(file.url, window.location.href);
+          } catch {
+            showToast('This file has an invalid link.', 'error');
+            return;
+          }
+          const googleDriveUrl = url.protocol === 'https:'
+            && ['drive.google.com', 'docs.google.com'].includes(url.hostname);
+          if (url.origin !== window.location.origin && !googleDriveUrl) {
+            showToast('This file link is not supported.', 'error');
+            return;
+          }
+          window.open(url.href, '_blank', 'noopener,noreferrer');
         } else {
           showToast('This item has no downloadable file attached.', 'info');
         }
@@ -118,10 +154,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     const selectAll = document.getElementById('driveSelectAll');
     if (selectAll) {
-      const selectedCount = slice.filter((file) => selectedIds.has(file.id)).length;
-      selectAll.checked = slice.length > 0 && selectedCount === slice.length;
-      selectAll.indeterminate = selectedCount > 0 && selectedCount < slice.length;
-      selectAll.disabled = slice.length === 0;
+      const selectableFiles = slice.filter((file) => !file.sharedResource);
+      const selectedCount = selectableFiles.filter((file) => selectedIds.has(file.id)).length;
+      selectAll.checked = selectableFiles.length > 0 && selectedCount === selectableFiles.length;
+      selectAll.indeterminate = selectedCount > 0 && selectedCount < selectableFiles.length;
+      selectAll.disabled = selectableFiles.length === 0;
     }
     document.querySelectorAll('[data-menu]').forEach((btn) => {
       btn.addEventListener('click', (e) => {
@@ -350,6 +387,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof lucide !== 'undefined') lucide.createIcons();
   }
 
+  async function loadSharedResources() {
+    const response = await fetch('../api/shared-resources.php', { credentials: 'same-origin' });
+    const result = await response.json().catch(() => null);
+    if (!response.ok || !result?.ok || !Array.isArray(result.resources)) {
+      throw new Error(result?.message || 'Unable to load resources shared by your classes.');
+    }
+    sharedResources = result.resources;
+    if (tab === 'shared') render();
+  }
+
   document.querySelectorAll('#driveTabs .filter-tab, [data-drive-tab]').forEach((tabEl) => {
     tabEl.addEventListener('click', () => {
       tab = tabEl.dataset.driveTab || tabEl.dataset.tab || 'my-drive';
@@ -428,4 +475,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.history.replaceState({}, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`);
   }
   render();
+  loadSharedResources().catch((error) => {
+    showToast(error instanceof Error ? error.message : 'Unable to load shared resources.', 'error');
+  });
 });

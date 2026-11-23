@@ -684,6 +684,99 @@
 .breadcrumb a { font-weight: 500; }
 .breadcrumb span.current { color: var(--text-heading); font-weight: 600; }
 
+.resource-folder-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px 4px;
+}
+.resource-folder-path {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.resource-folder-actions { display: flex; align-items: center; gap: 8px; }
+.resource-folder-back[hidden] { display: none; }
+.resource-folder-header .breadcrumb {
+  flex-wrap: wrap;
+  margin: 0;
+  min-height: 24px;
+}
+.resource-folder-header .breadcrumb a {
+  color: var(--primary);
+  text-decoration: none;
+}
+.resource-folder-header .breadcrumb a:hover { text-decoration: underline; }
+.resource-folder-count {
+  color: var(--text-muted);
+  font-size: 12px;
+  white-space: nowrap;
+  padding-left: 12px;
+  border-left: 1px solid var(--border, #E2E8F0);
+}
+.resource-folder-hint {
+  margin: 0 16px 12px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.teacher-resources-page .page-layout {
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+}
+.teacher-resources-page .page-aside { min-width: 0; }
+.teacher-resources-page .page-aside .card { min-width: 0; }
+.resource-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  white-space: nowrap;
+}
+.resource-actions-cell { width: 92px; }
+.resource-actions .btn { flex: 0 0 auto; }
+.resource-details {
+  margin: 0;
+  border: 1px solid var(--border, #E2E8F0);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.resource-detail-row {
+  display: grid;
+  grid-template-columns: minmax(100px, 130px) 1fr;
+  gap: 16px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border, #E2E8F0);
+  font-size: 13px;
+}
+.resource-detail-row:last-child { border-bottom: 0; }
+.resource-detail-row dt { color: var(--text-muted); }
+.resource-detail-row dd { margin: 0; color: var(--text-heading); font-weight: 500; overflow-wrap: anywhere; }
+#resourcesTable tbody tr[draggable="true"] { cursor: grab; }
+#resourcesTable tbody tr.is-dragging { opacity: .45; }
+#resourcesTable tbody tr.drop-target {
+  background: var(--primary-light, #EFF6FF);
+  outline: 2px dashed var(--primary);
+  outline-offset: -2px;
+}
+.resource-folder-header [data-drop-folder].drop-target {
+  border-radius: 4px;
+  background: var(--primary-light, #EFF6FF);
+  outline: 2px dashed var(--primary);
+}
+@media (max-width: 640px) {
+  .resource-folder-header { align-items: flex-start; flex-wrap: wrap; }
+  .resource-folder-path { align-items: flex-start; flex-wrap: wrap; }
+  .resource-folder-actions { flex-wrap: wrap; }
+  .resource-folder-count { padding-left: 0; border-left: 0; }
+}
+@media (max-width: 1200px) and (min-width: 901px) {
+  .teacher-resources-page .page-layout { grid-template-columns: minmax(0, 1fr) 260px; gap: 16px; }
+}
+@media (max-width: 900px) {
+  .teacher-resources-page .page-layout { grid-template-columns: minmax(0, 1fr); }
+}
+
 /* ========== Teacher greeting banner ========== */
 .greeting-banner {
   display: flex;
