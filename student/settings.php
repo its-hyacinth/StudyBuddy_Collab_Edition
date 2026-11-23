@@ -50,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_SERVER['HTTP_X_PROFILE_SAVE'] ??
     $pdo->commit();
   } catch (PDOException $error) {
     if ($pdo->inTransaction()) $pdo->rollBack();
-    if ($error->getCode() === '23000') json_response(['success' => false, 'message' => 'That email address is already in use.'], 409);
+    if (sb_is_duplicate($error)) json_response(['success' => false, 'message' => 'That email address is already in use.'], 409);
     error_log($error->getMessage());
     json_response(['success' => false, 'message' => 'Profile could not be saved. Please try again.'], 500);
   }

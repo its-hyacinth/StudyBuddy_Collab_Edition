@@ -1,11 +1,7 @@
 <?php
 $expectedRole = 'teacher';
 require_once __DIR__ . '/../includes/page_guard.php';
-
-// ---------------------------------------------------------------------
-// Database settings (match your XAMPP / phpMyAdmin)
-// ---------------------------------------------------------------------
-$DB = ['host' => 'localhost', 'name' => 'Studybuddy', 'user' => 'root', 'pass' => ''];
+require_once __DIR__ . '/../config/database.php';
 
 // name + email live in the `users` table
 $USER_COLS = ['fullName' => 'full_name', 'email' => 'email'];
@@ -20,13 +16,9 @@ $userId = $_SESSION['user_id'] ?? ($_SESSION['user']['id'] ?? ($_SESSION['id'] ?
 $pdo = null;
 $dbError = null;
 try {
-  $pdo = new PDO(
-    "mysql:host={$DB['host']};dbname={$DB['name']};charset=utf8mb4",
-    $DB['user'], $DB['pass'],
-    [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]
-  );
+  $pdo = db();
 } catch (PDOException $e) {
-  $dbError = 'Database connection failed: ' . $e->getMessage();
+  $dbError = 'Database connection failed.';
 }
 
 // ---------------------------------------------------------------
@@ -82,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_SERVER['HTTP_X_PROFILE_SAVE'] ??
     $pdo->commit();
   } catch (PDOException $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();
-    if ($e->getCode() === '23000') $fail(409, 'That email is already in use');
+    if (sb_is_duplicate($e)) $fail(409, 'That email is already in use');
     error_log($e->getMessage());
     $fail(500, 'Database error: ' . $e->getMessage()); // remove the detail once it works
   }

@@ -54,10 +54,10 @@ try {
         try {
             $stmt->execute([$name, $email, password_hash($password, PASSWORD_DEFAULT), $role]);
         } catch (PDOException $error) {
-            if ($error->getCode() === '23000') json_response(['ok' => false, 'message' => 'An account with this email already exists.'], 409);
+            if (sb_is_duplicate($error)) json_response(['ok' => false, 'message' => 'An account with this email already exists.'], 409);
             throw $error;
         }
-        $row = fetch_user_by_id($pdo, (int)$pdo->lastInsertId());
+        $row = fetch_user_by_id($pdo, sb_last_insert_id($pdo));
         $user = establish_session($pdo, $row);
         json_response(['ok' => true, 'user' => $user, 'redirect' => role_redirect($role)]);
     }
@@ -157,11 +157,11 @@ try {
         try {
             $stmt->execute([$pending['name'], $pending['email'], $role, $pending['sub'], $pending['picture'] !== '' ? $pending['picture'] : null]);
         } catch (PDOException $error) {
-            if ($error->getCode() === '23000') json_response(['ok' => false, 'message' => 'An account with this email already exists. Sign in with your password instead.'], 409);
+            if (sb_is_duplicate($error)) json_response(['ok' => false, 'message' => 'An account with this email already exists. Sign in with your password instead.'], 409);
             throw $error;
         }
         unset($_SESSION['google_signup']);
-        $row = fetch_user_by_id($pdo, (int)$pdo->lastInsertId());
+        $row = fetch_user_by_id($pdo, sb_last_insert_id($pdo));
         $user = establish_session($pdo, $row);
         json_response(['ok' => true, 'user' => $user, 'redirect' => role_redirect($role)]);
     }
