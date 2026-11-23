@@ -8,6 +8,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const session = initShell(isTeacher ? 'teacher' : 'student');
   if (!session) return;
   wireModalClosers();
+  wirePasswordToggle('currentPassword', 'toggleCurrentPassword', 'current password');
+  wirePasswordToggle('newPassword', 'toggleNewPassword', 'new password');
+  wirePasswordToggle('confirmPassword', 'toggleConfirmPassword', 'confirm password');
+  wirePasswordToggle('deleteAccountPassword', 'toggleDeleteAccountPassword', 'current password');
 
   const settings = getSettings();
   function cleanStudentProfile(values) {
@@ -153,8 +157,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if ($('settingsName')) $('settingsName').textContent = name;
     if ($('settingsDisplayEmail')) $('settingsDisplayEmail').textContent = email;
     if ($('settingsAvatar')) $('settingsAvatar').textContent = initialsOf(name);
-    if ($('infoEmployeeId')) $('infoEmployeeId').textContent = values.employeeId || fieldMap.employeeId || '—';
-    if ($('infoDepartment')) $('infoDepartment').textContent = values.department || fieldMap.department || '—';
+    if ($('infoEmployeeId')) $('infoEmployeeId').textContent = values.employeeId || '—';
+    if ($('infoPhone')) $('infoPhone').textContent = values.phone || '—';
+    if ($('infoSchool')) $('infoSchool').textContent = values.school || '—';
+    if ($('infoDepartment')) $('infoDepartment').textContent = values.department || '—';
     // Student overview aside
     if ($('overviewName')) $('overviewName').textContent = name;
     if ($('overviewEmail')) $('overviewEmail').textContent = email;
@@ -209,37 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Teacher: Save Changes on the profile form
-  $('profileForm')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const next = {
-      fullName: $('profileFullName')?.value.trim(),
-      email: $('profileEmail')?.value.trim(),
-      employeeId: $('profileEmployeeId')?.value.trim(),
-      phone: $('profilePhone')?.value.trim(),
-      school: $('profileSchool')?.value.trim(),
-      department: $('profileDepartment')?.value.trim(),
-    };
-    if (!next.fullName) { showToast('Full name is required', 'error'); return; }
-    if (!/^\S+@\S+\.\S+$/.test(next.email || '')) { showToast('Enter a valid email', 'error'); return; }
-
-    const btn = $('saveProfileBtn');
-    if (btn) btn.disabled = true;
-    try {
-      await saveProfileToServer(next);
-      persistLocally(next);
-      Object.assign(fieldMap, next);
-      showProfile(next);
-      refreshShellUser(next.fullName, next.email);
-      showToast('Profile saved');
-    } catch (err) {
-      showToast(err.message, 'error');
-    } finally {
-      if (btn) btn.disabled = false;
-    }
-  });
-
-  // Student: click a row to edit it (one field at a time)
+  // Click a profile row to edit one field at a time.
   document.querySelectorAll('.settings-row[data-field]').forEach((row) => {
     const openEditor = () => openProfileEditor(row.dataset.field);
     row.setAttribute('role', 'button');
@@ -463,7 +439,7 @@ document.addEventListener('DOMContentLoaded', () => {
   window.refreshConnectedAccounts = refreshConnected;
 
   // ---------- Security ----------
-  // Student layout opens a modal; teacher layout has an inline form (#passwordForm).
+  // The password row opens the shared change-password modal.
   if ($('changePasswordModal')) {
     $('changePasswordBtn')?.addEventListener('click', () => openModal('changePasswordModal'));
   }
@@ -494,24 +470,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  $('passwordForm')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const current = $('currentPassword')?.value || '';
-    const pw = $('newPassword')?.value || '';
-    const confirmPw = $('confirmPassword')?.value || '';
-    if (pw.length < 8) { showToast('New password must be at least 8 characters', 'error'); return; }
-    if (pw !== confirmPw) { showToast('Passwords do not match', 'error'); return; }
-    try {
-      const response = await apiAuth('change-password', { currentPassword: current, newPassword: pw, code: $('passwordAuthenticatorCode')?.value || '' });
-      const result = await response.json();
-      if (!response.ok || !result.ok) throw new Error(result.message || 'Password could not be updated.');
-      e.currentTarget.reset();
-      showToast('Password updated.');
-    } catch (error) {
-      showToast(error.message || 'Password could not be updated.', 'error');
-    }
-  });
-
+  $('changePasswordOptionBtn')?.addEventListener('click', () => openModal('changePasswordModal'));
   $('deleteAccountBtn')?.addEventListener('click', () => openModal('deleteAccountModal'));
   $('deleteAccountForm')?.addEventListener('submit', async (event) => {
     event.preventDefault();

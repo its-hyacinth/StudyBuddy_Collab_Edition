@@ -20,7 +20,6 @@
             <span class="title-icon"><i data-lucide="graduation-cap"></i></span>
             My Classes
           </h1>
-          <p class="page-subtitle">BSIT_DAY_4-B classes from Google Classroom. Instructors TBA until Classroom lists them.</p>
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <button type="button" class="btn btn-outline" id="syncClassroomBtn">

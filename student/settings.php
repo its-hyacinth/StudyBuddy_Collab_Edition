@@ -185,7 +185,7 @@ if (is_array($savedStudentProfile)) $studentProfile = array_merge($studentProfil
               </div>
               <div class="settings-row" data-field="yearLevel">
                 <div>
-                  <div class="row-label">Year Level</div>
+                  <div class="row-label">School Level</div>
                   <div class="row-value" id="profileYearLevel">—</div>
                 </div>
                 <i data-lucide="chevron-right" class="chevron"></i>
@@ -535,15 +535,33 @@ if (is_array($savedStudentProfile)) $studentProfile = array_merge($studentProfil
         <div class="modal-body">
           <div class="form-group">
             <label for="currentPassword">Current password</label>
-            <input type="password" class="form-control" id="currentPassword" autocomplete="current-password" required />
+            <div class="input-icon-wrap has-password-toggle">
+              <i data-lucide="lock" class="input-icon"></i>
+              <input type="password" class="form-control" id="currentPassword" autocomplete="current-password" required />
+              <button type="button" class="input-action" id="toggleCurrentPassword" aria-label="Show current password" aria-controls="currentPassword" aria-pressed="false">
+                <i data-lucide="eye"></i>
+              </button>
+            </div>
           </div>
           <div class="form-group">
             <label for="newPassword">New password</label>
-            <input type="password" class="form-control" id="newPassword" autocomplete="new-password" minlength="8" required />
+            <div class="input-icon-wrap has-password-toggle">
+              <i data-lucide="lock" class="input-icon"></i>
+              <input type="password" class="form-control" id="newPassword" autocomplete="new-password" minlength="8" required />
+              <button type="button" class="input-action" id="toggleNewPassword" aria-label="Show new password" aria-controls="newPassword" aria-pressed="false">
+                <i data-lucide="eye"></i>
+              </button>
+            </div>
           </div>
           <div class="form-group">
             <label for="confirmPassword">Confirm new password</label>
-            <input type="password" class="form-control" id="confirmPassword" autocomplete="new-password" minlength="8" required />
+            <div class="input-icon-wrap has-password-toggle">
+              <i data-lucide="lock" class="input-icon"></i>
+              <input type="password" class="form-control" id="confirmPassword" autocomplete="new-password" minlength="8" required />
+              <button type="button" class="input-action" id="toggleConfirmPassword" aria-label="Show confirm password" aria-controls="confirmPassword" aria-pressed="false">
+                <i data-lucide="eye"></i>
+              </button>
+            </div>
           </div>
         </div>
         <div class="modal-footer">
@@ -567,7 +585,13 @@ if (is_array($savedStudentProfile)) $studentProfile = array_merge($studentProfil
           <p>This permanently deletes your account and StudyBuddy data. This cannot be undone.</p>
           <div class="form-group">
             <label for="deleteAccountPassword">Current password</label>
-            <input type="password" class="form-control" id="deleteAccountPassword" autocomplete="current-password" />
+            <div class="input-icon-wrap has-password-toggle">
+              <i data-lucide="lock" class="input-icon"></i>
+              <input type="password" class="form-control" id="deleteAccountPassword" autocomplete="current-password" />
+              <button type="button" class="input-action" id="toggleDeleteAccountPassword" aria-label="Show current password" aria-controls="deleteAccountPassword" aria-pressed="false">
+                <i data-lucide="eye"></i>
+              </button>
+            </div>
           </div>
           <div class="form-group" id="deleteAccountTotpWrap">
             <label for="deleteAccountCode">Authenticator or backup code, if enabled</label>
