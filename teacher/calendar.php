@@ -236,29 +236,7 @@
                 <h2 class="card-title">Today's Schedule</h2>
               </div>
             </div>
-            <div id="todayScheduleAside">
-              <div class="schedule-item">
-                <span class="time">8:00 – 9:30 AM</span>
-                <div class="info">
-                  <div class="subj">Mathematics</div>
-                  <div class="room">Room 302</div>
-                </div>
-              </div>
-              <div class="schedule-item">
-                <span class="time">10:00 – 11:30 AM</span>
-                <div class="info">
-                  <div class="subj">Science</div>
-                  <div class="room">Lab 105</div>
-                </div>
-              </div>
-              <div class="schedule-item">
-                <span class="time">1:00 – 2:30 PM</span>
-                <div class="info">
-                  <div class="subj">English</div>
-                  <div class="room">Room 210</div>
-                </div>
-              </div>
-            </div>
+            <div id="todayScheduleAside"></div>
           </div>
 
           <div class="card">
@@ -296,7 +274,7 @@
   <div class="modal-backdrop" id="addScheduleModal">
     <div class="modal">
       <div class="modal-header">
-        <h3>Add Schedule</h3>
+        <h3 id="addScheduleTitle">Add Schedule</h3>
         <button type="button" class="modal-close" data-close-modal="addScheduleModal" aria-label="Close">
           <i data-lucide="x"></i>
         </button>
@@ -353,6 +331,26 @@
           <button type="submit" class="btn btn-primary" id="saveScheduleBtn">Add Schedule</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="dayScheduleModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="dayScheduleTitle">
+      <div class="modal-header">
+        <h3 id="dayScheduleTitle">Events for this day</h3>
+        <button type="button" class="modal-close" data-close-modal="dayScheduleModal" aria-label="Close day details">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div id="dayScheduleEvents"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-close-modal="dayScheduleModal">Close</button>
+        <button type="button" class="btn btn-primary" id="addDayScheduleBtn">
+          <i data-lucide="plus"></i> Add Schedule
+        </button>
+      </div>
     </div>
   </div>
 
