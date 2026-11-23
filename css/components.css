@@ -5,7 +5,7 @@
   background: var(--card-bg);
   border-radius: var(--radius);
   box-shadow: var(--card-shadow);
-  border: 1px solid rgba(226, 232, 240, 0.6);
+  border: 1px solid var(--border);
   padding: 20px;
   transition: box-shadow var(--transition);
 }
@@ -69,7 +69,7 @@
   background: var(--card-bg);
   border-radius: var(--radius);
   box-shadow: var(--card-shadow);
-  border: 1px solid rgba(226, 232, 240, 0.6);
+  border: 1px solid var(--border);
   padding: 18px;
   display: flex;
   align-items: flex-start;
@@ -164,7 +164,7 @@
 .btn-primary:hover { background: var(--primary-hover); color: #fff; }
 
 .btn-outline {
-  background: #fff;
+  background: var(--card-bg);
   color: var(--primary);
   border: 1.5px solid var(--primary);
 }
@@ -299,7 +299,7 @@
 }
 .data-table td {
   padding: 14px 12px;
-  border-bottom: 1px solid #F1F5F9;
+  border-bottom: 1px solid var(--border);
   vertical-align: middle;
   font-size: 13.5px;
   color: var(--text-body);
@@ -308,7 +308,7 @@
 .data-table tbody tr {
   transition: background var(--transition);
 }
-.data-table tbody tr:hover { background: #F8FAFC; }
+.data-table tbody tr:hover { background: var(--page-bg); }
 
 .cell-title {
   display: flex;
@@ -352,7 +352,7 @@
   align-items: center;
   justify-content: center;
   transition: all var(--transition);
-  background: #fff;
+  background: var(--card-bg);
 }
 .custom-check input:checked + .box {
   background: var(--primary);
@@ -384,7 +384,7 @@
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
-  background: #fff;
+  background: var(--card-bg);
   padding: 4px;
   border-radius: 10px;
   border: 1px solid var(--border);
@@ -455,13 +455,13 @@
   align-items: center;
   gap: 12px;
   padding: 12px 0;
-  border-bottom: 1px solid #F1F5F9;
+  border-bottom: 1px solid var(--border);
   transition: background var(--transition);
   cursor: pointer;
 }
 .list-item-link { color: inherit; text-decoration: none; }
 .list-item:last-child { border-bottom: none; }
-.list-item:hover { background: #F8FAFC; margin: 0 -8px; padding-left: 8px; padding-right: 8px; border-radius: 8px; }
+.list-item:hover { background: var(--page-bg); margin: 0 -8px; padding-left: 8px; padding-right: 8px; border-radius: 8px; }
 .list-item-link:focus-visible,
 .cal-day[role="button"]:focus-visible {
   outline: 3px solid rgba(37, 99, 235, 0.28);
@@ -509,7 +509,7 @@
   visibility: visible;
 }
 .modal {
-  background: #fff;
+  background: var(--card-bg);
   border-radius: var(--radius-lg);
   width: 100%;
   max-width: 480px;
@@ -600,7 +600,7 @@
   padding: 0 14px;
   outline: none;
   color: var(--text-heading);
-  background: #fff;
+  background: var(--card-bg);
   transition: border-color var(--transition), box-shadow var(--transition);
 }
 .form-control:focus {
@@ -661,7 +661,7 @@ textarea.form-control {
   transition: transform var(--transition);
 }
 .color-swatch:hover { transform: scale(1.1); }
-.color-swatch.selected { border-color: var(--text-heading); box-shadow: 0 0 0 2px #fff, 0 0 0 4px currentColor; }
+.color-swatch.selected { border-color: var(--text-heading); box-shadow: 0 0 0 2px var(--card-bg), 0 0 0 4px currentColor; }
 
 /* ========== Toast ========== */
 .toast-container {
@@ -674,7 +674,7 @@ textarea.form-control {
   gap: 8px;
 }
 .toast {
-  background: #fff;
+  background: var(--card-bg);
   border-radius: 10px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.12);
   padding: 12px 16px;
@@ -685,6 +685,7 @@ textarea.form-control {
   font-weight: 500;
   font-size: 13.5px;
   color: var(--text-heading);
+  border: 1px solid var(--border);
   border-left: 4px solid var(--primary);
   animation: toastIn 250ms ease;
 }
@@ -711,7 +712,7 @@ textarea.form-control {
   position: absolute;
   right: 0;
   top: 100%;
-  background: #fff;
+  background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: 10px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.1);
@@ -772,7 +773,7 @@ textarea.form-control {
   min-width: 32px;
   height: 32px;
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--card-bg);
   border-radius: 8px;
   cursor: pointer;
   font-weight: 600;
@@ -967,7 +968,7 @@ textarea.form-control {
   min-width: 0;
   overflow: hidden;
   padding: 6px;
-  border: 1px solid #F1F5F9;
+  border: 1px solid var(--border);
   border-radius: 8px;
 }
 .cal-full .cal-day .day-num { font-weight: 600; margin-bottom: 4px; }
@@ -1007,7 +1008,7 @@ textarea.form-control {
 
 .view-toggle {
   display: flex;
-  background: #fff;
+  background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 3px;
@@ -1039,10 +1040,14 @@ textarea.form-control {
   padding: 16px;
   border: 1px solid #BFDBFE;
 }
+:root[data-theme="dark"] .tip-card {
+  background: linear-gradient(135deg, var(--card-bg) 0%, var(--info-bg) 100%);
+  border-color: var(--border);
+}
 .tip-card .tip-icon {
   width: 32px; height: 32px;
   border-radius: 8px;
-  background: #fff;
+  background: var(--card-bg);
   color: var(--primary);
   display: flex;
   align-items: center;
@@ -1110,7 +1115,7 @@ textarea.form-control {
   align-items: center;
   justify-content: space-between;
   padding: 16px 0;
-  border-bottom: 1px solid #F1F5F9;
+  border-bottom: 1px solid var(--border);
   cursor: pointer;
   gap: 12px;
 }

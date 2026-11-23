@@ -2,6 +2,30 @@
  * StudyBuddy — Shared sidebar + header behavior
  */
 
+(() => {
+  const savedTheme = (() => {
+    try { return localStorage.getItem('sb_theme') || 'light'; }
+    catch (_) { return 'light'; }
+  })();
+  const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
+
+  function applyTheme() {
+    const theme = savedTheme === 'system'
+      ? (systemDark.matches ? 'dark' : 'light')
+      : (savedTheme === 'dark' ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+    document.documentElement.style.colorScheme = theme;
+  }
+
+  applyTheme();
+  if (systemDark.addEventListener) systemDark.addEventListener('change', () => {
+    if (savedTheme === 'system') applyTheme();
+  });
+  else if (systemDark.addListener) systemDark.addListener(() => {
+    if (savedTheme === 'system') applyTheme();
+  });
+})();
+
 const STUDENT_NAV = [
   { href: 'dashboard.php', icon: 'layout-dashboard', label: 'Dashboard' },
   { href: 'subjects.php', icon: 'book-open', label: 'Subjects' },
