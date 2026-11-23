@@ -115,9 +115,23 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     el.querySelectorAll('[data-delete]').forEach((btn) => {
       btn.addEventListener('click', () => {
-        deleteTask(btn.dataset.delete);
-        showToast('Task deleted', 'warning');
-        render();
+        const task = getTasks().find((item) => item.id === btn.dataset.delete);
+        if (!task) {
+          showToast('This task is no longer available.', 'error');
+          render();
+          return;
+        }
+        showDeleteConfirmation('task', task.title || 'Untitled task', () => {
+          const currentTask = getTasks().find((item) => item.id === task.id);
+          if (!currentTask) {
+            showToast('This task is no longer available.', 'error');
+            render();
+            return;
+          }
+          deleteTask(currentTask.id);
+          showToast('Task deleted', 'warning');
+          render();
+        });
       });
     });
   }

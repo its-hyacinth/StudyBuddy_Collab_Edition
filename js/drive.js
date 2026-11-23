@@ -135,10 +135,29 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     document.querySelectorAll('[data-trash]').forEach((btn) => {
       btn.addEventListener('click', () => {
-        mutateFile(btn.dataset.trash, { trashed: true, parentId: null });
-        selectedIds.delete(btn.dataset.trash);
-        showToast('Moved to trash');
-        render();
+        const file = getDriveFiles().find((item) => item.id === btn.dataset.trash && !item.trashed);
+        if (!file) {
+          showToast('This file is no longer available.', 'error');
+          render();
+          return;
+        }
+        showDeleteConfirmation('file', file.name, () => {
+          const current = getDriveFiles().find((item) => item.id === file.id && !item.trashed);
+          if (!current) {
+            showToast('This file is no longer available.', 'error');
+            render();
+            return;
+          }
+          mutateFile(current.id, { trashed: true, parentId: null });
+          selectedIds.delete(current.id);
+          showToast('Moved to trash');
+          render();
+        }, {
+          title: 'Move file to trash?',
+          description: 'This file will be moved to your Trash folder, where you can restore it later.',
+          warning: 'The file will not be permanently deleted.',
+          buttonLabel: 'Move to trash',
+        });
       });
     });
     document.querySelectorAll('[data-restore]').forEach((btn) => {
@@ -230,15 +249,39 @@ document.addEventListener('DOMContentLoaded', () => {
       actions.className = 'drive-bulk-actions';
       toolbar.appendChild(actions);
     }
+    const movableCount = getDriveFiles().filter((file) => selectedIds.has(file.id) && !file.trashed).length;
     actions.innerHTML = selectedIds.size
-      ? `<span>${selectedIds.size} selected</span><button type="button" class="btn btn-ghost btn-sm danger" id="trashSelectedBtn"><i data-lucide="trash-2"></i> Move to trash</button><button type="button" class="btn btn-ghost btn-sm" id="clearSelectionBtn">Clear</button>`
+      ? `<span>${selectedIds.size} selected</span>${movableCount ? '<button type="button" class="btn btn-ghost btn-sm danger" id="trashSelectedBtn"><i data-lucide="trash-2"></i> Move to trash</button>' : ''}<button type="button" class="btn btn-ghost btn-sm" id="clearSelectionBtn">Clear</button>`
       : '';
     document.getElementById('trashSelectedBtn')?.addEventListener('click', () => {
       const selected = new Set(selectedIds);
-      sbSet(SB_KEYS.DRIVE, getDriveFiles().map((file) => selected.has(file.id) ? { ...file, trashed: true, parentId: null } : file));
-      selectedIds.clear();
-      showToast('Selected files moved to trash');
-      render();
+      const selectedFiles = getDriveFiles().filter((file) => selected.has(file.id) && !file.trashed);
+      if (!selectedFiles.length) {
+        showToast('No available files are selected.', 'error');
+        render();
+        return;
+      }
+      showDeleteConfirmation('files', `${selectedFiles.length} selected ${selectedFiles.length === 1 ? 'file' : 'files'}`, () => {
+        const currentFiles = getDriveFiles();
+        const filesToMove = currentFiles.filter((file) => selected.has(file.id) && !file.trashed);
+        if (!filesToMove.length) {
+          showToast('No available files are selected.', 'error');
+          render();
+          return;
+        }
+        const filesToMoveIds = new Set(filesToMove.map((file) => file.id));
+        sbSet(SB_KEYS.DRIVE, currentFiles.map((file) =>
+          filesToMoveIds.has(file.id) ? { ...file, trashed: true, parentId: null } : file
+        ));
+        selectedIds.clear();
+        showToast('Selected files moved to trash');
+        render();
+      }, {
+        title: 'Move selected files to trash?',
+        description: 'The selected files will be moved to your Trash folder, where you can restore them later.',
+        warning: 'The files will not be permanently deleted.',
+        buttonLabel: 'Move to trash',
+      });
     });
     document.getElementById('clearSelectionBtn')?.addEventListener('click', () => {
       selectedIds.clear();

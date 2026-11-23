@@ -7,13 +7,28 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!session) return;
   wireModalClosers();
 
-  let view = 'calendar';
+  const pageParams = new URLSearchParams(window.location.search);
+  let view = pageParams.get('view') === 'list' ? 'list' : 'calendar';
   const now = new Date();
   let calY = now.getFullYear();
   let calM = now.getMonth();
   let selectedScheduleDate = null;
   let editingScheduleId = null;
   let reopenDayAfterScheduleForm = false;
+  const requestedDate = pageParams.get('date');
+  const requestedDateMatch = requestedDate?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const requestedDateParts = requestedDateMatch ? requestedDateMatch.slice(1).map(Number) : null;
+  const requestedDateObject = requestedDateParts
+    ? new Date(requestedDateParts[0], requestedDateParts[1] - 1, requestedDateParts[2])
+    : null;
+  const validRequestedDate = Boolean(requestedDateParts && requestedDateObject
+    && requestedDateObject.getFullYear() === requestedDateParts[0]
+    && requestedDateObject.getMonth() === requestedDateParts[1] - 1
+    && requestedDateObject.getDate() === requestedDateParts[2]);
+  if (validRequestedDate) {
+    calY = requestedDateObject.getFullYear();
+    calM = requestedDateObject.getMonth();
+  }
 
   function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, (char) => ({
@@ -137,12 +152,24 @@ document.addEventListener('DOMContentLoaded', () => {
           showToast('This schedule event is no longer available', 'error');
           return;
         }
-        if (!window.confirm(`Delete "${entry.title}" from your schedule?`)) return;
-        const reopenDay = button.dataset.reopenDay === 'true';
-        deleteSchedule(entry.id);
-        showToast('Schedule event deleted', 'warning');
-        render();
-        if (reopenDay) openDaySchedule(entry.date);
+        const removeScheduleEntry = () => {
+          const current = getSchedule().find((item) => item.id === entry.id);
+          if (!current) {
+            showToast('This schedule event is no longer available', 'error');
+            render();
+            return;
+          }
+          const reopenDay = button.dataset.reopenDay === 'true';
+          deleteSchedule(current.id);
+          showToast('Schedule event deleted', 'warning');
+          render();
+          if (reopenDay) openDaySchedule(current.date);
+        };
+        if (isTeacher) {
+          if (window.confirm(`Delete "${entry.title}" from your schedule?`)) removeScheduleEntry();
+        } else {
+          showDeleteConfirmation('schedule event', entry.title || 'Untitled event', removeScheduleEntry);
+        }
       });
     });
   }
@@ -220,9 +247,9 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         ${scheduleActions(entry, 'day', true)}
       </article>`).join('');
-    const assignments = isTeacher ? getAssignments()
+    const assignments = getAssignments()
       .filter((assignment) => assignment.dueDate === date && assignment.status !== 'completed')
-      .sort((a, b) => String(a.title || '').localeCompare(String(b.title || ''))) : [];
+      .sort((a, b) => String(a.title || '').localeCompare(String(b.title || '')));
     const assignmentItems = assignments.map((assignment) => {
       const status = assignment.status === 'overdue' || assignment.dueDate < localDateStr()
         ? 'overdue'
@@ -231,7 +258,9 @@ document.addEventListener('DOMContentLoaded', () => {
         <article class="day-schedule-item">
           <div class="day-schedule-copy">
             <div class="day-schedule-heading">
-              <h4>${escapeHtml(assignment.title || 'Untitled assignment')}</h4>
+              <h4>${isTeacher
+                ? escapeHtml(assignment.title || 'Untitled assignment')
+                : `<a href="assignments.php?assignment=${encodeURIComponent(assignment.id)}">${escapeHtml(assignment.title || 'Untitled assignment')}</a>`}</h4>
               <span class="badge ${escapeHtml(statusClass(status))}">${escapeHtml(statusLabel(status))}</span>
             </div>
             <div class="day-schedule-meta">${escapeHtml(assignment.subject || 'General')} · Due ${escapeHtml(formatDate(assignment.dueDate))}</div>
@@ -239,14 +268,10 @@ document.addEventListener('DOMContentLoaded', () => {
         </article>`;
     }).join('');
     const eventList = document.getElementById('dayScheduleEvents');
-    if (isTeacher) {
-      eventList.innerHTML = [
-        scheduleItems ? `<section class="calendar-day-section"><h4>Schedule</h4>${scheduleItems}</section>` : '',
-        assignmentItems ? `<section class="calendar-day-section"><h4>Assignment deadlines</h4>${assignmentItems}<a class="view-all" href="assignments.php">Manage assignments</a></section>` : '',
-      ].join('') || '<p class="empty-state">Nothing is scheduled for this day.</p>';
-    } else {
-      eventList.innerHTML = scheduleItems || '<p class="empty-state">No events scheduled for this day.</p>';
-    }
+    eventList.innerHTML = [
+      scheduleItems ? `<section class="calendar-day-section"><h4>Schedule</h4>${scheduleItems}</section>` : '',
+      assignmentItems ? `<section class="calendar-day-section"><h4>Assignment deadlines</h4>${assignmentItems}${isTeacher ? '<a class="view-all" href="assignments.php">Manage assignments</a>' : ''}</section>` : '',
+    ].join('') || (isTeacher ? '<p class="empty-state">Nothing is scheduled for this day.</p>' : '<p class="empty-state">No events or assignments scheduled for this day.</p>');
 
     wireScheduleActions(eventList);
     if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -344,6 +369,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function render() {
+    document.querySelectorAll('[data-view]').forEach((button) => {
+      button.classList.toggle('active', button.dataset.view === view);
+      button.setAttribute('aria-selected', button.dataset.view === view ? 'true' : 'false');
+    });
     renderClassFilterOptions();
     const calView = document.getElementById('calendarView');
     const listView = document.getElementById('listView');
@@ -462,4 +491,5 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   render();
+  if (validRequestedDate) openDaySchedule(requestedDate);
 });

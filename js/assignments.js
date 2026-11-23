@@ -319,9 +319,25 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     document.querySelectorAll('[data-delete]').forEach((btn) => {
       btn.addEventListener('click', () => {
-        deleteAssignment(btn.dataset.delete);
-        showToast('Assignment deleted', 'warning');
-        render();
+        const assignment = getAssignments().find((item) => item.id === btn.dataset.delete);
+        if (!assignment) {
+          showToast('This assignment is no longer available.', 'error');
+          render();
+          return;
+        }
+        const removeAssignment = () => {
+          const current = getAssignments().find((item) => item.id === assignment.id);
+          if (!current) {
+            showToast('This assignment is no longer available.', 'error');
+            render();
+            return;
+          }
+          deleteAssignment(current.id);
+          showToast('Assignment deleted', 'warning');
+          render();
+        };
+        if (isTeacher) removeAssignment();
+        else showDeleteConfirmation('assignment', assignment.title || 'Untitled assignment', removeAssignment);
       });
     });
 
@@ -658,4 +674,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   render();
+  const requestedAssignmentId = !isTeacher
+    ? new URLSearchParams(window.location.search).get('assignment')
+    : null;
+  if (requestedAssignmentId) showAssignmentDetails(requestedAssignmentId);
 });

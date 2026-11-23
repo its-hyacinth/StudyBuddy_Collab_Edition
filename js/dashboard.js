@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (schedEl) {
     schedEl.innerHTML = todayItems.length
       ? todayItems.map((s) => `
-        <div class="schedule-item">
+        <a href="schedule.php?date=${encodeURIComponent(s.date)}" class="schedule-item schedule-item-link" aria-label="View schedule for ${escapeHtml(formatDate(s.date))}: ${escapeHtml(s.title)}">
           <span class="dot ${escapeHtml(subjectShort(s.subject))}"></span>
           <div class="time">${escapeHtml(formatTime(s.startTime))} – ${escapeHtml(formatTime(s.endTime))}</div>
           <div class="info">
@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="room">${escapeHtml(s.room || s.type)}</div>
           </div>
           <i data-lucide="chevron-right" class="chevron"></i>
-        </div>`).join('')
+        </a>`).join('')
       : '<p class="empty-state" style="padding:16px">No classes scheduled today.</p>';
   }
 
@@ -105,26 +105,32 @@ document.addEventListener('DOMContentLoaded', () => {
       else if (days !== null && days <= 2) { badge = 'badge-overdue'; label = `${days} days left`; }
       else if (days !== null && days <= 5) { badge = 'badge-pending'; label = `${days} days left`; }
       return `
-        <div class="list-item">
+        <a href="assignments.php?assignment=${encodeURIComponent(a.id)}" class="list-item list-item-link" aria-label="View assignment details: ${escapeHtml(a.title)}">
           <span class="dot ${escapeHtml(subjectShort(a.subject))}"></span>
           <div class="item-meta">
             <div class="item-title">${escapeHtml(a.title)}</div>
             <div class="item-sub">${escapeHtml(a.subject)} · ${a.dueDate ? `Due ${escapeHtml(formatDate(a.dueDate))}` : 'No due date'}</div>
           </div>
           <span class="badge ${badge}">${escapeHtml(label)}</span>
-        </div>`;
-    }).join('') : '<p class="empty-state">No upcoming assignments.</p>';
+          <i data-lucide="chevron-right" class="chevron"></i>
+        </a>`;
+    }).join('') : '<p class="empty-state">No pending assignments.</p>';
   }
 
   const now = new Date();
   let calY = now.getFullYear(), calM = now.getMonth();
-  const eventDates = schedule.map((s) => s.date);
+  const eventDates = [
+    ...schedule.map((item) => item.date),
+    ...assignments.filter((item) => item.status !== 'completed').map((item) => item.dueDate),
+  ].filter(Boolean);
   const mini = document.getElementById('miniCalendar');
   const renderCal = (y, m) => {
     calY = y; calM = m;
     if (m < 0) { calY--; calM = 11; }
     if (m > 11) { calY++; calM = 0; }
-    renderMiniCalendar(mini, calY, calM, eventDates, renderCal);
+    renderMiniCalendar(mini, calY, calM, eventDates, renderCal, (date) => {
+      window.location.href = `schedule.php?date=${encodeURIComponent(date)}`;
+    });
   };
   renderCal(calY, calM);
 
@@ -133,13 +139,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const upcomingEvents = schedule.filter((item) => item.date >= todayStr)
       .sort((a, b) => `${a.date}${a.startTime || ''}`.localeCompare(`${b.date}${b.startTime || ''}`)).slice(0, 4);
     eventsEl.innerHTML = upcomingEvents.length ? upcomingEvents.map((s) => `
-      <div class="list-item">
+      <a href="schedule.php?date=${encodeURIComponent(s.date)}" class="list-item list-item-link" aria-label="View events for ${escapeHtml(formatDate(s.date))}: ${escapeHtml(s.title)}">
         <span class="dot ${escapeHtml(subjectShort(s.subject))}"></span>
         <div class="item-meta">
           <div class="item-title">${escapeHtml(s.title)}</div>
           <div class="item-sub">${escapeHtml(formatDate(s.date))} · ${escapeHtml(formatTime(s.startTime))}</div>
         </div>
-      </div>`).join('') : '<p class="empty-state">No upcoming events.</p>';
+        <i data-lucide="chevron-right" class="chevron"></i>
+      </a>`).join('') : '<p class="empty-state">No upcoming events.</p>';
   }
 
   // Progress donut

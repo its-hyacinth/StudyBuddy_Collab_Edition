@@ -652,7 +652,7 @@ function renderMiniCalendar(container, year, month, eventDates = [], onNav, onSe
     const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     const dateLabel = new Date(year, month, d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
     const dateAttributes = typeof onSelectDate === 'function'
-      ? `data-calendar-date="${dateKey}" role="button" tabindex="0" aria-label="View events for ${dateLabel}" aria-haspopup="dialog" aria-controls="progressStatModal"`
+      ? `data-calendar-date="${dateKey}" role="button" tabindex="0" aria-label="View events for ${dateLabel}" aria-haspopup="dialog"`
       : '';
     html += `<div class="cal-day${isToday ? ' today' : ''}" ${dateAttributes}>
       <span class="day-num">${d}</span>

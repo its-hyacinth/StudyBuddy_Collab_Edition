@@ -135,11 +135,25 @@ document.addEventListener('DOMContentLoaded', () => {
       grid.querySelectorAll('[data-delete]').forEach((btn) => {
         btn.addEventListener('click', (e) => {
           e.stopPropagation();
-          deleteSubject(btn.getAttribute('data-delete'));
-          selectedId = null;
-          assignmentFilter = 'all';
-          showToast('Subject deleted', 'warning');
-          render();
+          const subject = getSubjects().find((item) => item.id === btn.getAttribute('data-delete'));
+          if (!subject) {
+            showToast('This subject is no longer available.', 'error');
+            render();
+            return;
+          }
+          showDeleteConfirmation('subject', subject.name || 'Untitled subject', () => {
+            const current = getSubjects().find((item) => item.id === subject.id);
+            if (!current) {
+              showToast('This subject is no longer available.', 'error');
+              render();
+              return;
+            }
+            deleteSubject(current.id);
+            selectedId = null;
+            assignmentFilter = 'all';
+            showToast('Subject deleted', 'warning');
+            render();
+          });
         });
       });
     }

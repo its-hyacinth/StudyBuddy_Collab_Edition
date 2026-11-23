@@ -28,6 +28,78 @@ function getActivePage() {
   return parts[parts.length - 1] || 'dashboard.php';
 }
 
+let deleteConfirmationCallback = null;
+
+function ensureDeleteConfirmationModal() {
+  let modal = document.getElementById('deleteConfirmationModal');
+  if (modal) return modal;
+
+  document.body.insertAdjacentHTML('beforeend', `
+    <div class="modal-backdrop" id="deleteConfirmationModal">
+      <div class="modal delete-confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="deleteConfirmationTitle" aria-describedby="deleteConfirmationDescription">
+        <div class="modal-header">
+          <h3 id="deleteConfirmationTitle"></h3>
+          <button type="button" class="modal-close" data-cancel-delete aria-label="Cancel deletion">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p id="deleteConfirmationDescription" class="delete-confirm-description"></p>
+          <div class="delete-confirm-item">
+            <span class="delete-confirm-icon"><i data-lucide="trash-2"></i></span>
+            <strong id="deleteConfirmationItem"></strong>
+          </div>
+          <p id="deleteConfirmationWarning" class="delete-confirm-warning"></p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost delete-confirm-cancel" data-cancel-delete>Cancel</button>
+          <button type="button" class="btn btn-danger" data-confirm-delete></button>
+        </div>
+      </div>
+    </div>`);
+
+  modal = document.getElementById('deleteConfirmationModal');
+  const cancel = () => {
+    deleteConfirmationCallback = null;
+    closeModal('deleteConfirmationModal');
+  };
+  modal.querySelectorAll('[data-cancel-delete]').forEach((button) => {
+    button.addEventListener('click', cancel);
+  });
+  modal.addEventListener('click', (event) => {
+    if (event.target === modal) cancel();
+  });
+  modal.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      cancel();
+    }
+  });
+  modal.querySelector('[data-confirm-delete]')?.addEventListener('click', () => {
+    const callback = deleteConfirmationCallback;
+    deleteConfirmationCallback = null;
+    closeModal('deleteConfirmationModal');
+    callback?.();
+  });
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+  return modal;
+}
+
+function showDeleteConfirmation(itemType, itemName, onConfirm, options = {}) {
+  if (typeof onConfirm !== 'function') throw new TypeError('A delete confirmation callback is required.');
+  const modal = ensureDeleteConfirmationModal();
+  const config = options || {};
+  modal.querySelector('#deleteConfirmationTitle').textContent = config.title || `Delete ${itemType}?`;
+  modal.querySelector('#deleteConfirmationDescription').textContent = config.description
+    || `Are you sure you want to permanently delete this ${itemType}?`;
+  modal.querySelector('#deleteConfirmationItem').textContent = itemName || `Untitled ${itemType}`;
+  modal.querySelector('#deleteConfirmationWarning').textContent = config.warning || 'This action cannot be undone.';
+  modal.querySelector('[data-confirm-delete]').textContent = config.buttonLabel || `Delete ${itemType}`;
+  deleteConfirmationCallback = onConfirm;
+  openModal('deleteConfirmationModal');
+  modal.querySelector('.delete-confirm-cancel')?.focus();
+}
+
 function renderSidebar(role) {
   const nav = role === 'teacher' ? TEACHER_NAV : STUDENT_NAV;
   const active = getActivePage();

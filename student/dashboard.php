@@ -66,7 +66,7 @@
                   <div class="card-icon blue"><i data-lucide="calendar-clock"></i></div>
                   <h2 class="card-title">Today's Schedule</h2>
                 </div>
-                <a href="schedule.php" class="view-all">View all</a>
+                <a href="schedule.php?view=list" class="view-all" aria-label="View all schedule entries">View all</a>
               </div>
               <div id="todaySchedule">
                 <div class="schedule-item">
@@ -102,7 +102,7 @@
                   <div class="card-icon purple"><i data-lucide="book-open"></i></div>
                   <h2 class="card-title">Recent Subjects</h2>
                 </div>
-                <a href="subjects.php" class="view-all">View all</a>
+                <a href="subjects.php#subjectGrid" class="view-all" aria-label="View all subjects">View all</a>
               </div>
               <div class="subject-tiles" id="recentSubjects">
                 <a href="subjects.php" class="subject-tile">
@@ -153,9 +153,9 @@
             <div class="card-header">
               <div class="card-header-left">
                 <div class="card-icon orange"><i data-lucide="clipboard-list"></i></div>
-                <h2 class="card-title">Upcoming Assignments</h2>
+                <h2 class="card-title">Pending Assignments</h2>
               </div>
-              <a href="assignments.php" class="view-all">View all</a>
+              <a href="assignments.php#asgTable" class="view-all" aria-label="View all assignments">View all</a>
             </div>
             <div id="upcomingAssignments">
               <div class="list-item">
