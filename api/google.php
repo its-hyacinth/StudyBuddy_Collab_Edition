@@ -19,23 +19,28 @@ try {
     $pdo = db();
 
     if ($action === 'start') {
-        if (empty($user['id'])) {
+        $login = ($_GET['purpose'] ?? '') === 'login';
+        if (!$login && empty($user['id'])) {
             header('Location: ' . app_cookie_path() . 'index.php');
             exit;
         }
-        $next = google_safe_next((string)($_GET['next'] ?? ''), (string)$user['role']);
+        $next = $login
+            ? app_cookie_path() . 'index.php'
+            : google_safe_next((string)($_GET['next'] ?? ''), (string)$user['role']);
         if (!google_is_configured()) {
             google_redirect($next, ['google' => 'error', 'message' => 'Add the Google client ID and secret in config/google.php.']);
         }
         $_SESSION['google_oauth_state'] = bin2hex(random_bytes(16));
         $_SESSION['google_oauth_next'] = $next;
+        $_SESSION['google_oauth_purpose'] = $login ? 'login' : 'connect';
+        $_SESSION['google_oauth_remember'] = ($_GET['remember'] ?? '') === '1';
         $query = http_build_query([
             'client_id' => GOOGLE_CLIENT_ID,
             'redirect_uri' => google_redirect_uri(),
             'response_type' => 'code',
-            'scope' => google_oauth_scopes(),
-            'access_type' => 'offline',
-            'prompt' => 'consent',
+            'scope' => $login ? 'openid email profile' : google_oauth_scopes(),
+            'access_type' => $login ? 'online' : 'offline',
+            'prompt' => $login ? 'select_account' : 'consent',
             'include_granted_scopes' => 'true',
             'state' => $_SESSION['google_oauth_state'],
         ], '', '&', PHP_QUERY_RFC3986);
@@ -44,19 +49,27 @@ try {
     }
 
     if ($action === 'callback') {
-        if (empty($user['id'])) {
+        $purpose = (string)($_SESSION['google_oauth_purpose'] ?? 'connect');
+        $remember = !empty($_SESSION['google_oauth_remember']);
+        $next = $purpose === 'login'
+            ? app_cookie_path() . 'index.php'
+            : google_safe_next((string)($_SESSION['google_oauth_next'] ?? ''), (string)($user['role'] ?? 'student'));
+        if ($purpose !== 'login' && empty($user['id'])) {
             header('Location: ' . app_cookie_path() . 'index.php');
             exit;
         }
-        $next = google_safe_next((string)($_SESSION['google_oauth_next'] ?? ''), (string)($user['role'] ?? 'student'));
         $expected = (string)($_SESSION['google_oauth_state'] ?? '');
-        unset($_SESSION['google_oauth_next'], $_SESSION['google_oauth_state']);
+        unset($_SESSION['google_oauth_next'], $_SESSION['google_oauth_state'], $_SESSION['google_oauth_purpose'], $_SESSION['google_oauth_remember']);
         $state = (string)($_GET['state'] ?? '');
         if ($expected === '' || !hash_equals($expected, $state)) {
             google_redirect($next, ['google' => 'error', 'message' => 'Google sign-in could not be verified. Try again.']);
         }
         if (!empty($_GET['error'])) {
-            google_redirect($next, ['google' => 'error', 'message' => 'Google connection was cancelled.']);
+            google_redirect($next, ['google' => 'error', 'message' => 'Google sign-in was cancelled.']);
+        }
+        if ($purpose === 'login') {
+            $token = google_exchange_code((string)($_GET['code'] ?? ''), false);
+            complete_google_oauth_login($pdo, google_identity((string)$token['access_token']), $remember);
         }
         $token = google_exchange_code((string)($_GET['code'] ?? ''));
         $email = google_account_email((string)$token['access_token']);

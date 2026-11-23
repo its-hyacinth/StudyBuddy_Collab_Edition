@@ -8,8 +8,8 @@ declare(strict_types=1);
  * 2. OAuth consent screen → External → Testing. Add the Google account you will sign in with as a test user.
  * 3. Credentials → Create credentials → OAuth client ID → Web application.
  *    Authorized JavaScript origins: http://localhost
- *    Authorized redirect URI (copy exactly, including the query string):
- *    http://localhost/StudyBuddy_Collab_Edition/api/google.php?action=callback
+ *    Authorized redirect URI (copy exactly, no extra slash or query):
+ *    http://localhost/StudyBuddy_Collab_Edition/api/google-callback.php
  * 4. Paste the client ID and client secret below, or into config/google.local.php
  *    (that file overrides this one and should stay off any shared copy).
  */
@@ -31,8 +31,9 @@ function google_is_configured(): bool {
 function google_redirect_uri(): string {
     $https = function_exists('request_is_https') && request_is_https();
     $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    if ($host === '127.0.0.1') $host = 'localhost';
     $base = function_exists('app_cookie_path') ? rtrim(app_cookie_path(), '/') : '';
-    return ($https ? 'https' : 'http') . '://' . $host . $base . '/api/google.php?action=callback';
+    return ($https ? 'https' : 'http') . '://' . $host . $base . '/api/google-callback.php';
 }
 
 function google_oauth_scopes(): string {

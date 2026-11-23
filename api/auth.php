@@ -20,6 +20,9 @@ try {
             'csrf' => $_SESSION['csrf_token'],
             'googleSignup' => $pending ? ['email' => $pending['email'], 'name' => $pending['name']] : null,
             'googleSignInConfigured' => GOOGLE_CLIENT_ID !== '',
+            'requiresTotp' => !empty($_SESSION['pending_totp']['challenge']),
+            'challenge' => (string)($_SESSION['pending_totp']['challenge'] ?? ''),
+            'remember' => !empty($_SESSION['pending_totp']['remember']),
         ]);
     }
     if ($method === 'GET' && $action === 'account') {

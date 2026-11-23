@@ -155,6 +155,7 @@
 .btn-google {
   width: 100%;
   height: 48px;
+  text-decoration: none;
   border: 1.5px solid var(--border);
   background: #fff;
   border-radius: 12px;
@@ -172,7 +173,7 @@
 .btn-google svg { width: 20px; height: 20px; }
 .google-button-host { display: flex; justify-content: center; min-height: 0; }
 .google-button-host:empty { display: none; }
-.google-button-host[hidden], .auth-form[hidden], .auth-divider[hidden] { display: none !important; }
+.btn-google[hidden], .google-button-host[hidden], .auth-form[hidden], .auth-divider[hidden] { display: none !important; }
 .authenticator-secret {
   display: inline-block;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;

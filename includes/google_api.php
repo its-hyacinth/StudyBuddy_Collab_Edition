@@ -90,7 +90,7 @@ function google_save_connection(PDO $pdo, int $userId, string $email, string $re
     ]);
 }
 
-function google_exchange_code(string $code): array {
+function google_exchange_code(string $code, bool $requireRefresh = true): array {
     $response = google_http('POST', 'https://oauth2.googleapis.com/token', [
         'Content-Type: application/x-www-form-urlencoded',
     ], http_build_query([
@@ -100,11 +100,30 @@ function google_exchange_code(string $code): array {
         'redirect_uri' => google_redirect_uri(),
         'grant_type' => 'authorization_code',
     ]));
-    if ($response['status'] !== 200 || empty($response['json']['access_token']) || empty($response['json']['refresh_token'])) {
+    if ($response['status'] !== 200 || empty($response['json']['access_token']) || ($requireRefresh && empty($response['json']['refresh_token']))) {
         $message = (string)($response['json']['error_description'] ?? $response['json']['error'] ?? 'Google did not return a refresh token.');
         throw new RuntimeException($message);
     }
     return $response['json'];
+}
+
+function google_identity(string $accessToken): array {
+    $response = google_http('GET', 'https://www.googleapis.com/oauth2/v2/userinfo', [
+        'Authorization: Bearer ' . $accessToken,
+    ]);
+    $email = strtolower(trim((string)($response['json']['email'] ?? '')));
+    $verified = $response['json']['verified_email'] ?? false;
+    $emailOk = $verified === true || $verified === 'true' || $verified === 1;
+    if ($response['status'] !== 200 || !$emailOk || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        throw new RuntimeException('Google did not return a verified email address.');
+    }
+    $sub = trim((string)($response['json']['id'] ?? ''));
+    if ($sub === '') throw new RuntimeException('Google account identifier is missing.');
+    $name = trim((string)($response['json']['name'] ?? ''));
+    if ($name === '') $name = strstr($email, '@', true) ?: 'StudyBuddy User';
+    $picture = trim((string)($response['json']['picture'] ?? ''));
+    if (strlen($picture) > 500 || !preg_match('#^https://#', $picture)) $picture = '';
+    return ['sub' => $sub, 'email' => $email, 'name' => $name, 'picture' => $picture];
 }
 
 function google_account_email(string $accessToken): string {

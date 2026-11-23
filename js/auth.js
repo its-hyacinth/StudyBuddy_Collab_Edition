@@ -56,7 +56,6 @@ function showAuthStep(step) {
   document.getElementById('googleRoleForm')?.toggleAttribute('hidden', step !== 'role');
   document.querySelector('.auth-divider')?.toggleAttribute('hidden', step !== 'login');
   document.getElementById('googleLogin')?.toggleAttribute('hidden', step !== 'login');
-  document.getElementById('googleButtonHost')?.toggleAttribute('hidden', step !== 'login');
   document.querySelector('.demo-toggles')?.toggleAttribute('hidden', step !== 'login');
 }
 
@@ -93,38 +92,21 @@ async function submitGoogleCredential(credential) {
 }
 
 function initGoogleButton() {
-  const host = document.getElementById('googleButtonHost');
-  const fallback = document.getElementById('googleLogin');
-  const clientId = document.querySelector('meta[name="google-client-id"]')?.content?.trim() || '';
-  const errorEl = document.getElementById('loginError') || document.getElementById('signupError');
-  if (!clientId) {
-    fallback?.addEventListener('click', () => showAuthError(errorEl, 'Google sign-in needs an OAuth client ID in config/google.php. You can still sign in with email, and turn on Google Authenticator in Settings.'));
-    return;
-  }
-  const script = document.createElement('script');
-  script.src = 'https://accounts.google.com/gsi/client';
-  script.async = true;
-  script.onload = () => {
-    if (!window.google?.accounts?.id || !host) return;
-    google.accounts.id.initialize({
-      client_id: clientId,
-      callback: (response) => submitGoogleCredential(response.credential),
-      auto_select: false,
-      cancel_on_tap_outside: true,
-    });
-    google.accounts.id.renderButton(host, {
-      type: 'standard',
-      theme: 'outline',
-      size: 'large',
-      text: 'continue_with',
-      shape: 'rectangular',
-      width: Math.max(host.offsetWidth || 320, 280),
-      logo_alignment: 'left',
-    });
-    if (fallback) fallback.hidden = true;
-  };
-  script.onerror = () => fallback?.addEventListener('click', () => showAuthError(errorEl, 'Google sign-in could not be loaded. Check your connection and try again.'));
-  document.head.appendChild(script);
+  const button = document.getElementById('googleLogin');
+  if (!button) return;
+  button.addEventListener('click', (event) => {
+    const clientId = document.querySelector('meta[name="google-client-id"]')?.content?.trim() || '';
+    const errorEl = document.getElementById('loginError') || document.getElementById('signupError');
+    if (!clientId) {
+      event.preventDefault();
+      showAuthError(errorEl, 'Google sign-in needs an OAuth client ID in config/google.php. You can still sign in with email.');
+      return;
+    }
+    const remember = document.getElementById('remember')?.checked ? '1' : '0';
+    const url = new URL(button.href, window.location.href);
+    url.searchParams.set('remember', remember);
+    button.href = `${url.pathname}${url.search}`;
+  });
 }
 
 function initLoginPage() {
@@ -197,7 +179,22 @@ function initLoginPage() {
     showAuthError(errorEl, 'Email password reset is not set up on this server. Sign in with Google, or use a backup code if Google Authenticator is enabled.');
   });
   initGoogleButton();
+  const authParams = new URLSearchParams(window.location.search);
+  if (authParams.get('google') === 'error') {
+    showAuthError(errorEl, authParams.get('message') || 'Google sign-in failed.');
+    authParams.delete('google');
+    authParams.delete('message');
+    const query = authParams.toString();
+    window.history.replaceState({}, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
+  }
   fetch(`${SB_AUTH_BASE}auth.php?action=session`).then((response) => response.json()).then((result) => {
+    if (result?.requiresTotp && result.challenge) {
+      pendingChallenge = result.challenge;
+      pendingRemember = !!result.remember;
+      showAuthStep('totp');
+      document.getElementById('totpCode')?.focus();
+      return;
+    }
     if (result?.googleSignup) {
       const text = document.getElementById('googleRoleText');
       if (text) text.textContent = `Continue as ${result.googleSignup.email}. Choose how you will use StudyBuddy.`;
