@@ -234,6 +234,17 @@
   border-bottom: 1px solid #F1F5F9;
 }
 .schedule-item:last-child { border-bottom: none; }
+.schedule-item[role="button"] {
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+.schedule-item[role="button"]:hover { background: #F8FAFC; }
+.schedule-item[role="button"]:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.28);
+  outline-offset: -2px;
+}
+.schedule-item[role="button"]:hover .subj { color: var(--primary); }
 .schedule-item .time {
   font-size: 12px;
   font-weight: 600;
@@ -259,6 +270,21 @@
   border-bottom: 1px solid #E8EDF4;
 }
 .day-schedule-item:last-child { border-bottom: 0; }
+.calendar-day-section + .calendar-day-section {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #E8EDF4;
+}
+.calendar-day-section > h4 {
+  margin: 0 0 4px;
+  color: var(--text-heading);
+  font-size: 13px;
+  font-weight: 700;
+}
+.calendar-day-section .view-all {
+  display: inline-flex;
+  margin-top: 8px;
+}
 .day-schedule-copy { min-width: 0; }
 .day-schedule-heading {
   display: flex;
