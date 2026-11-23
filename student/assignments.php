@@ -67,6 +67,13 @@
           </div>
 
           <div class="card">
+            <div class="filter-tabs" id="asgTabs" role="tablist">
+              <button type="button" class="filter-tab active" data-filter="all">All <span class="count">16</span></button>
+              <button type="button" class="filter-tab" data-filter="upcoming">Upcoming <span class="count">7</span></button>
+              <button type="button" class="filter-tab" data-filter="overdue">Overdue <span class="count">3</span></button>
+              <button type="button" class="filter-tab" data-filter="completed">Completed <span class="count">6</span></button>
+            </div>
+
             <div class="toolbar">
               <div class="search-mini">
                 <i data-lucide="search"></i>
@@ -199,6 +206,41 @@
         </div>
 
         <aside class="page-aside">
+          <div class="card" id="asgDeadlines">
+            <div class="card-header">
+              <div class="card-header-left">
+                <div class="card-icon red"><i data-lucide="alarm-clock"></i></div>
+                <h2 class="card-title">Upcoming Deadlines</h2>
+              </div>
+            </div>
+            <div id="deadlineList">
+              <div class="list-item">
+                <span class="dot cs"></span>
+                <div class="item-meta">
+                  <div class="item-title">Python Mini Project</div>
+                  <div class="item-sub">Overdue · Sep 10</div>
+                </div>
+                <span class="badge badge-overdue">Overdue</span>
+              </div>
+              <div class="list-item">
+                <span class="dot math"></span>
+                <div class="item-meta">
+                  <div class="item-title">Algebra Homework Set 3</div>
+                  <div class="item-sub">Due Sep 12</div>
+                </div>
+                <span class="badge badge-upcoming">Upcoming</span>
+              </div>
+              <div class="list-item">
+                <span class="dot science"></span>
+                <div class="item-meta">
+                  <div class="item-title">Science Lab Report</div>
+                  <div class="item-sub">Due Sep 14</div>
+                </div>
+                <span class="badge badge-upcoming">Upcoming</span>
+              </div>
+            </div>
+          </div>
+
           <div class="card">
             <div class="card-header">
               <div class="card-header-left">
