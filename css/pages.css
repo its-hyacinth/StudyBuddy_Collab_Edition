@@ -691,6 +691,15 @@
 .connected-row .conn-info p { font-size: 12px; color: var(--text-muted); }
 
 /* ========== Empty / misc ========== */
+#studentsTable thead th:nth-child(-n+2) {
+  text-align: center;
+}
+
+#studentsTable th:first-child,
+#studentsTable td:first-child {
+  width: 1%;
+}
+
 .empty-state {
   text-align: center;
   padding: 40px 20px;

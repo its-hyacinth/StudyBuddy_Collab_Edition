@@ -99,7 +99,7 @@
                     <th>Course</th>
                     <th>Year</th>
                     <th>Class</th>
-                    <th>GPA</th>
+                    <th style="text-align: left;">GPA</th>
                     <th>Status</th>
                     <th></th>
                   </tr>
