@@ -516,16 +516,16 @@
       </div>
       <div class="modal-body">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px 16px">
-          <div><div class="stat-label">Subject</div><div class="title" id="detailSubject"></div></div>
-          <div><div class="stat-label">Instructor</div><div class="title" id="detailInstructor"></div></div>
-          <div><div class="stat-label">Room</div><div class="title" id="detailRoom"></div></div>
-          <div><div class="stat-label">Days</div><div class="title" id="detailDays"></div></div>
-          <div><div class="stat-label">Time</div><div class="title" id="detailTime"></div></div>
-          <div><div class="stat-label">Students</div><div class="title" id="detailStudents"></div></div>
-          <div><div class="stat-label">Progress</div><div class="title" id="detailProgress"></div></div>
+          <div><div class="stat-label" style="font-weight:700;font-size:15px;color:#0F172A;margin-bottom:2px">Subject</div><div class="title" id="detailSubject"></div></div>
+          <div><div class="stat-label" style="font-weight:700;font-size:15px;color:#0F172A;margin-bottom:2px">Instructor</div><div class="title" id="detailInstructor"></div></div>
+          <div><div class="stat-label" style="font-weight:700;font-size:15px;color:#0F172A;margin-bottom:2px">Room</div><div class="title" id="detailRoom"></div></div>
+          <div><div class="stat-label" style="font-weight:700;font-size:15px;color:#0F172A;margin-bottom:2px">Days</div><div class="title" id="detailDays"></div></div>
+          <div><div class="stat-label" style="font-weight:700;font-size:15px;color:#0F172A;margin-bottom:2px">Time</div><div class="title" id="detailTime"></div></div>
+          <div><div class="stat-label" style="font-weight:700;font-size:15px;color:#0F172A;margin-bottom:2px">Students</div><div class="title" id="detailStudents"></div></div>
+          <div><div class="stat-label" style="font-weight:700;font-size:15px;color:#0F172A;margin-bottom:2px">Progress</div><div class="title" id="detailProgress"></div></div>
         </div>
         <div style="margin-top:18px">
-          <div class="stat-label">Description</div>
+          <div class="stat-label" style="font-weight:700;font-size:15px;color:#0F172A;margin-bottom:2px">Description</div>
           <div class="subtitle" id="detailDescription" style="margin-top:4px"></div>
         </div>
       </div>
