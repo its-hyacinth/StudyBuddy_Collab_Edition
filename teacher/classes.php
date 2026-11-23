@@ -410,27 +410,7 @@
               </div>
             </div>
             <div id="upcomingDeadlines">
-              <div class="list-item">
-                <div class="item-meta">
-                  <div class="item-title">Lab Report</div>
-                  <div class="item-sub">Science 205 · Sep 14</div>
-                </div>
-                <span class="badge badge-upcoming">Tomorrow</span>
-              </div>
-              <div class="list-item">
-                <div class="item-meta">
-                  <div class="item-title">Quiz 1</div>
-                  <div class="item-sub">Math 101 · Sep 15</div>
-                </div>
-                <span class="badge badge-upcoming">2 days</span>
-              </div>
-              <div class="list-item">
-                <div class="item-meta">
-                  <div class="item-title">Oral Recitation</div>
-                  <div class="item-sub">Filipino 101 · Sep 16</div>
-                </div>
-                <span class="badge badge-upcoming">3 days</span>
-              </div>
+              <p class="empty-state" style="padding:16px">Loading deadlines...</p>
             </div>
           </div>
 

@@ -61,6 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function render() {
     const classes = getClasses();
     const students = getStudents();
+    const assignments = getAssignments();
 
     // ---- Stat cards (by ID, so a layout change can't mix them up) ----
     const avgProgress = Math.round(
@@ -72,7 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setText('statTotalStudents', baseTotal + students.length);
     setText('statAvgProgress', avgProgress + '%');
     // Same rule as the Dashboard: every assignment that isn't completed
-    setText('statActiveAsg', getAssignments().filter((a) => a.status !== 'completed').length);
+    setText('statActiveAsg', assignments.filter((a) => a.status !== 'completed').length);
 
     // ---- Filter by search ----
     const q = search.toLowerCase();
@@ -146,6 +147,34 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="lbl"><span>${escapeHtml(c.name)}</span><span>${Number(c.progress) || 0}%</span></div>
           <div class="progress-bar"><div class="fill ${escapeHtml(c.short)}" style="width:${Number(c.progress) || 0}%"></div></div>
         </div>`).join('');
+    }
+
+    // ---- Upcoming assignment deadlines ----
+    const deadlines = document.getElementById('upcomingDeadlines');
+    if (deadlines) {
+      const today = localDateStr();
+      const upcoming = getUpcomingAssignments(assignments);
+      deadlines.innerHTML = upcoming.length ? upcoming.map((assignment) => {
+        const dueDay = new Date(`${assignment.dueDate}T00:00:00`);
+        const todayStart = new Date(`${today}T00:00:00`);
+        const daysUntilDue = Math.round((dueDay - todayStart) / 86400000);
+        const dueLabel = daysUntilDue === 0 ? 'Due today'
+          : daysUntilDue === 1 ? 'Tomorrow'
+            : `${daysUntilDue} days`;
+        const classInfo = classes.find((item) => item.id === assignment.classId
+          || item.id === assignment.subjectId
+          || item.name === assignment.subject);
+        const subject = assignment.subject || classInfo?.subject || classInfo?.name || 'General';
+        const dueTime = assignment.dueTime ? formatTime(assignment.dueTime) : '';
+        return `
+          <div class="list-item">
+            <div class="item-meta">
+              <div class="item-title">${escapeHtml(assignment.title || 'Untitled assignment')}</div>
+              <div class="item-sub">${escapeHtml(subject)} · ${escapeHtml(formatDate(assignment.dueDate))}${dueTime ? ` · ${escapeHtml(dueTime)}` : ''}</div>
+            </div>
+            <span class="badge badge-upcoming">${dueLabel}</span>
+          </div>`;
+      }).join('') : '<p class="empty-state" style="padding:16px">No upcoming deadlines.</p>';
     }
 
     if (typeof lucide !== 'undefined') lucide.createIcons();
