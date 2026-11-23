@@ -7,11 +7,44 @@ document.addEventListener('DOMContentLoaded', () => {
   wireModalClosers();
 
   let search = '';
+  let editingId = null;      // class being edited (null = adding a new one)
+  let currentDetailId = null; // class shown in the details popup
 
   function escapeHtml(str) {
     return String(str ?? '').replace(/[&<>"']/g, (c) => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
     }[c]));
+  }
+
+  // The logged-in teacher owns these classes, so they are the instructor.
+  // Tries the common session field names; falls back to the class's own
+  // professor (from Classroom) and finally "TBA".
+  function ownerName() {
+    const u = session.user || session;
+    return (
+      u.name || u.fullName || u.full_name || u.displayName ||
+      [u.firstName || u.first_name, u.lastName || u.last_name].filter(Boolean).join(' ') ||
+      ''
+    ).trim();
+  }
+
+  function instructorName(c) {
+    return ownerName() || c.professor || 'TBA';
+  }
+
+  // "09:00" -> "9:00 AM", "13:30" -> "1:30 PM"
+  function formatTime(t) {
+    if (!t || !/^\d{1,2}:\d{2}$/.test(t)) return '';
+    const [h, m] = t.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${ampm}`;
+  }
+
+  // "9:00 AM – 12:00 PM" (empty if the class has no time, e.g. synced from Classroom)
+  function timeText(c) {
+    return c.startTime && c.endTime
+      ? `${formatTime(c.startTime)} – ${formatTime(c.endTime)}`
+      : '';
   }
 
   // Students from Google Classroom (c.students) + students you added yourself to this class
@@ -51,18 +84,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const tbody = document.getElementById('classesTableBody');
     if (tbody) {
       tbody.innerHTML = list.length
-        ? list.map((c) => `
-        <tr data-id="${escapeHtml(c.id)}">
+        ? list.map((c) => {
+          return `
+        <tr data-id="${escapeHtml(c.id)}" style="cursor:pointer" title="Click for class details">
           <td>
             <div class="cell-title">
               <div class="cell-icon"><i data-lucide="graduation-cap"></i></div>
               <div>
                 <div class="title">${escapeHtml(c.name)}</div>
-                <div class="subtitle">${escapeHtml(c.subject)} · ${escapeHtml(c.professor || 'TBA')}</div>
+                <div class="subtitle">${escapeHtml(c.subject)} · ${escapeHtml(c.room || 'Room TBA')}</div>
               </div>
             </div>
           </td>
-          <td><span class="subject-tag ${escapeHtml(c.short)}"><span class="dot ${escapeHtml(c.short)}"></span> ${escapeHtml(c.subject)}</span></td>
+          <td style="text-align:center"><span class="subject-tag ${escapeHtml(c.short)}"><span class="dot ${escapeHtml(c.short)}"></span> ${escapeHtml(c.subject)}</span></td>
          <td style="text-align:center">${enrolledCount(c, students)}</td>
           <td>
             <div class="title">${escapeHtml(c.nextActivity)}</div>
@@ -76,15 +110,17 @@ document.addEventListener('DOMContentLoaded', () => {
           </td>
           <td><span class="badge badge-success">Active</span></td>
           <td></td>
-        </tr>`).join('')
+        </tr>`;
+        }).join('')
         : '<tr><td colspan="7" style="text-align:center;padding:24px">No classes found.</td></tr>';
     }
 
     // ---- Grid view ----
     const grid = document.getElementById('classesGridView');
     if (grid) {
-      grid.innerHTML = list.map((c) => `
-        <div class="subject-card" data-id="${escapeHtml(c.id)}">
+      grid.innerHTML = list.map((c) => {
+        return `
+        <div class="subject-card" data-id="${escapeHtml(c.id)}" style="cursor:pointer" title="Click for class details">
           <div class="subject-card-top">
             <div class="subj-icon" style="background:var(--page-bg)"><i data-lucide="graduation-cap"></i></div>
             <div class="subj-info"><h3>${escapeHtml(c.name)}</h3><p>${escapeHtml(c.subject)}</p></div>
@@ -94,7 +130,8 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="ss" style="width:100%;text-align:center;margin:0"><div class="ss-val">${enrolledCount(c, students)}</div><div class="ss-lbl">Students</div></div>
             <div class="ss" style="width:100%;text-align:center;margin:0"><div class="ss-val">${Number(c.progress) || 0}%</div><div class="ss-lbl">Progress</div></div>
           </div>
-        </div>`).join('');
+        </div>`;
+      }).join('');
     }
 
     // ---- Overview (keeps the donut, rebuilds center + legend) ----
@@ -113,6 +150,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (typeof lucide !== 'undefined') lucide.createIcons();
   }
+
+  // ---- Class details (opens when a class row / card is clicked) ----
+  function openClassDetails(id) {
+    const c = getClasses().find((x) => x.id === id);
+    if (!c) return;
+    currentDetailId = id;
+    const students = getStudents();
+    const notSet = 'Not set';
+
+    setText('detailName', c.name);
+    setText('detailSubject', c.subject || notSet);
+    setText('detailInstructor', instructorName(c));
+    setText('detailRoom', c.room || notSet);
+    setText('detailDays', c.schedule || notSet);
+    setText('detailTime', timeText(c) || notSet);
+    setText('detailStudents', enrolledCount(c, students));
+    setText('detailProgress', (Number(c.progress) || 0) + '%');
+    setText('detailDescription', c.description || 'No description provided.');
+
+    openModal('classDetailsModal');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }
+
+  function handleClassClick(e) {
+    // Ignore clicks on buttons/links (e.g. the actions menu)
+    if (e.target.closest('button, a, .action-menu-wrap')) return;
+    const item = e.target.closest('[data-id]');
+    if (item) openClassDetails(item.dataset.id);
+  }
+  document.getElementById('classesTableBody')?.addEventListener('click', handleClassClick);
+  document.getElementById('classesGridView')?.addEventListener('click', handleClassClick);
 
   // ---- Table / Grid toggle ----
   document.querySelectorAll('#classViewToggle button').forEach((btn) => {
@@ -135,23 +203,85 @@ document.addEventListener('DOMContentLoaded', () => {
     if (result?.ok) render();
   });
 
-  document.getElementById('addClassBtn')?.addEventListener('click', () => openModal('addClassModal'));
+  // ---- Add / Edit class form ----
+  function setFormMode(isEdit) {
+    setText('addClassTitle', isEdit ? 'Edit Class' : 'Add New Class');
+    setText('saveClassBtn', isEdit ? 'Save Changes' : 'Create Class');
+  }
+
+  function openAddClass() {
+    editingId = null;
+    document.getElementById('addClassForm')?.reset();
+    setFormMode(false);
+    openModal('addClassModal');
+  }
+
+  function openEditClass(id) {
+    const c = getClasses().find((x) => x.id === id);
+    if (!c) return;
+    editingId = id;
+    const setVal = (field, v) => { const el = document.getElementById(field); if (el) el.value = v ?? ''; };
+
+    // Classes synced from Classroom may have a subject that isn't in the dropdown
+    const sel = document.getElementById('classSubject');
+    if (sel && c.subject && ![...sel.options].some((o) => o.value === c.subject)) {
+      sel.add(new Option(c.subject, c.subject));
+    }
+
+    setVal('className', c.name);
+    setVal('classSubject', c.subject);
+    setVal('classRoom', c.room);
+    setVal('classSchedule', c.schedule);
+    setVal('classStartTime', c.startTime || '09:00');
+    setVal('classEndTime', c.endTime || '10:00');
+    setVal('classDescription', c.description);
+
+    setFormMode(true);
+    openModal('addClassModal');
+  }
+
+  document.getElementById('addClassBtn')?.addEventListener('click', openAddClass);
+
+  document.getElementById('editClassBtn')?.addEventListener('click', () => {
+    const id = currentDetailId;
+    closeModal('classDetailsModal');
+    if (id) openEditClass(id);
+  });
 
   document.getElementById('addClassForm')?.addEventListener('submit', (e) => {
     e.preventDefault();
     const name = document.getElementById('className')?.value.trim();
     const subject = document.getElementById('classSubject')?.value.trim();
+    const room = document.getElementById('classRoom')?.value.trim() || '';
+    const schedule = document.getElementById('classSchedule')?.value.trim() || '';
+    const startTime = document.getElementById('classStartTime')?.value || '';
+    const endTime = document.getElementById('classEndTime')?.value || '';
+    const description = document.getElementById('classDescription')?.value.trim() || '';
+
     if (!name || !subject) { showToast('Name and subject required', 'error'); return; }
+    if (!startTime || !endTime) { showToast('Start and end time required', 'error'); return; }
+    if (endTime <= startTime) { showToast('End time must be after start time', 'error'); return; }
 
     const list = getClasses();
-    list.push({
-      id: uid('cls'), name, subject, short: subjectShort(subject),
-      students: 0, nextActivity: 'TBD', nextDate: '2025-09-30', progress: 0,
-    });
+    const fields = { name, subject, short: subjectShort(subject), room, schedule, startTime, endTime, description };
+
+    if (editingId) {
+      const idx = list.findIndex((c) => c.id === editingId);
+      if (idx === -1) { showToast('Class not found', 'error'); return; }
+      list[idx] = { ...list[idx], ...fields };
+    } else {
+      list.push({
+        id: uid('cls'), ...fields,
+        students: 0, nextActivity: 'TBD', nextDate: '2025-09-30', progress: 0,
+      });
+    }
+
     sbSet(SB_KEYS.CLASSES, list);
     closeModal('addClassModal');
+    showToast(editingId ? 'Class updated' : 'Class created');
+    editingId = null;
     e.target.reset();
-    showToast('Class created');
+    setFormMode(false);
     render();
   });
 
