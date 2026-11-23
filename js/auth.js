@@ -32,6 +32,20 @@ function logout() {
 function showAuthError(el, message) { if (el) { el.textContent = message; el.classList.add('show'); } }
 function clearAuthError(el) { if (el) { el.textContent = ''; el.classList.remove('show'); } }
 
+function wirePasswordToggle(inputId, toggleId, label = 'password') {
+  const input = document.getElementById(inputId);
+  const toggle = document.getElementById(toggleId);
+  if (!input || !toggle) return;
+  toggle.addEventListener('click', () => {
+    const showPassword = input.type === 'password';
+    input.type = showPassword ? 'text' : 'password';
+    toggle.setAttribute('aria-label', `${showPassword ? 'Hide' : 'Show'} ${label}`);
+    toggle.setAttribute('aria-pressed', String(showPassword));
+    toggle.innerHTML = `<i data-lucide="${showPassword ? 'eye-off' : 'eye'}"></i>`;
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  });
+}
+
 let pendingChallenge = '';
 let pendingRemember = false;
 
@@ -117,8 +131,7 @@ function initLoginPage() {
   const form = document.getElementById('loginForm');
   const errorEl = document.getElementById('loginError');
   const pw = document.getElementById('password');
-  const toggle = document.getElementById('togglePassword');
-  toggle?.addEventListener('click', () => { pw.type = pw.type === 'password' ? 'text' : 'password'; });
+  wirePasswordToggle('password', 'togglePassword');
   form?.addEventListener('submit', async (event) => {
     event.preventDefault();
     clearAuthError(errorEl);
@@ -196,15 +209,19 @@ function initLoginPage() {
 function initSignupPage() {
   const form = document.getElementById('signupForm');
   const errorEl = document.getElementById('signupError');
+  wirePasswordToggle('password', 'togglePassword');
+  wirePasswordToggle('confirmPassword', 'toggleConfirmPassword', 'confirm password');
   form?.addEventListener('submit', async (event) => {
     event.preventDefault();
     clearAuthError(errorEl);
     const name = document.getElementById('fullName').value.trim();
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
     const role = document.getElementById('role')?.value || 'student';
-    if (!name || !email || !password) { showAuthError(errorEl, 'Please fill in all required fields.'); return; }
+    if (!name || !email || !password || !confirmPassword) { showAuthError(errorEl, 'Please fill in all required fields.'); return; }
     if (password.length < 8) { showAuthError(errorEl, 'Password must be at least 8 characters.'); return; }
+    if (password !== confirmPassword) { showAuthError(errorEl, 'Passwords do not match.'); return; }
     try {
       const response = await apiAuth('register', { name, email, password, role });
       const result = await response.json();

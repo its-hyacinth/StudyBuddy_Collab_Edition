@@ -617,7 +617,7 @@ function createDonutSVG(percent, color = '#2563EB', size = 100) {
     </svg>`;
 }
 
-function renderMiniCalendar(container, year, month, eventDates = [], onNav) {
+function renderMiniCalendar(container, year, month, eventDates = [], onNav, onSelectDate) {
   if (!container) return;
   const first = new Date(year, month, 1);
   const startDow = first.getDay();
@@ -649,7 +649,12 @@ function renderMiniCalendar(container, year, month, eventDates = [], onNav) {
     const isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === d;
     const key = `${year}-${month}-${d}`;
     const hasEvent = eventSet.has(key);
-    html += `<div class="cal-day${isToday ? ' today' : ''}">
+    const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const dateLabel = new Date(year, month, d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    const dateAttributes = typeof onSelectDate === 'function'
+      ? `data-calendar-date="${dateKey}" role="button" tabindex="0" aria-label="View events for ${dateLabel}" aria-haspopup="dialog" aria-controls="progressStatModal"`
+      : '';
+    html += `<div class="cal-day${isToday ? ' today' : ''}" ${dateAttributes}>
       <span class="day-num">${d}</span>
       ${hasEvent ? '<div class="day-dots"><span style="background:#2563EB"></span></div>' : ''}
     </div>`;
@@ -664,6 +669,16 @@ function renderMiniCalendar(container, year, month, eventDates = [], onNav) {
   if (typeof lucide !== 'undefined') lucide.createIcons();
   container.querySelector('.cal-prev')?.addEventListener('click', () => onNav && onNav(year, month - 1));
   container.querySelector('.cal-next')?.addEventListener('click', () => onNav && onNav(year, month + 1));
+  container.querySelectorAll('[data-calendar-date]').forEach((day) => {
+    const selectDate = () => onSelectDate(day.dataset.calendarDate);
+    day.addEventListener('click', selectDate);
+    day.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        selectDate();
+      }
+    });
+  });
 }
 
 // Initialize seed on load

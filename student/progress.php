@@ -324,6 +324,21 @@
     </div>
   </div>
 
+  <div class="modal-backdrop" id="progressStatModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="progressStatTitle">
+      <div class="modal-header">
+        <h3 id="progressStatTitle">Progress Details</h3>
+        <button type="button" class="modal-close" data-close-modal="progressStatModal" aria-label="Close progress details">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="modal-body" id="progressStatContent" aria-live="polite"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-close-modal="progressStatModal">Close</button>
+      </div>
+    </div>
+  </div>
+
   <script src="../js/data.js"></script>
   <script src="../js/auth.js"></script>
   <script src="../js/sidebar.js"></script>

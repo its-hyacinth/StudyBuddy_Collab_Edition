@@ -13,6 +13,13 @@ document.addEventListener('DOMContentLoaded', () => {
   let subjects = [];
   let assignments = [];
   const iconBg = (color) => `${color}22`;
+  const escapeHTML = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }[character]));
   const isCompleted = (assignment) => String(assignment.status || '').toLowerCase() === 'completed';
   const uniqueAssignments = (list) => {
     const seen = new Set();
@@ -139,7 +146,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     renderTabs();
     renderDetail();
-    renderOverview();
     renderFacts();
     if (typeof lucide !== 'undefined') lucide.createIcons();
   }
@@ -237,28 +243,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  function renderOverview() {
-    const el = document.getElementById('subjectOverview');
-    if (!el) return;
-    el.innerHTML = subjects.map((s) => `
-      <div class="list-item" data-goto="${s.id}">
-        <span class="dot" style="background:${s.color}"></span>
-        <div class="item-meta">
-          <div class="item-title">${s.name}</div>
-          <div class="progress-row" style="margin-top:4px">
-            <div class="progress-bar"><div class="fill" style="width:${s.progress}%;background:${s.color}"></div></div>
-            <span class="progress-pct">${s.progress}%</span>
-          </div>
-        </div>
-        <i data-lucide="chevron-right" class="chevron"></i>
-      </div>`).join('') || '<p class="empty-state">No subjects to show.</p>';
-    el.querySelectorAll('[data-goto]').forEach((row) => {
-      row.addEventListener('click', () => {
-        selectSubject(row.getAttribute('data-goto'));
-      });
-    });
-  }
-
   function renderFacts() {
     const el = document.getElementById('quickFacts');
     if (!el) return;
@@ -267,14 +251,80 @@ document.addEventListener('DOMContentLoaded', () => {
     const completed = allAssignments.filter(isCompleted).length;
     const pending = allAssignments.length - completed;
     el.innerHTML = `
-      <div class="list-item" style="cursor:default"><div class="item-meta"><div class="item-title">Total Subjects</div></div><strong>${subjects.length}</strong></div>
-      <div class="list-item" style="cursor:default"><div class="item-meta"><div class="item-title">Total Assignments</div></div><strong>${allAssignments.length}</strong></div>
-      <div class="list-item" style="cursor:default"><div class="item-meta"><div class="item-title">Completed</div></div><strong>${completed}</strong></div>
-      <div class="list-item" style="cursor:default"><div class="item-meta"><div class="item-title">Pending</div></div><strong>${pending}</strong></div>
+      <div class="list-item" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="quickFactModal" data-quick-fact="subjects"><div class="item-meta"><div class="item-title">Total Subjects</div></div><strong>${subjects.length}</strong></div>
+      <div class="list-item" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="quickFactModal" data-quick-fact="assignments"><div class="item-meta"><div class="item-title">Total Assignments</div></div><strong>${allAssignments.length}</strong></div>
+      <div class="list-item" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="quickFactModal" data-quick-fact="completed"><div class="item-meta"><div class="item-title">Completed</div></div><strong>${completed}</strong></div>
+      <div class="list-item" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="quickFactModal" data-quick-fact="pending"><div class="item-meta"><div class="item-title">Pending</div></div><strong>${pending}</strong></div>
       <div class="tip-footer" style="margin-top:12px;font-style:italic;color:var(--text-muted);font-size:12px">
         <i data-lucide="graduation-cap"></i> Small steps every day lead to big results.
       </div>`;
   }
+
+  function showQuickFact(type) {
+    const title = document.getElementById('quickFactTitle');
+    const content = document.getElementById('quickFactContent');
+    if (!title || !content) return;
+
+    const allAssignments = uniqueAssignments(assignments);
+    const completedAssignments = allAssignments.filter(isCompleted);
+    const facts = {
+      subjects: {
+        title: 'Total Subjects',
+        description: 'All subjects currently saved to your account.',
+        items: subjects.map((subject) => {
+          const details = [subject.code, subject.room, subject.professor].filter(Boolean).map(escapeHTML).join(' · ');
+          return `<div class="list-item" style="cursor:default"><div class="item-meta"><div class="item-title">${escapeHTML(subject.name || 'Untitled subject')}</div><div class="item-sub">${details || 'No additional details'}</div></div></div>`;
+        }),
+        empty: 'No subjects have been added yet.',
+      },
+      assignments: {
+        title: 'Total Assignments',
+        description: 'All assignments across your subjects. Duplicate Classroom entries are counted once.',
+        items: allAssignments,
+        empty: 'There are no assignments yet.',
+      },
+      completed: {
+        title: 'Completed Assignments',
+        description: 'Assignments marked as completed.',
+        items: completedAssignments,
+        empty: 'There are no completed assignments yet.',
+      },
+      pending: {
+        title: 'Pending Assignments',
+        description: 'Assignments not marked as completed.',
+        items: allAssignments.filter((assignment) => !isCompleted(assignment)),
+        empty: 'There are no pending assignments.',
+      },
+    }[type];
+    if (!facts) return;
+
+    title.textContent = facts.title;
+    const items = type === 'subjects' ? facts.items : facts.items.map((assignment) => {
+      const linkedSubject = subjects.find((subject) =>
+        assignment.subjectId === subject.id
+        || assignment.classId === subject.id
+        || (subject.classroomId && (assignment.classId === subject.classroomId || assignment.classroomId === subject.classroomId))
+      );
+      const subjectName = assignment.subject || linkedSubject?.name || 'Unassigned';
+      const status = statusLabel(assignment.status || 'pending');
+      const dueDate = assignment.dueDate ? `Due ${formatDate(assignment.dueDate)}` : 'No due date';
+      return `<div class="list-item" style="cursor:default"><div class="item-meta"><div class="item-title">${escapeHTML(assignment.title || 'Untitled assignment')}</div><div class="item-sub">${escapeHTML(subjectName)} · ${escapeHTML(dueDate)} · ${escapeHTML(status)}</div></div></div>`;
+    });
+    content.innerHTML = `<p style="margin-bottom:12px;color:var(--text-muted);font-size:13px">${facts.description}</p>${items.length ? items.join('') : `<p class="subject-assignments-empty">${facts.empty}</p>`}`;
+    openModal('quickFactModal');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }
+
+  document.getElementById('quickFacts')?.addEventListener('click', (event) => {
+    const trigger = event.target.closest('[data-quick-fact]');
+    if (trigger) showQuickFact(trigger.dataset.quickFact);
+  });
+  document.getElementById('quickFacts')?.addEventListener('keydown', (event) => {
+    const trigger = event.target.closest('[data-quick-fact]');
+    if (!trigger || !['Enter', ' '].includes(event.key)) return;
+    event.preventDefault();
+    showQuickFact(trigger.dataset.quickFact);
+  });
 
   document.getElementById('addSubjectBtn')?.addEventListener('click', () => openModal('addSubjectModal'));
   document.getElementById('syncClassroomBtn')?.addEventListener('click', async (e) => {

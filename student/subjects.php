@@ -166,34 +166,6 @@
         </div>
 
         <aside class="page-aside">
-          <div class="card" id="subjectOverview">
-            <div class="card-header">
-              <div class="card-header-left">
-                <div class="card-icon blue"><i data-lucide="info"></i></div>
-                <h2 class="card-title">Subject Overview</h2>
-              </div>
-            </div>
-            <div style="text-align:center;padding:8px 0 16px">
-              <div class="subj-icon" style="background:#DBEAFE;color:#2563EB;width:56px;height:56px;border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px"><i data-lucide="calculator"></i></div>
-              <h3 style="font-size:16px;margin-bottom:4px">Mathematics</h3>
-              <p style="font-size:12.5px;color:var(--text-muted)">Select a subject to view details</p>
-            </div>
-            <div class="progress-row" style="margin-bottom:12px">
-              <div class="progress-bar"><div class="fill math" style="width:75%"></div></div>
-              <span class="progress-pct">75%</span>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12.5px">
-              <div style="padding:10px;background:var(--page-bg);border-radius:8px;text-align:center">
-                <div style="font-weight:700;font-size:18px;color:var(--text-heading)">5</div>
-                <div style="color:var(--text-muted)">Assignments</div>
-              </div>
-              <div style="padding:10px;background:var(--page-bg);border-radius:8px;text-align:center">
-                <div style="font-weight:700;font-size:18px;color:var(--text-heading)">4</div>
-                <div style="color:var(--text-muted)">Completed</div>
-              </div>
-            </div>
-          </div>
-
           <div class="card">
             <div class="card-header">
               <div class="card-header-left">
@@ -294,6 +266,21 @@
           <button type="submit" class="btn btn-primary">Add Subject</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="quickFactModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="quickFactTitle">
+      <div class="modal-header">
+        <h3 id="quickFactTitle">Quick Fact Details</h3>
+        <button type="button" class="modal-close" data-close-modal="quickFactModal" aria-label="Close">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="modal-body" id="quickFactContent" aria-live="polite"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-close-modal="quickFactModal">Done</button>
+      </div>
     </div>
   </div>
 

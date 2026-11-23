@@ -17,6 +17,274 @@
   line-height: 1.5;
 }
 
+.student-app #todoTabs {
+  width: 100%;
+  gap: 4px;
+  padding: 5px;
+  border-color: #E5EAF2;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.student-app #todoTabs .filter-tab {
+  flex: 1;
+  justify-content: center;
+  padding: 9px 12px;
+}
+
+.student-app #todoList .todo-item {
+  padding: 18px 12px;
+  border-radius: 10px;
+  transition: background var(--transition), transform var(--transition);
+}
+
+.student-app #todoList .todo-item:hover {
+  transform: translateX(2px);
+}
+
+.student-app #todayTasksList .list-item {
+  padding: 10px 0;
+  cursor: default;
+}
+
+.student-app #todayTasksList .list-item:hover {
+  margin: 0;
+  padding: 10px 0;
+  background: transparent;
+}
+
+.student-app #progressStats .stat-card[role="button"] {
+  cursor: pointer;
+}
+
+.student-app #progressStats .stat-card[role="button"]:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.28);
+  outline-offset: 2px;
+}
+
+.student-app #progressStatModal .modal {
+  display: flex;
+  flex-direction: column;
+  height: 680px;
+  max-height: calc(100vh - 40px);
+}
+
+.student-app #progressStatModal .modal.is-compact {
+  height: auto;
+  min-height: 0;
+}
+
+.student-app #progressStatModal .modal-header,
+.student-app #progressStatModal .modal-footer {
+  flex-shrink: 0;
+}
+
+.student-app #progressStatModal .modal.is-compact .modal-body {
+  display: block;
+  flex: 0 1 auto;
+  overflow-y: auto;
+}
+
+.student-app #progressStatModal .modal-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.student-app #progressStatContent {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.student-app #progressStatModal .modal.is-compact #progressStatContent {
+  display: block;
+  flex: none;
+}
+
+.student-app .progress-stat-description {
+  margin-bottom: 12px;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.student-app .progress-deadline-details {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, auto);
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #E5EAF2;
+  border-radius: 10px;
+  background: #F8FAFC;
+}
+
+.student-app .progress-deadline-field {
+  min-width: 0;
+}
+
+.student-app .progress-deadline-field span {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.student-app .progress-deadline-field strong {
+  display: block;
+  color: var(--text-heading);
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.student-app .progress-deadline-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.student-app .progress-stat-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.student-app .progress-stat-filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  margin-bottom: 12px;
+  padding: 4px;
+  border: 1px solid #E5EAF2;
+  border-radius: 10px;
+  background: #F8FAFC;
+}
+
+.student-app .progress-stat-filter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 0;
+  padding: 8px 6px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.student-app .progress-stat-filter:hover {
+  color: var(--text-heading);
+  background: #EEF2F7;
+}
+
+.student-app .progress-stat-filter.active,
+.student-app .progress-stat-filter.active:hover {
+  background: var(--primary);
+  color: #fff;
+}
+
+.student-app .progress-stat-filter span {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.06);
+  font-size: 11px;
+}
+
+.student-app .progress-stat-filter.active span {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.student-app .progress-stat-filter:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.28);
+  outline-offset: 1px;
+}
+
+.student-app .progress-stat-list .list-item {
+  cursor: default;
+}
+
+.student-app .progress-stat-list .list-item:hover {
+  margin: 0;
+  padding: 12px 0;
+  background: transparent;
+}
+
+.student-app #progressMiniCalendar .cal-day[role="button"]:focus-visible,
+.student-app #progressDeadlineList [data-progress-deadline]:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.28);
+  outline-offset: -2px;
+  border-radius: 8px;
+}
+
+.student-app .progress-calendar-group {
+  padding: 10px 0;
+  border-bottom: 1px solid #E5EAF2;
+}
+
+.student-app .progress-calendar-group:last-child {
+  border-bottom: 0;
+}
+
+.student-app .progress-calendar-group h4 {
+  margin-bottom: 4px;
+  color: var(--text-heading);
+  font-size: 13px;
+}
+
+.student-app .progress-calendar-group .list-item {
+  cursor: default;
+}
+
+.student-app .progress-calendar-group .list-item:hover {
+  margin: 0;
+  padding: 12px 0;
+  background: transparent;
+}
+
+.student-app .progress-calendar-group .btn {
+  margin-top: 8px;
+}
+
+.student-app .progress-stat-subject {
+  margin-bottom: 14px;
+}
+
+.student-app .progress-stat-subject-heading,
+.student-app .progress-stat-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-heading);
+}
+
+.student-app .progress-stat-subject-heading {
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.student-app .progress-stat-summary {
+  align-items: baseline;
+  margin-bottom: 12px;
+  padding: 14px;
+  border-radius: 10px;
+  background: var(--page-bg);
+}
+
+.student-app .progress-stat-summary strong {
+  font-size: 24px;
+}
+
 .student-app .greeting {
   font-size: 24px;
 }
@@ -223,6 +491,23 @@
 @media (max-width: 640px) {
   .student-app .page-title {
     font-size: 20px;
+  }
+
+  .student-app #todoTabs .filter-tab {
+    flex: 1 0 42%;
+  }
+
+  .student-app .progress-stat-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .student-app .progress-deadline-details {
+    grid-template-columns: 1fr;
+  }
+
+  .student-app .progress-deadline-actions {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .student-app .page-content {

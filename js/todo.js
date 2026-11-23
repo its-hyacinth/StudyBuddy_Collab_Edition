@@ -81,7 +81,6 @@ document.addEventListener('DOMContentLoaded', () => {
         </label>
         <button type="button" class="todo-body" data-details="${safeId}" aria-haspopup="dialog">
           <span class="todo-title">${escapeHtml(t.title)}</span>
-          ${t.notes ? `<span class="todo-notes">${escapeHtml(t.notes)}</span>` : ''}
           <span class="todo-meta">
             <span class="subject-tag ${subjectClass}">${escapeHtml(subject)}</span>
             <span class="todo-due"><i data-lucide="clock" style="width:12px;height:12px;display:inline"></i> ${escapeHtml(t.dueDate ? formatDate(t.dueDate) : 'No due date')} ${t.dueTime ? escapeHtml(formatTime(t.dueTime)) : ''}</span>
@@ -134,7 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('taskDetailsSubject').textContent = task.subject || 'General';
     document.getElementById('taskDetailsDueDate').textContent = formatDate(task.dueDate);
     document.getElementById('taskDetailsDueTime').textContent = task.dueTime ? formatTime(task.dueTime) : 'Not set';
-    document.getElementById('taskDetailsNotes').textContent = task.notes || 'No notes added.';
+    document.getElementById('taskDetailsNotes').textContent = task.notes || 'No description added.';
     const status = document.getElementById('taskDetailsStatus');
     const currentStatus = displayStatus(task);
     status.className = `badge ${statusClass(currentStatus)}`;
@@ -144,6 +143,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderAside() {
     const today = getTasks().filter((t) => (t.today || t.dueDate === localDateStr()) && t.status !== 'completed');
+    const count = document.getElementById('todayTasksCount');
+    if (count) {
+      count.textContent = today.length ? `${today.length} left` : 'All done';
+      count.className = `badge ${today.length ? 'badge-pending' : 'badge-completed'}`;
+    }
     const el = document.getElementById('todayTasksList') || document.getElementById('todayTasks');
     if (el) {
       el.innerHTML = today.map((t) => `

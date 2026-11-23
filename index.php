@@ -58,10 +58,10 @@ if (!empty($_SESSION['user'])) { header('Location: ' . ($_SESSION['user']['role'
             </div>
           </div>
           <div class="form-group">
-            <div class="input-icon-wrap">
+            <div class="input-icon-wrap has-password-toggle">
               <i data-lucide="lock" class="input-icon"></i>
               <input class="form-control" type="password" id="password" placeholder="Password" autocomplete="current-password" required />
-              <button type="button" class="input-action" id="togglePassword" aria-label="Show password">
+              <button type="button" class="input-action" id="togglePassword" aria-label="Show password" aria-controls="password" aria-pressed="false">
                 <i data-lucide="eye"></i>
               </button>
             </div>

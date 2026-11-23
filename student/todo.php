@@ -139,7 +139,7 @@
                 <div class="card-icon blue"><i data-lucide="sun"></i></div>
                 <h2 class="card-title">Today's Tasks</h2>
               </div>
-              <span class="badge badge-pending">3 left</span>
+              <span class="badge badge-pending" id="todayTasksCount">0 left</span>
             </div>
             <div id="todayTasksList">
               <div class="list-item">
@@ -242,8 +242,8 @@
             </div>
           </div>
           <div class="form-group">
-            <label for="taskNotes">Notes</label>
-            <textarea class="form-control" id="taskNotes" name="notes" placeholder="Additional notes (optional)"></textarea>
+            <label for="taskNotes">Description</label>
+            <textarea class="form-control" id="taskNotes" name="notes" placeholder="Add a description (optional)"></textarea>
           </div>
         </div>
         <div class="modal-footer">
@@ -281,7 +281,7 @@
             <strong class="task-detail-value" id="taskDetailsDueTime"></strong>
           </div>
           <div class="task-detail-field task-detail-notes-field">
-            <span class="task-detail-label">Notes</span>
+            <span class="task-detail-label">Description</span>
             <p class="task-detail-value" id="taskDetailsNotes"></p>
           </div>
         </div>
