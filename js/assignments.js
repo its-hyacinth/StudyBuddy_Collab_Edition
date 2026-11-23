@@ -12,6 +12,8 @@ document.addEventListener('DOMContentLoaded', () => {
   let classFilter = '';
   let sortBy = 'due-asc';
   let page = 1;
+  let editingAsgId = null;  // teacher: assignment being edited (null = creating)
+  let currentAsgId = null;  // teacher: assignment open in the details popup
   const perPage = isTeacher ? 8 : 15;
 
   function escapeHtml(str) {
@@ -29,6 +31,33 @@ document.addEventListener('DOMContentLoaded', () => {
     return undefined;
   }
 
+  // ---- Teacher: due time helpers (student side never uses these) ----
+  // "23:59" -> "11:59 PM"
+  function formatTimeOfDay(t) {
+    if (!t || !/^\d{1,2}:\d{2}$/.test(t)) return '';
+    const [h, m] = t.split(':').map(Number);
+    return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+  }
+
+  // Sort key: date, plus time for teacher assignments that have one
+  function dueKey(a, fallback) {
+    if (!a.dueDate) return fallback;
+    return isTeacher && a.dueTime ? `${a.dueDate}T${a.dueTime}` : a.dueDate;
+  }
+
+  // Past due? Date-only on the student side; date + time for teacher assignments
+  function isPastDue(a) {
+    if (!a.dueDate) return false;
+    const today = localDateStr();
+    if (a.dueDate < today) return true;
+    if (isTeacher && a.dueTime && a.dueDate === today) {
+      const n = new Date();
+      const nowTime = `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`;
+      return a.dueTime < nowTime;
+    }
+    return false;
+  }
+
   // Same formula as My Classes / Dashboard: Classroom students + students you added
   function enrolledCount(cls, students) {
     return (Number(cls.students) || 0) + students.filter((s) => s.classId === cls.id).length;
@@ -41,7 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function displayStatus(assignment) {
     if (assignment.status === 'completed') return 'completed';
-    if (assignment.status === 'overdue' || (assignment.dueDate && assignment.dueDate < localDateStr())) return 'overdue';
+    if (assignment.status === 'overdue' || isPastDue(assignment)) return 'overdue';
     return assignment.status === 'pending' ? 'pending' : 'upcoming';
   }
 
@@ -66,8 +95,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
     list = [...list].sort((a, b) => {
-      if (sortBy === 'due' || sortBy === 'due-asc') return String(a.dueDate || '9999-12-31').localeCompare(String(b.dueDate || '9999-12-31'));
-      if (sortBy === 'due-desc') return String(b.dueDate || '').localeCompare(String(a.dueDate || ''));
+      if (sortBy === 'due' || sortBy === 'due-asc') return String(dueKey(a, '9999-12-31')).localeCompare(String(dueKey(b, '9999-12-31')));
+      if (sortBy === 'due-desc') return String(dueKey(b, '')).localeCompare(String(dueKey(a, '')));
       if (sortBy === 'title') return String(a.title || '').localeCompare(String(b.title || ''));
       if (sortBy === 'points') return (Number(b.points) || 0) - (Number(a.points) || 0);
       return a.displayStatus.localeCompare(b.displayStatus);
@@ -185,8 +214,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const cls = classOf(a, classes);
     const short = cls?.short || subjectShort(a.subject);
     const enrolled = cls ? enrolledCount(cls, students) : '—';
+    const status = a.displayStatus || a.status;
     return `
-      <tr data-id="${escapeHtml(a.id)}" data-status="${escapeHtml(a.status)}">
+      <tr data-id="${escapeHtml(a.id)}" data-status="${escapeHtml(a.status)}" style="cursor:pointer" title="Click for details">
         <td>
           <div class="cell-title">
             <div class="cell-icon" style="color:var(--${escapeHtml(short)}, #2563EB)"><i data-lucide="file-text"></i></div>
@@ -197,10 +227,10 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         </td>
         <td><span class="subject-tag ${escapeHtml(short)}"><span class="dot ${escapeHtml(short)}"></span> ${escapeHtml(cls?.name || a.subject)}</span></td>
-        <td>${formatDate(a.dueDate)}</td>
+        <td>${formatDate(a.dueDate)}${a.dueTime ? `<div class="subtitle">${escapeHtml(formatTimeOfDay(a.dueTime))}</div>` : ''}</td>
         <td>${a.points ? escapeHtml(a.points) + ' pts' : '—'}</td>
         <td style="text-align:center">${Number(a.submissions) || 0} / ${enrolled}</td>
-        <td><span class="badge ${statusClass(a.status)}">${statusLabel(a.status)}</span></td>
+        <td><span class="badge ${statusClass(status)}">${statusLabel(status)}</span></td>
         <td>${actionMenu(a)}</td>
       </tr>`;
   }
@@ -210,6 +240,8 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="action-menu-wrap">
         <button type="button" class="action-menu-btn" data-menu="${escapeHtml(a.id)}" aria-label="Actions"><i data-lucide="more-vertical"></i></button>
         <div class="action-dropdown" id="amenu-${escapeHtml(a.id)}">
+          ${isTeacher ? `<button type="button" data-view="${escapeHtml(a.id)}"><i data-lucide="eye"></i> View</button>
+          <button type="button" data-edit="${escapeHtml(a.id)}"><i data-lucide="edit"></i> Edit</button>` : ''}
           ${a.status !== 'completed' ? `<button type="button" data-complete="${escapeHtml(a.id)}"><i data-lucide="check"></i> Mark Complete</button>` : ''}
           <button type="button" data-delete="${escapeHtml(a.id)}" class="danger"><i data-lucide="trash-2"></i> Delete</button>
         </div>
@@ -345,7 +377,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderAside() {
     const deadlines = getAssignments()
       .filter((a) => a.status !== 'completed')
-      .sort((a, b) => String(a.dueDate || '9999-12-31').localeCompare(String(b.dueDate || '9999-12-31')))
+      .sort((a, b) => String(dueKey(a, '9999-12-31')).localeCompare(String(dueKey(b, '9999-12-31'))))
       .slice(0, 5);
     const dl = document.getElementById('upcomingDeadlines') || document.getElementById('asgDeadlines');
     if (dl) {
@@ -355,7 +387,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <span class="dot ${subjectShort(a.subject)}"></span>
           <div class="item-meta">
             <div class="item-title">${escapeHtml(a.title)}</div>
-            <div class="item-sub">${escapeHtml(a.subject)} · ${a.dueDate ? escapeHtml(formatDate(a.dueDate)) : 'No due date'}</div>
+            <div class="item-sub">${escapeHtml(a.subject)} · ${a.dueDate ? escapeHtml(formatDate(a.dueDate)) : 'No due date'}${isTeacher && a.dueTime ? ' · ' + escapeHtml(formatTimeOfDay(a.dueTime)) : ''}</div>
           </div>
           <span class="badge ${statusClass(displayStatus(a))}">${statusLabel(displayStatus(a))}</span>
         </div>`).join('')
@@ -435,9 +467,94 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // ---- Teacher: assignment details popup + edit ----
+  function setEl(id, text) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  }
+
+  function setAsgFormMode(isEdit) {
+    setEl('asgModalTitle', isEdit ? 'Edit Assignment' : 'Create Assignment');
+    setEl('saveAsgBtn', isEdit ? 'Save Changes' : 'Create Assignment');
+  }
+
+  function resetAsgForm() {
+    editingAsgId = null;
+    document.getElementById('createAsgForm')?.reset();
+    setAsgFormMode(false);
+  }
+
+  function showTeacherAssignmentDetails(id) {
+    const a = getAssignments().find((x) => x.id === id);
+    if (!a) { showToast('Assignment is no longer available.', 'error'); return; }
+    currentAsgId = id;
+    const cls = classOf(a, getClasses());
+    const enrolled = cls ? enrolledCount(cls, getStudents()) : '—';
+    const due = a.dueDate
+      ? formatDate(a.dueDate) + (a.dueTime ? ' · ' + formatTimeOfDay(a.dueTime) : '')
+      : 'No due date';
+
+    setEl('tAsgTitle', a.title || 'Untitled assignment');
+    setEl('tAsgClass', cls?.name || a.subject || 'Unassigned');
+    setEl('tAsgDue', due);
+    setEl('tAsgPoints', a.points ? `${a.points} points` : 'Not set');
+    setEl('tAsgSubmissions', `${Number(a.submissions) || 0} / ${enrolled}`);
+    setEl('tAsgDescription', a.description || 'No description provided.');
+    const badge = document.getElementById('tAsgStatus');
+    if (badge) {
+      const st = displayStatus(a);
+      badge.className = `badge ${statusClass(st)}`;
+      badge.textContent = statusLabel(st);
+    }
+    openModal('asgDetailsModal');
+  }
+
+  function openEditAssignment(id) {
+    const a = getAssignments().find((x) => x.id === id);
+    if (!a) return;
+    editingAsgId = id;
+    const set = (field, v) => { const el = document.getElementById(field); if (el) el.value = v ?? ''; };
+    set('asgTitle', a.title);
+    set('asgClass', a.classId || a.subjectId || '');
+    set('asgDueDate', a.dueDate);
+    set('asgDueTime', a.dueTime || '23:59');
+    set('asgPoints', a.points);
+    set('asgDescription', a.description);
+    setAsgFormMode(true);
+    openModal('createAsgModal');
+  }
+
+  if (isTeacher) {
+    document.getElementById('assignmentsTableBody')?.addEventListener('click', (e) => {
+      const editBtn = e.target.closest('[data-edit]');
+      if (editBtn) {
+        document.querySelectorAll('.action-dropdown').forEach((d) => d.classList.remove('open'));
+        openEditAssignment(editBtn.dataset.edit);
+        return;
+      }
+      const viewBtn = e.target.closest('[data-view]');
+      if (viewBtn) {
+        document.querySelectorAll('.action-dropdown').forEach((d) => d.classList.remove('open'));
+        showTeacherAssignmentDetails(viewBtn.dataset.view);
+        return;
+      }
+      // Other buttons (menu toggle, complete, delete) keep their own behavior
+      if (e.target.closest('button, a, .action-menu-wrap')) return;
+      const row = e.target.closest('tr[data-id]');
+      if (row) showTeacherAssignmentDetails(row.dataset.id);
+    });
+
+    document.getElementById('editAsgBtn')?.addEventListener('click', () => {
+      const id = currentAsgId;
+      closeModal('asgDetailsModal');
+      if (id) openEditAssignment(id);
+    });
+  }
+
   // ---- Open the create modal (all button IDs used by student + teacher pages) ----
   ['addAssignmentBtn', 'createAssignmentBtn', 'createAsgBtn', 'qaCreateAsg'].forEach((id) => {
     document.getElementById(id)?.addEventListener('click', () => {
+      if (isTeacher) resetAsgForm();
       openModal('addAssignmentModal');
       openModal('createAsgModal');
     });
@@ -471,8 +588,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const classId = val('asgClass');
       const cls = getClasses().find((c) => c.id === classId);
       if (!cls) { showToast('Please select a class', 'error'); return; }
+      const dueTime = val('asgDueTime') || '';
+      if (!dueTime) { showToast('Due time is required', 'error'); return; }
       data = {
-        title, description, dueDate, status: 'upcoming',
+        title, description, dueDate, dueTime, status: 'upcoming',
         classId: cls.id,
         subjectId: cls.id,
         subject: cls.name,
@@ -488,11 +607,21 @@ document.addEventListener('DOMContentLoaded', () => {
       };
     }
 
-    addAssignment(data);
+    const wasEditing = isTeacher && editingAsgId;
+    if (wasEditing) {
+      // Keep status/submissions; only update the fields the form edits
+      const { status, submissions, ...patch } = data;
+      const existing = getAssignments().find((a) => a.id === editingAsgId);
+      if (existing?.status === 'overdue') patch.status = 'upcoming'; // recalculated from the new date/time
+      updateAssignment(editingAsgId, patch);
+    } else {
+      addAssignment(data);
+    }
     closeModal('addAssignmentModal');
     closeModal('createAsgModal');
     form.reset();
-    showToast('Assignment created');
+    if (isTeacher) { editingAsgId = null; setAsgFormMode(false); }
+    showToast(wasEditing ? 'Assignment updated' : 'Assignment created');
     render();
   });
 
