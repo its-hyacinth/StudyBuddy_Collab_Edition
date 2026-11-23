@@ -736,6 +736,14 @@
 }
 .resource-actions-cell { width: 92px; }
 .resource-actions .btn { flex: 0 0 auto; }
+.teacher-resources-page .resource-action-dropdown {
+  position: fixed;
+  top: 0;
+  right: auto;
+  bottom: auto;
+  left: 0;
+  z-index: 120;
+}
 .resource-details {
   margin: 0;
   border: 1px solid var(--border, #E2E8F0);
@@ -771,11 +779,9 @@
   .resource-folder-actions { flex-wrap: wrap; }
   .resource-folder-count { padding-left: 0; border-left: 0; }
 }
-@media (max-width: 1200px) and (min-width: 901px) {
-  .teacher-resources-page .page-layout { grid-template-columns: minmax(0, 1fr) 260px; gap: 16px; }
-}
-@media (max-width: 900px) {
+@media (max-width: 1200px) {
   .teacher-resources-page .page-layout { grid-template-columns: minmax(0, 1fr); }
+  .teacher-resources-page .page-aside { position: static; }
 }
 
 /* ========== Teacher greeting banner ========== */

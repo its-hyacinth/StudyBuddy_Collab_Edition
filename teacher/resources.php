@@ -103,7 +103,6 @@
                 </button>
               </div>
             </div>
-            <p class="resource-folder-hint">Click a row or Open to view it. Use the three-dot menu for Details or Delete; drag a row onto a folder to move it.</p>
             <div class="table-wrap">
               <table class="data-table" id="resourcesTable">
                 <thead>

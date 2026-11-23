@@ -304,6 +304,26 @@ document.addEventListener('DOMContentLoaded', () => {
     loadDriveFileChoices();
   }
 
+  function closeResourceMenus() {
+    document.querySelectorAll('#resourcesTable .action-dropdown.open').forEach((menu) => menu.classList.remove('open'));
+    document.querySelectorAll('#resourcesTable [data-menu]').forEach((button) => button.setAttribute('aria-expanded', 'false'));
+  }
+
+  function positionResourceMenu(menu, button) {
+    const buttonRect = button.getBoundingClientRect();
+    const menuRect = menu.getBoundingClientRect();
+    const margin = 8;
+    const left = Math.max(margin, Math.min(buttonRect.right - menuRect.width, window.innerWidth - menuRect.width - margin));
+    const spaceBelow = window.innerHeight - buttonRect.bottom - margin;
+    const spaceAbove = buttonRect.top - margin;
+    const top = spaceBelow >= menuRect.height || spaceBelow >= spaceAbove
+      ? buttonRect.bottom
+      : buttonRect.top - menuRect.height;
+
+    menu.style.left = `${left}px`;
+    menu.style.top = `${Math.max(margin, Math.min(top, window.innerHeight - menuRect.height - margin))}px`;
+  }
+
   function render() {
     const all = getResources();
     currentResources = all;
@@ -375,7 +395,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <button type="button" class="action-menu-btn" data-menu="${escapeHtml(r.id)}" aria-label="More actions for ${escapeHtml(r.title)}" aria-haspopup="true" aria-expanded="false">
                   <i data-lucide="more-vertical"></i>
                 </button>
-                <div class="action-dropdown" id="menu-${escapeHtml(r.id)}" role="menu">
+                <div class="action-dropdown resource-action-dropdown" id="menu-${escapeHtml(r.id)}" role="menu">
                   <button type="button" data-info="${escapeHtml(r.id)}" role="menuitem"><i data-lucide="info"></i> Details</button>
                   <button type="button" class="danger" data-delete="${escapeHtml(r.id)}" role="menuitem"><i data-lucide="trash-2"></i> Delete</button>
                 </div>
@@ -398,10 +418,12 @@ document.addEventListener('DOMContentLoaded', () => {
           event.stopPropagation();
           const menu = document.getElementById(`menu-${button.dataset.menu}`);
           const willOpen = !menu?.classList.contains('open');
-          document.querySelectorAll('.action-dropdown.open').forEach((dropdown) => dropdown.classList.remove('open'));
-          document.querySelectorAll('#resourcesTable [data-menu]').forEach((menuButton) => menuButton.setAttribute('aria-expanded', 'false'));
-          menu?.classList.toggle('open', willOpen);
-          button.setAttribute('aria-expanded', String(willOpen));
+          closeResourceMenus();
+          if (willOpen && menu) {
+            menu.classList.add('open');
+            positionResourceMenu(menu, button);
+            button.setAttribute('aria-expanded', 'true');
+          }
         });
       });
 
@@ -487,10 +509,10 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('resourceTypeFilter')?.addEventListener('change', (e) => { typeFilter = e.target.value || 'all'; render(); });
   document.getElementById('resourceSearch')?.addEventListener('input', (e) => { search = e.target.value.trim(); render(); });
   document.addEventListener('click', (event) => {
-    if (!event.target.closest('.action-menu-wrap')) {
-      document.querySelectorAll('#resourcesTable [data-menu]').forEach((button) => button.setAttribute('aria-expanded', 'false'));
-    }
+    if (!event.target.closest('.action-menu-wrap')) closeResourceMenus();
   });
+  document.addEventListener('scroll', closeResourceMenus, true);
+  window.addEventListener('resize', closeResourceMenus);
   document.getElementById('resourceFolderBack')?.addEventListener('click', (event) => {
     folderFilter = event.currentTarget.dataset.parentFolder || 'all';
     render();
