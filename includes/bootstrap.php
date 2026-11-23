@@ -2,14 +2,8 @@
 declare(strict_types=1);
 if (session_status() !== PHP_SESSION_ACTIVE) {
     require_once __DIR__ . '/auth_lib.php';
-    session_set_cookie_params([
-        'lifetime' => 0,
-        'path' => app_cookie_path(),
-        'httponly' => true,
-        'secure' => request_is_https(),
-        'samesite' => 'Lax',
-    ]);
-    session_start();
+    require_once __DIR__ . '/db_session.php';
+    sb_start_session();
     if (empty($_SESSION['user']) && !empty($_COOKIE['sb_remember'])) {
         try {
             require_once __DIR__ . '/../config/database.php';
@@ -22,6 +16,9 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 }
 if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 function json_response(array $data, int $status=200): never {
+    if (function_exists('sb_commit_session')) {
+        try { sb_commit_session(); } catch (Throwable $error) { error_log($error->getMessage()); }
+    }
     http_response_code($status); header('Content-Type: application/json; charset=utf-8');
     echo json_encode($data, JSON_UNESCAPED_UNICODE); exit;
 }

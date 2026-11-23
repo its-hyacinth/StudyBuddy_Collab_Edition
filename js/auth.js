@@ -169,8 +169,18 @@ function wireGoogleRoleForm(errorEl) {
   });
 }
 
-function finishAuth(result) {
-  if (result.redirect) location.href = result.redirect;
+async function finishAuth(result) {
+  if (!result.redirect) return;
+  try {
+    const response = await fetch(`${SB_AUTH_BASE}auth.php?action=session`, { credentials: 'same-origin', cache: 'no-store' });
+    const session = await response.json();
+    if (!session?.user && !session?.requiresTotp && !session?.googleSignup) {
+      const errorEl = document.getElementById('loginError') || document.getElementById('signupError');
+      showAuthError(errorEl, 'You are signed in, but the browser did not keep the session. Refresh the page and try again.');
+      return;
+    }
+  } catch { /* The next page will check the session again. */ }
+  window.location.assign(result.redirect);
 }
 
 async function submitGoogleCredential(credential) {

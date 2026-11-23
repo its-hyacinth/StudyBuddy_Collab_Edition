@@ -10,6 +10,7 @@ $action = (string)($_GET['action'] ?? '');
 $user = $_SESSION['user'] ?? null;
 
 function google_redirect(string $path, array $query): never {
+    if (function_exists('sb_commit_session')) sb_commit_session();
     $join = str_contains($path, '?') ? '&' : '?';
     header('Location: ' . $path . $join . http_build_query($query));
     exit;

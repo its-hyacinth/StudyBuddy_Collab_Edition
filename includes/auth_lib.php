@@ -56,8 +56,9 @@ function role_redirect(string $role): string {
 }
 
 function establish_session(PDO $pdo, array $row): array {
-    session_regenerate_id(true);
     $user = user_from_row($row);
+    $_SESSION['user'] = $user;
+    session_regenerate_id(true);
     $_SESSION['user'] = $user;
     $pdo->prepare('UPDATE users SET last_login_at = NOW() WHERE id = ?')->execute([(int)$row['id']]);
     return $user;
@@ -193,6 +194,11 @@ function fetch_user_by_id(PDO $pdo, int $id): ?array {
 
 function complete_google_oauth_login(PDO $pdo, array $identity, bool $remember): never {
     $home = app_cookie_path() . 'index.php';
+    $go = static function (string $url): never {
+        if (function_exists('sb_commit_session')) sb_commit_session();
+        header('Location: ' . $url);
+        exit;
+    };
     $bySub = $pdo->prepare('SELECT id, full_name, email, password_hash, role, google_sub, avatar_url, totp_secret, totp_enabled, totp_last_step FROM users WHERE google_sub = ? LIMIT 1');
     $bySub->execute([$identity['sub']]);
     $row = $bySub->fetch() ?: null;
@@ -201,22 +207,19 @@ function complete_google_oauth_login(PDO $pdo, array $identity, bool $remember):
         $byEmail->execute([$identity['email']]);
         $existing = $byEmail->fetch();
         if ($existing && empty($existing['google_sub'])) {
-            header('Location: ' . $home . '?' . http_build_query([
+            $go($home . '?' . http_build_query([
                 'google' => 'error',
                 'message' => 'An account with this email already exists. Sign in with your password.',
             ]));
-            exit;
         }
         if ($existing) {
-            header('Location: ' . $home . '?' . http_build_query([
+            $go($home . '?' . http_build_query([
                 'google' => 'error',
                 'message' => 'This email is already linked to a different Google account.',
             ]));
-            exit;
         }
         $_SESSION['google_signup'] = $identity + ['expires' => time() + 600];
-        header('Location: ' . $home);
-        exit;
+        $go($home);
     }
     if (($identity['picture'] ?? '') !== '' && $identity['picture'] !== (string)$row['avatar_url']) {
         $pdo->prepare('UPDATE users SET avatar_url = ?, email_verified = 1 WHERE id = ?')->execute([$identity['picture'], (int)$row['id']]);
@@ -225,9 +228,7 @@ function complete_google_oauth_login(PDO $pdo, array $identity, bool $remember):
     $result = login_result_for_row($pdo, $row, $remember);
     if (!empty($result['requiresTotp'])) {
         $_SESSION['pending_totp'] = ['challenge' => $result['challenge'], 'remember' => $remember];
-        header('Location: ' . $home);
-        exit;
+        $go($home);
     }
-    header('Location: ' . app_cookie_path() . $result['redirect']);
-    exit;
+    $go(app_cookie_path() . $result['redirect']);
 }
