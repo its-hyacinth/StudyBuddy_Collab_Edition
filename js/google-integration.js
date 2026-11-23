@@ -153,6 +153,71 @@ function requestClassroomAccessToken(clientId) {
   });
 }
 
+async function googleConnectionStatus(force = false) {
+  if (!force && window.SB_GOOGLE && window.SB_GOOGLE.ok) return window.SB_GOOGLE;
+  const response = await fetch(`${SB_API_BASE}google.php?action=status`, { credentials: 'same-origin' });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.ok) {
+    throw new Error(data.message || 'Could not check the Google connection.');
+  }
+  window.SB_GOOGLE = data;
+  return data;
+}
+
+function beginGoogleConnect() {
+  const next = `${window.location.pathname}${window.location.search}`;
+  window.location.href = `${SB_API_BASE}google.php?action=start&next=${encodeURIComponent(next)}`;
+}
+
+function applyGoogleConnection(status) {
+  window.SB_GOOGLE = status;
+  if (!status || !status.configured || typeof getSettings !== 'function') return;
+  const settings = getSettings();
+  updateSettings({
+    connected: {
+      ...settings.connected,
+      googleClassroom: !!status.connected,
+      googleDrive: !!status.connected,
+      googleCalendar: !!status.connected && String(status.scopes || '').includes('/auth/calendar'),
+    },
+    googleEmail: status.email || '',
+  });
+}
+
+async function refreshGoogleConnection() {
+  try {
+    const status = await googleConnectionStatus(true);
+    applyGoogleConnection(status);
+    if (typeof window.refreshConnectedAccounts === 'function') window.refreshConnectedAccounts();
+    if (typeof window.refreshDriveFromGoogle === 'function') await window.refreshDriveFromGoogle();
+    if (typeof window.refreshGoogleCalendar === 'function') {
+      try {
+        await window.refreshGoogleCalendar();
+      } catch (error) {
+        showToast(error.message || 'Could not load Google Calendar.', 'error');
+      }
+    }
+    return status;
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
+
+async function fetchServerClassroom() {
+  const response = await fetch(`${SB_API_BASE}google.php?action=classroom`, { credentials: 'same-origin' });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.ok) throw new Error(data.message || 'Classroom sync failed.');
+  const subjects = [];
+  const assignments = [];
+  (data.courses || []).forEach((course) => {
+    const subject = mapLiveCourseToSubject(course, course.teacherName || 'TBA');
+    subjects.push(subject);
+    (course.courseWork || []).forEach((work) => assignments.push(mapLiveCoursework(work, subject)));
+  });
+  return { courses: subjects, assignments, live: true, email: data.email || '' };
+}
+
 function loadScript(src) {
   return new Promise((resolve, reject) => {
     if ([...document.scripts].some((s) => s.src === src)) {
@@ -249,6 +314,18 @@ function applyClassroomPayload(payload) {
 async function syncGoogleClassroom(buttonEl) {
   const done = withButtonLoading(buttonEl, 'Syncing Classroom...');
   try {
+    const status = await googleConnectionStatus();
+    if (status.configured) {
+      if (!status.connected) {
+        beginGoogleConnect();
+        return { ok: false, pending: true };
+      }
+      const payload = await fetchServerClassroom();
+      const result = applyClassroomPayload(payload);
+      const who = payload.email ? ` (${payload.email})` : '';
+      showToast(`Synced ${result.courseCount} classes and ${result.assignmentCount} coursework items from Google Classroom${who}`, 'success');
+      return { ok: true, ...result };
+    }
     let payload = { courses: [], assignments: [] };
     const clientId = getGoogleClientId();
     if (clientId) {
@@ -266,7 +343,7 @@ async function syncGoogleClassroom(buttonEl) {
     showToast(`Synced ${result.courseCount} classes from ${source}`, 'success');
     return { ok: true, ...result };
   } catch (err) {
-    showToast('Classroom sync failed. Try again.', 'error');
+    showToast(err.message || 'Classroom sync failed. Try again.', 'error');
     return { ok: false, error: err };
   } finally {
     done();
@@ -308,29 +385,75 @@ function disconnectGoogleAccount(service) {
   return connected;
 }
 
-async function mockGoogleCalendarSync(buttonEl) {
-  const done = withButtonLoading(buttonEl, 'Syncing...');
+async function syncGoogleCalendar(buttonEl) {
+  const done = withButtonLoading(buttonEl, 'Syncing Calendar...');
   try {
-    await delay(800);
-    connectGoogleAccount('calendar');
-    showToast('Calendar is optional — classes now sync from Google Classroom.', 'info');
+    const status = await googleConnectionStatus(true);
+    if (!status.configured) {
+      showToast('Add the Google client ID and secret in config/google.php, then connect Calendar.', 'warning');
+      return { ok: false };
+    }
+    if (!status.connected || !String(status.scopes || '').includes('/auth/calendar')) {
+      beginGoogleConnect();
+      return { ok: false, pending: true };
+    }
+    applyGoogleConnection(status);
+    if (typeof window.refreshGoogleCalendar === 'function') await window.refreshGoogleCalendar();
+    showToast(status.email ? `Synced Google Calendar for ${status.email}` : 'Synced Google Calendar', 'success');
     return { ok: true };
+  } catch (err) {
+    showToast(err.message || 'Calendar sync failed.', 'error');
+    return { ok: false, error: err };
   } finally {
     done();
   }
 }
 
+async function mockGoogleCalendarSync(buttonEl) {
+  return syncGoogleCalendar(buttonEl);
+}
+
 async function mockGoogleDriveSync(buttonEl) {
   const done = withButtonLoading(buttonEl, 'Syncing...');
   try {
-    await delay(800);
-    connectGoogleAccount('drive');
-    showToast('Synced with Google Drive', 'success');
+    const status = await googleConnectionStatus();
+    if (!status.configured) {
+      showToast('Add the Google client ID and secret in config/google.php, then connect Drive.', 'warning');
+      return { ok: false };
+    }
+    if (!status.connected) {
+      beginGoogleConnect();
+      return { ok: false, pending: true };
+    }
+    applyGoogleConnection(status);
+    if (typeof window.refreshDriveFromGoogle === 'function') await window.refreshDriveFromGoogle();
+    showToast(status.email ? `Synced Google Drive for ${status.email}` : 'Synced with Google Drive', 'success');
     return { ok: true };
+  } catch (err) {
+    showToast(err.message || 'Drive sync failed.', 'error');
+    return { ok: false, error: err };
   } finally {
     done();
   }
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+  const params = new URLSearchParams(window.location.search);
+  const flag = params.get('google');
+  if (flag) {
+    if (flag === 'connected') {
+      showToast('Google Classroom, Calendar, and Drive are connected.', 'success');
+      syncGoogleClassroom();
+    } else if (flag === 'error') {
+      showToast(params.get('message') || 'Google connection failed.', 'error');
+    }
+    params.delete('google');
+    params.delete('message');
+    const query = params.toString();
+    window.history.replaceState({}, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`);
+  }
+  refreshGoogleConnection();
+});
 
 function openInGoogleCalendar() {
   window.open('https://calendar.google.com', '_blank', 'noopener,noreferrer');

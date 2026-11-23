@@ -1,5 +1,5 @@
 /**
- * StudyBuddy — Google Drive mock
+ * StudyBuddy — files stored locally, or in Google Drive once the account is connected.
  */
 document.addEventListener('DOMContentLoaded', () => {
   const session = initShell('student');
@@ -13,6 +13,49 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentFolderId = null;
   const selectedIds = new Set();
   let sharedResources = [];
+  let liveDrive = false;
+  let liveFiles = [];
+  let liveTrail = [];
+  let liveRecent = [];
+  let liveStorage = null;
+  let liveFolders = [];
+
+  function driveFiles() {
+    return liveDrive ? liveFiles : getDriveFiles();
+  }
+
+  async function googleDrivePost(action, body) {
+    const response = await fetch(`${SB_API_BASE}google.php?action=${encodeURIComponent(action)}`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || '',
+      },
+      body: new URLSearchParams(body),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok) throw new Error(result.message || 'Google Drive request failed.');
+    return result;
+  }
+
+  async function loadLiveDrive() {
+    const params = new URLSearchParams({
+      action: 'drive',
+      view: tab === 'shared' ? 'shared' : tab,
+      parent: tab === 'my-drive' ? (currentFolderId || '') : '',
+    });
+    const response = await fetch(`${SB_API_BASE}google.php?${params}`, { credentials: 'same-origin' });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok) throw new Error(result.message || 'Could not load Google Drive.');
+    liveFiles = result.files || [];
+    liveTrail = result.trail || [];
+    liveRecent = result.recent || [];
+    liveStorage = result.storage || null;
+    const folderResponse = await fetch(`${SB_API_BASE}google.php?action=drive&view=folders`, { credentials: 'same-origin' });
+    const folderResult = await folderResponse.json().catch(() => ({}));
+    liveFolders = folderResponse.ok && folderResult.ok ? (folderResult.files || []) : [];
+  }
 
   function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, (char) => ({
@@ -22,9 +65,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function filtered() {
     let list;
+    if (liveDrive) {
+      list = tab === 'shared'
+        ? [
+            ...liveFiles,
+            ...sharedResources.map((resource) => ({
+              id: `shared_resource_${resource.id}`,
+              name: resource.title || 'Shared resource',
+              owner: resource.teacherName || 'Teacher',
+              modified: resource.uploaded || '',
+              size: resource.size || 'Link',
+              type: resource.type || 'link',
+              url: resource.url,
+              sharedResource: true,
+            })),
+          ]
+        : [...liveFiles];
+      if (search) {
+        const q = search.toLowerCase();
+        list = list.filter((file) => String(file.name || '').toLowerCase().includes(q));
+      }
+      return list;
+    }
     if (tab === 'shared') {
       list = [
-        ...getDriveFiles().filter((file) => file.shared && !file.trashed),
+        ...driveFiles().filter((file) => file.shared && !file.trashed),
         ...sharedResources.map((resource) => ({
           id: `shared_resource_${resource.id}`,
           name: resource.title || 'Shared resource',
@@ -37,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
         })),
       ];
     } else {
-      list = getDriveFiles();
+      list = driveFiles();
       if (tab === 'trash') list = list.filter((file) => file.trashed);
       else list = list.filter((file) => !file.trashed);
     }
@@ -68,7 +133,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
-  const mutateFile = (id, patch) => {
+  const mutateFile = async (id, patch) => {
+    if (liveDrive) {
+      const body = { id };
+      if ('starred' in patch) body.starred = patch.starred ? '1' : '0';
+      if ('trashed' in patch) body.trashed = patch.trashed ? '1' : '0';
+      await googleDrivePost('drive-update', body);
+      await loadLiveDrive();
+      return;
+    }
     sbSet(SB_KEYS.DRIVE, getDriveFiles().map((file) => file.id === id ? { ...file, ...patch } : file));
   };
 
@@ -115,12 +188,12 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('[data-open]').forEach((el) => {
       const open = () => {
         const file = slice.find((item) => item.id === el.dataset.open)
-          || getDriveFiles().find((item) => item.id === el.dataset.open);
+          || driveFiles().find((item) => item.id === el.dataset.open);
         if (!file) return;
         if (file.type === 'folder') {
           currentFolderId = file.id;
           page = 1;
-          render();
+          refreshDriveView();
         } else if (file.url) {
           let url;
           try {
@@ -168,27 +241,35 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
     document.querySelectorAll('[data-star]').forEach((btn) => {
-      btn.addEventListener('click', () => { mutateFile(btn.dataset.star, { starred: !getDriveFiles().find((file) => file.id === btn.dataset.star)?.starred }); render(); });
+      btn.addEventListener('click', () => {
+        const file = driveFiles().find((item) => item.id === btn.dataset.star);
+        mutateFile(btn.dataset.star, { starred: !file?.starred })
+          .then(() => render())
+          .catch((error) => showToast(error.message || 'Could not update that file.', 'error'));
+      });
     });
     document.querySelectorAll('[data-trash]').forEach((btn) => {
       btn.addEventListener('click', () => {
-        const file = getDriveFiles().find((item) => item.id === btn.dataset.trash && !item.trashed);
+        const file = driveFiles().find((item) => item.id === btn.dataset.trash && !item.trashed);
         if (!file) {
           showToast('This file is no longer available.', 'error');
           render();
           return;
         }
         showDeleteConfirmation('file', file.name, () => {
-          const current = getDriveFiles().find((item) => item.id === file.id && !item.trashed);
+          const current = driveFiles().find((item) => item.id === file.id && !item.trashed);
           if (!current) {
             showToast('This file is no longer available.', 'error');
             render();
             return;
           }
-          mutateFile(current.id, { trashed: true, parentId: null });
-          selectedIds.delete(current.id);
-          showToast('Moved to trash');
-          render();
+          mutateFile(current.id, { trashed: true, parentId: null })
+            .then(() => {
+              selectedIds.delete(current.id);
+              showToast('Moved to trash');
+              render();
+            })
+            .catch((error) => showToast(error.message || 'Could not move that file to trash.', 'error'));
         }, {
           title: 'Move file to trash?',
           description: 'This file will be moved to your Trash folder, where you can restore it later.',
@@ -199,9 +280,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     document.querySelectorAll('[data-restore]').forEach((btn) => {
       btn.addEventListener('click', () => {
-        mutateFile(btn.dataset.restore, { trashed: false, parentId: null });
-        showToast('File restored');
-        render();
+        mutateFile(btn.dataset.restore, { trashed: false, parentId: null })
+          .then(() => {
+            showToast('File restored');
+            render();
+          })
+          .catch((error) => showToast(error.message || 'Could not restore that file.', 'error'));
       });
     });
 
@@ -222,7 +306,24 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderBreadcrumb() {
     const el = document.getElementById('driveBreadcrumb');
     if (!el) return;
-    const files = getDriveFiles();
+    if (liveDrive) {
+      el.innerHTML = [
+        `<a href="#" data-crumb-folder="">My Drive</a>`,
+        ...liveTrail.map((item, index) => index === liveTrail.length - 1
+          ? `<span class="current">${escapeHtml(item.name)}</span>`
+          : `<a href="#" data-crumb-folder="${escapeHtml(item.id)}">${escapeHtml(item.name)}</a>`),
+      ].join(' <i data-lucide="chevron-right" style="width:14px;height:14px"></i> ');
+      el.querySelectorAll('[data-crumb-folder]').forEach((a) => {
+        a.addEventListener('click', (e) => {
+          e.preventDefault();
+          currentFolderId = a.dataset.crumbFolder || null;
+          page = 1;
+          refreshDriveView();
+        });
+      });
+      return;
+    }
+    const files = driveFiles();
     const ancestors = [];
     let folder = files.find((file) => file.id === currentFolderId && file.type === 'folder');
     while (folder) {
@@ -240,17 +341,24 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         currentFolderId = a.dataset.crumbFolder || null;
         page = 1;
-        render();
+        refreshDriveView();
       });
     });
   }
 
   function renderStorage() {
     const s = getSettings();
-    const files = getDriveFiles().filter((file) => !file.trashed && file.type !== 'folder');
-    const usedBytes = files.reduce((total, file) => total + (Number(file.sizeBytes) || 0), 0);
+    const files = liveDrive
+      ? liveRecent
+      : getDriveFiles().filter((file) => !file.trashed && file.type !== 'folder');
+    const usedBytes = liveDrive && liveStorage
+      ? Number(liveStorage.usageBytes) || 0
+      : files.reduce((total, file) => total + (Number(file.sizeBytes) || 0), 0);
+    const totalBytes = liveDrive && liveStorage
+      ? Number(liveStorage.limitBytes) || 0
+      : Math.max(Number(s.storageTotal) || 50, 0.1) * (1024 ** 3);
     const usedGb = usedBytes / (1024 ** 3);
-    const totalGb = Math.max(Number(s.storageTotal) || 50, 0.1);
+    const totalGb = totalBytes > 0 ? totalBytes / (1024 ** 3) : Math.max(usedGb, 0.1);
     const pct = Math.min(Math.round((usedGb / totalGb) * 100), 100);
     const el = document.getElementById('storageDonut');
     if (el) {
@@ -286,28 +394,39 @@ document.addEventListener('DOMContentLoaded', () => {
       actions.className = 'drive-bulk-actions';
       toolbar.appendChild(actions);
     }
-    const movableCount = getDriveFiles().filter((file) => selectedIds.has(file.id) && !file.trashed).length;
+    const movableCount = driveFiles().filter((file) => selectedIds.has(file.id) && !file.trashed).length;
     actions.innerHTML = selectedIds.size
       ? `<span>${selectedIds.size} selected</span>${movableCount ? '<button type="button" class="btn btn-ghost btn-sm danger" id="trashSelectedBtn"><i data-lucide="trash-2"></i> Move to trash</button>' : ''}<button type="button" class="btn btn-ghost btn-sm" id="clearSelectionBtn">Clear</button>`
       : '';
     document.getElementById('trashSelectedBtn')?.addEventListener('click', () => {
       const selected = new Set(selectedIds);
-      const selectedFiles = getDriveFiles().filter((file) => selected.has(file.id) && !file.trashed);
+      const selectedFiles = driveFiles().filter((file) => selected.has(file.id) && !file.trashed);
       if (!selectedFiles.length) {
         showToast('No available files are selected.', 'error');
         render();
         return;
       }
       showDeleteConfirmation('files', `${selectedFiles.length} selected ${selectedFiles.length === 1 ? 'file' : 'files'}`, () => {
-        const currentFiles = getDriveFiles();
+        const currentFiles = driveFiles();
         const filesToMove = currentFiles.filter((file) => selected.has(file.id) && !file.trashed);
         if (!filesToMove.length) {
           showToast('No available files are selected.', 'error');
           render();
           return;
         }
+        if (liveDrive) {
+          Promise.all(filesToMove.map((file) => googleDrivePost('drive-update', { id: file.id, trashed: '1' })))
+            .then(() => loadLiveDrive())
+            .then(() => {
+              selectedIds.clear();
+              showToast('Selected files moved to trash');
+              render();
+            })
+            .catch((error) => showToast(error.message || 'Could not move those files to trash.', 'error'));
+          return;
+        }
         const filesToMoveIds = new Set(filesToMove.map((file) => file.id));
-        sbSet(SB_KEYS.DRIVE, currentFiles.map((file) =>
+        sbSet(SB_KEYS.DRIVE, getDriveFiles().map((file) =>
           filesToMoveIds.has(file.id) ? { ...file, trashed: true, parentId: null } : file
         ));
         selectedIds.clear();
@@ -330,7 +449,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function populateFolderSelect() {
     const select = document.getElementById('uploadFolder');
     if (!select) return;
-    const folders = getDriveFiles().filter((file) => file.type === 'folder' && !file.trashed);
+    const folders = (liveDrive ? liveFolders : getDriveFiles()).filter((file) => file.type === 'folder' && !file.trashed);
     select.innerHTML = '<option value="">My Drive (root)</option>' + folders.map((folder) =>
       `<option value="${escapeHtml(folder.id)}">${escapeHtml(folder.name)}</option>`
     ).join('');
@@ -345,7 +464,8 @@ document.addEventListener('DOMContentLoaded', () => {
       for (const file of files) {
         const body = new FormData();
         body.append('file', file);
-        const response = await fetch('../api/upload.php', {
+        if (liveDrive) body.append('parent', folderId || '');
+        const response = await fetch(liveDrive ? `${SB_API_BASE}google.php?action=drive-upload` : '../api/upload.php', {
           method: 'POST',
           credentials: 'same-origin',
           headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || '' },
@@ -353,6 +473,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         const result = await response.json();
         if (!response.ok || !result.ok) throw new Error(result.message || `Unable to upload ${file.name}.`);
+        if (liveDrive) continue;
         const current = getDriveFiles();
         current.push({
           id: uid('drv'),
@@ -367,6 +488,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         sbSet(SB_KEYS.DRIVE, current);
       }
+      if (liveDrive) await loadLiveDrive();
       closeModal('uploadModal');
       document.getElementById('uploadForm')?.reset();
       showToast(`${files.length} file${files.length === 1 ? '' : 's'} uploaded.`);
@@ -387,6 +509,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof lucide !== 'undefined') lucide.createIcons();
   }
 
+  async function refreshDriveView() {
+    if (liveDrive) {
+      try {
+        await loadLiveDrive();
+      } catch (error) {
+        showToast(error.message || 'Could not load Google Drive.', 'error');
+      }
+    }
+    render();
+  }
+
   async function loadSharedResources() {
     const response = await fetch('../api/shared-resources.php', { credentials: 'same-origin' });
     const result = await response.json().catch(() => null);
@@ -404,7 +537,7 @@ document.addEventListener('DOMContentLoaded', () => {
       tabEl.classList.add('active');
       if (tab !== 'my-drive') currentFolderId = null;
       page = 1;
-      render();
+      refreshDriveView();
     });
   });
 
@@ -437,13 +570,23 @@ document.addEventListener('DOMContentLoaded', () => {
     event.preventDefault();
     const name = document.getElementById('folderName')?.value.trim();
     if (!name) { showToast('Folder name is required.', 'error'); return; }
+    const finish = () => {
+      closeModal('newFolderModal');
+      event.target.reset();
+      showToast('Folder created.');
+      render();
+    };
+    if (liveDrive) {
+      googleDrivePost('drive-folder', { name, parent: currentFolderId || '' })
+        .then(() => loadLiveDrive())
+        .then(finish)
+        .catch((error) => showToast(error.message || 'Could not create the folder.', 'error'));
+      return;
+    }
     const files = getDriveFiles();
     files.push({ id: uid('drv'), name, type: 'folder', owner: 'Me', modified: localDateStr(), size: '—', parentId: currentFolderId });
     sbSet(SB_KEYS.DRIVE, files);
-    closeModal('newFolderModal');
-    event.target.reset();
-    showToast('Folder created.');
-    render();
+    finish();
   });
 
   document.querySelectorAll('[data-action]').forEach((btn) => {
@@ -453,10 +596,10 @@ document.addEventListener('DOMContentLoaded', () => {
       else if (a === 'new-folder') openModal('newFolderModal');
       else if (a === 'open-drive') openInGoogleDrive();
       else if (a === 'share-link') {
-        const file = getDriveFiles().find((item) => selectedIds.has(item.id) && item.url);
+        const file = driveFiles().find((item) => selectedIds.has(item.id) && item.url);
         if (!file) { showToast('Select an uploaded file first.', 'info'); return; }
         const link = new URL(file.url, window.location.href).href;
-        if (!file.shared) mutateFile(file.id, { shared: true });
+        if (!liveDrive && !file.shared) mutateFile(file.id, { shared: true });
         if (navigator.clipboard?.writeText) {
           navigator.clipboard.writeText(link).then(() => showToast('File link copied.')).catch(() => window.prompt('Copy this file link:', link));
         } else {
@@ -475,6 +618,25 @@ document.addEventListener('DOMContentLoaded', () => {
     window.history.replaceState({}, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`);
   }
   render();
+  window.refreshDriveFromGoogle = async () => {
+    const status = window.SB_GOOGLE;
+    liveDrive = !!(status?.configured && status.connected);
+    const subtitle = document.querySelector('.page-subtitle');
+    if (subtitle) {
+      subtitle.textContent = liveDrive
+        ? `Files from Google Drive${status.email ? ` · ${status.email}` : ''}.`
+        : 'Upload and organize study files saved to your StudyBuddy account.';
+    }
+    if (liveDrive) {
+      try {
+        await loadLiveDrive();
+      } catch (error) {
+        liveDrive = false;
+        showToast(error.message || 'Could not load Google Drive.', 'error');
+      }
+    }
+    render();
+  };
   loadSharedResources().catch((error) => {
     showToast(error instanceof Error ? error.message : 'Unable to load shared resources.', 'error');
   });

@@ -45,8 +45,22 @@ document.addEventListener('DOMContentLoaded', () => {
     return schedule.filter((s) => s.date === key);
   }
 
+  function personalEvents() {
+    return [
+      ...getSchedule().filter((entry) => entry.source !== 'google-calendar'),
+      ...(window.SB_GOOGLE_EVENTS || []),
+    ];
+  }
+
+  function findPersonalEvent(id) {
+    return personalEvents().find((entry) => entry.id === id);
+  }
+
   function calendarEntries() {
-    const entries = getSchedule().map((entry) => ({ ...entry, calendarSource: 'schedule' }));
+    const entries = personalEvents().map((entry) => ({
+      ...entry,
+      calendarSource: entry.calendarSource || (entry.source === 'google-calendar' ? 'google' : 'schedule'),
+    }));
     if (isTeacher) {
       entries.push(...getAssignments()
         .filter((assignment) => assignment.dueDate && assignment.status !== 'completed')
@@ -114,7 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function scheduleActions(entry, context, reopenDay) {
     const id = escapeHtml(entry.id);
-    const menuId = `schedule-menu-${context}-${id}`;
+    const menuId = `schedule-menu-${context}-${String(entry.id).replace(/[^A-Za-z0-9_-]/g, '')}`;
     return `
       <div class="action-menu-wrap schedule-actions">
         <button type="button" class="action-menu-btn" data-schedule-menu="${menuId}" aria-label="Actions for ${escapeHtml(entry.title)}"><i data-lucide="more-vertical"></i></button>
@@ -136,7 +150,7 @@ document.addEventListener('DOMContentLoaded', () => {
     container.querySelectorAll('[data-edit-schedule]').forEach((button) => {
       button.addEventListener('click', (event) => {
         event.stopPropagation();
-        const entry = getSchedule().find((item) => item.id === button.dataset.editSchedule);
+        const entry = findPersonalEvent(button.dataset.editSchedule);
         if (!entry) {
           showToast('This schedule event is no longer available', 'error');
           return;
@@ -147,23 +161,44 @@ document.addEventListener('DOMContentLoaded', () => {
     container.querySelectorAll('[data-delete-schedule]').forEach((button) => {
       button.addEventListener('click', (event) => {
         event.stopPropagation();
-        const entry = getSchedule().find((item) => item.id === button.dataset.deleteSchedule);
+        const entry = findPersonalEvent(button.dataset.deleteSchedule);
         if (!entry) {
           showToast('This schedule event is no longer available', 'error');
           return;
         }
         const removeScheduleEntry = () => {
-          const current = getSchedule().find((item) => item.id === entry.id);
+          const current = findPersonalEvent(entry.id);
           if (!current) {
             showToast('This schedule event is no longer available', 'error');
             render();
             return;
           }
           const reopenDay = button.dataset.reopenDay === 'true';
+          const finish = () => {
+            showToast('Schedule event deleted', 'warning');
+            render();
+            if (reopenDay) openDaySchedule(current.date);
+          };
+          if (current.source === 'google-calendar') {
+            const body = new URLSearchParams({ id: current.googleEventId });
+            fetch(`${SB_API_BASE}google.php?action=calendar-delete`, {
+              method: 'POST',
+              credentials: 'same-origin',
+              headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || '',
+              },
+              body,
+            }).then(async (response) => {
+              const result = await response.json().catch(() => ({}));
+              if (!response.ok || !result.ok) throw new Error(result.message || 'Could not delete that Google Calendar event.');
+              if (typeof window.refreshGoogleCalendar === 'function') await window.refreshGoogleCalendar();
+              finish();
+            }).catch((error) => showToast(error.message || 'Could not delete that event.', 'error'));
+            return;
+          }
           deleteSchedule(current.id);
-          showToast('Schedule event deleted', 'warning');
-          render();
-          if (reopenDay) openDaySchedule(current.date);
+          finish();
         };
         if (isTeacher) {
           if (window.confirm(`Delete "${entry.title}" from your schedule?`)) removeScheduleEntry();
@@ -232,7 +267,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     document.getElementById('dayScheduleTitle').textContent = dateLabel;
 
-    const events = getSchedule()
+    const events = personalEvents()
       .filter((entry) => entry.date === date)
       .sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
     const scheduleItems = events.map((entry) => `
@@ -309,7 +344,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </button>
         </div>
         <span class="badge ${escapeHtml(statusClass(s.calendarSource === 'assignment' && s.date < localDateStr() ? 'overdue' : s.type || 'event'))}">${escapeHtml(statusLabel(s.calendarSource === 'assignment' && s.date < localDateStr() ? 'overdue' : s.type || 'event'))}</span>
-        ${s.calendarSource === 'schedule' ? scheduleActions(s, 'list', false) : '<a class="view-all" href="assignments.php">Assignments</a>'}
+        ${s.calendarSource === 'assignment' ? '<a class="view-all" href="assignments.php">Assignments</a>' : scheduleActions(s, 'list', false)}
       </div>`).join('') : '<p class="empty-state">No calendar items match these filters.</p>';
     wireDayScheduleLinks(el);
     wireScheduleActions(el);
@@ -324,13 +359,14 @@ document.addEventListener('DOMContentLoaded', () => {
       if (calM < 0) { calY--; calM = 11; }
       if (calM > 11) { calY++; calM = 0; }
       render();
+      window.refreshGoogleCalendar?.().catch((error) => showToast(error.message || 'Could not load Google Calendar.', 'error'));
     }, openDaySchedule);
   }
 
   function renderUpcoming() {
     const el = document.getElementById('scheduleEventsList') || document.getElementById('upcomingEvents');
     if (!el) return;
-    const upcoming = [...getSchedule()]
+    const upcoming = personalEvents()
       .filter((s) => s.date >= localDateStr())
       .sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime))
       .slice(0, 5);
@@ -353,7 +389,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const el = document.getElementById('todayScheduleAside');
     if (!el) return;
     const today = localDateStr();
-    const items = getSchedule()
+    const items = personalEvents()
       .filter((entry) => entry.date === today)
       .sort((a, b) => String(a.startTime || '').localeCompare(String(b.startTime || '')));
     el.innerHTML = items.length ? items.map((entry) => `
@@ -408,6 +444,7 @@ document.addEventListener('DOMContentLoaded', () => {
     calM--;
     if (calM < 0) { calY--; calM = 11; }
     render();
+    window.refreshGoogleCalendar?.().catch((error) => showToast(error.message || 'Could not load Google Calendar.', 'error'));
   });
   const nextButton = document.getElementById('fullCalNext')
     || document.getElementById('calNextMonth')
@@ -416,6 +453,7 @@ document.addEventListener('DOMContentLoaded', () => {
     calM++;
     if (calM > 11) { calY++; calM = 0; }
     render();
+    window.refreshGoogleCalendar?.().catch((error) => showToast(error.message || 'Could not load Google Calendar.', 'error'));
   });
   const todayButton = document.getElementById('fullCalToday')
     || document.getElementById('calTodayBtn')
@@ -425,6 +463,7 @@ document.addEventListener('DOMContentLoaded', () => {
     calY = currentDate.getFullYear();
     calM = currentDate.getMonth();
     render();
+    window.refreshGoogleCalendar?.().catch((error) => showToast(error.message || 'Could not load Google Calendar.', 'error'));
   });
 
   document.getElementById('addScheduleBtn')?.addEventListener('click', () => openScheduleForm());
@@ -450,11 +489,11 @@ document.addEventListener('DOMContentLoaded', () => {
     subjSelect.value = selected;
   }
 
-  document.getElementById('addScheduleForm')?.addEventListener('submit', (e) => {
+  document.getElementById('addScheduleForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const title = document.getElementById('schTitle')?.value.trim();
     const subjectId = document.getElementById('schSubject')?.value;
-    const existing = editingScheduleId ? getSchedule().find((entry) => entry.id === editingScheduleId) : null;
+    const existing = editingScheduleId ? findPersonalEvent(editingScheduleId) : null;
     const subject = getSubjects().find((s) => s.id === subjectId)?.name || existing?.subject || title;
     const date = document.getElementById('schDate')?.value;
     const startTime = document.getElementById('schStartTime')?.value || '09:00';
@@ -464,14 +503,47 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!title || !date) { showToast('Title and date required', 'error'); return; }
     if (endTime <= startTime) { showToast('End time must be later than start time.', 'error'); return; }
     const schedule = { title, subjectId, subject, date, startTime, endTime, room, type };
-    if (editingScheduleId) updateSchedule(editingScheduleId, schedule);
-    else addSchedule(schedule);
+    const calendarReady = !!(window.SB_GOOGLE?.connected && String(window.SB_GOOGLE.scopes || '').includes('/auth/calendar'));
+    const saveOnGoogle = calendarReady && (!existing || existing.source === 'google-calendar');
+    try {
+      if (saveOnGoogle) {
+        const body = new URLSearchParams({
+          title,
+          subject,
+          date,
+          startTime,
+          endTime,
+          room,
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Manila',
+        });
+        if (existing?.googleEventId) body.set('googleEventId', existing.googleEventId);
+        const response = await fetch(`${SB_API_BASE}google.php?action=calendar-save`, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || '',
+          },
+          body,
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.ok) throw new Error(result.message || 'Could not save that event on Google Calendar.');
+        if (typeof window.refreshGoogleCalendar === 'function') await window.refreshGoogleCalendar();
+      } else if (editingScheduleId) {
+        updateSchedule(editingScheduleId, schedule);
+      } else {
+        addSchedule(schedule);
+      }
+    } catch (error) {
+      showToast(error.message || 'Could not save that event.', 'error');
+      return;
+    }
     const dayToReopen = reopenDayAfterScheduleForm ? date : null;
     closeModal('addScheduleModal');
     e.target.reset();
     editingScheduleId = null;
     reopenDayAfterScheduleForm = false;
-    showToast(dayToReopen ? 'Schedule event saved' : 'Schedule entry added');
+    showToast(saveOnGoogle ? 'Saved to Google Calendar' : (dayToReopen ? 'Schedule event saved' : 'Schedule entry added'));
     render();
     if (dayToReopen) openDaySchedule(dayToReopen);
   });
@@ -480,10 +552,45 @@ document.addEventListener('DOMContentLoaded', () => {
     const result = await syncGoogleClassroom(btn);
     if (result?.ok) setTimeout(() => location.reload(), 400);
   };
-  document.querySelectorAll('#syncCalendarBtn, #syncGoogleCalendarBtn, #syncClassroomBtn, #syncGoogleCalBtn, #connectGoogleCalBtn, #connectClassroomBtn').forEach((btn) => {
+  document.querySelectorAll('#syncClassroomBtn, #connectClassroomBtn').forEach((btn) => {
     btn.addEventListener('click', (e) => runClassroomSync(e.currentTarget));
   });
-  document.querySelectorAll('#openCalendarBtn, #openGoogleCalendarBtn, #openClassroomBtn').forEach((btn) => {
+  document.querySelectorAll('#syncCalendarBtn, #syncGoogleCalendarBtn, #syncGoogleCalBtn, #connectGoogleCalBtn').forEach((btn) => {
+    btn.addEventListener('click', (e) => syncGoogleCalendar(e.currentTarget));
+  });
+  window.refreshGoogleCalendar = async () => {
+    const status = window.SB_GOOGLE;
+    if (!status?.connected || !String(status.scopes || '').includes('/auth/calendar')) {
+      window.SB_GOOGLE_EVENTS = [];
+      render();
+      return;
+    }
+    const monthStart = new Date(calY, calM, 1);
+    const monthEnd = new Date(calY, calM + 1, 0);
+    const horizon = new Date();
+    horizon.setDate(horizon.getDate() + 45);
+    const rangeEnd = monthEnd > horizon ? monthEnd : horizon;
+    const start = `${monthStart.getFullYear()}-${String(monthStart.getMonth() + 1).padStart(2, '0')}-01`;
+    const end = `${rangeEnd.getFullYear()}-${String(rangeEnd.getMonth() + 1).padStart(2, '0')}-${String(rangeEnd.getDate()).padStart(2, '0')}`;
+    const params = new URLSearchParams({
+      action: 'calendar',
+      start,
+      end,
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Manila',
+    });
+    const response = await fetch(`${SB_API_BASE}google.php?${params}`, { credentials: 'same-origin' });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok) throw new Error(result.message || 'Could not load Google Calendar.');
+    window.SB_GOOGLE_EVENTS = result.events || [];
+    render();
+  };
+  document.querySelectorAll('#openCalendarBtn, #openGoogleCalendarBtn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openInGoogleCalendar();
+    });
+  });
+  document.querySelectorAll('#openClassroomBtn').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
       openInGoogleClassroom();

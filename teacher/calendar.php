@@ -26,6 +26,9 @@
           <button type="button" class="btn btn-outline" id="syncClassroomBtn">
             <i data-lucide="refresh-cw"></i> Sync Google Classroom
           </button>
+          <button type="button" class="btn btn-outline" id="syncGoogleCalBtn">
+            <i data-lucide="calendar"></i> Sync Google Calendar
+          </button>
           <button type="button" class="btn btn-primary" id="addScheduleBtn">
             <i data-lucide="plus"></i> Add Schedule
           </button>

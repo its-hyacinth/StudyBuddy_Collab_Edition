@@ -352,6 +352,14 @@ if ($pdo && $userId) {
                     Connect
                   </button>
                 </div>
+                <div class="connected-row">
+                  <div class="conn-icon"><i data-lucide="refresh-cw"></i></div>
+                  <div class="conn-info">
+                    <h4>Sync Classroom</h4>
+                    <p id="googleSetupNote">Checking the Google connection…</p>
+                  </div>
+                  <button type="button" class="btn btn-outline btn-sm" id="syncClassroomSettingsBtn">Sync now</button>
+                </div>
               </div>
             </div>
           </div>

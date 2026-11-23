@@ -335,10 +335,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setToggle('toggleGoogleClassroom', classroomOn);
     setToggle('toggleGoogleCalendar', isTeacher && calOn);
     setToggle('toggleGoogleDrive', isTeacher && driveOn);
-    if (!isTeacher) {
-      if ($('toggleGoogleCalendar')) $('toggleGoogleCalendar').disabled = true;
-      if ($('toggleGoogleDrive')) $('toggleGoogleDrive').disabled = true;
-    }
 
     const classroomStatus = $('classroomConnectStatus');
     const calStatus = $('calendarConnectStatus') || $('googleCalStatus');
@@ -350,12 +346,26 @@ document.addEventListener('DOMContentLoaded', () => {
           ? 'Not connected · Import classes, roster, and coursework'
           : 'Not connected · Import BSIT 4 classes from Classroom');
     }
-    if (calStatus) calStatus.textContent = !isTeacher
-      ? 'Not configured · Use the StudyBuddy schedule'
-      : calOn ? 'Connected' : 'Not connected · Optional schedule overlay';
-    if (driveStatus) driveStatus.textContent = !isTeacher
-      ? 'Not configured · Your files are stored in StudyBuddy'
-      : driveOn ? 'Connected' : 'Not connected · Access your files';
+    if (calStatus) calStatus.textContent = calOn
+      ? 'Connected · Events come from your Google Calendar'
+      : 'Not connected · Show events from Google Calendar';
+    if (driveStatus) driveStatus.textContent = driveOn
+      ? 'Connected · Files come from your Google Drive'
+      : 'Not connected · Access your Google Drive files';
+    const googleStatus = window.SB_GOOGLE;
+    const setupNote = $('googleSetupNote');
+    if (setupNote && googleStatus) {
+      if (!googleStatus.configured) {
+        setupNote.textContent = `Classroom, Calendar, and Drive use one Google login. Put the OAuth client ID and secret in config/google.php. Redirect URI: ${googleStatus.redirectUri}`;
+      } else if (googleStatus.connected) {
+        const calendarReady = String(googleStatus.scopes || '').includes('/auth/calendar');
+        setupNote.textContent = `Connected as ${googleStatus.email}. ${calendarReady ? 'Classroom, Calendar, and Drive use this account.' : 'Reconnect Google to allow Calendar.'}`;
+      } else {
+        setupNote.textContent = 'Google credentials are saved. Connect Classroom, Calendar, or Drive to sign in.';
+      }
+    }
+    const accountEmail = $('googleAccountEmail');
+    if (accountEmail && googleStatus?.email) accountEmail.textContent = googleStatus.email;
 
     const classroomBtn = $('toggleClassroom') || $('connectGoogleClassroom');
     const calBtn = $('toggleCalendar') || $('connectGoogleCalendar');
@@ -369,12 +379,44 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function toggleService(service, wantOn) {
-    if (service === 'classroom' && wantOn) {
-      await syncGoogleClassroom();
-    } else if (wantOn) {
-      connectGoogleAccount(service);
-    } else {
-      disconnectGoogleAccount(service);
+    if (service !== 'classroom' && service !== 'drive' && service !== 'calendar') return;
+    try {
+      const status = await googleConnectionStatus(true);
+      const calendarReady = String(status.scopes || '').includes('/auth/calendar');
+      if (!status.configured) {
+        showToast('Add the Google client ID and secret in config/google.php. The redirect URI is listed under Connected Accounts.', 'warning');
+        refreshConnected();
+        return;
+      }
+      if (wantOn && (!status.connected || (service === 'calendar' && !calendarReady))) {
+        beginGoogleConnect();
+        return;
+      }
+      if (wantOn && service === 'classroom') {
+        await syncGoogleClassroom();
+      } else if (wantOn && service === 'calendar') {
+        await syncGoogleCalendar();
+      } else if (wantOn) {
+        showToast(status.email ? `Google Drive is connected as ${status.email}` : 'Google Drive is connected.', 'success');
+        if (typeof window.refreshDriveFromGoogle === 'function') await window.refreshDriveFromGoogle();
+      } else {
+        const response = await fetch(`${SB_API_BASE}google.php?action=disconnect`, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || '' },
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.ok) throw new Error(result.message || 'Could not disconnect Google.');
+        window.SB_GOOGLE = null;
+        const current = getSettings();
+        updateSettings({
+          connected: { ...current.connected, googleClassroom: false, googleDrive: false, googleCalendar: false },
+        });
+        showToast('Disconnected Google Classroom, Calendar, and Drive.', 'warning');
+      }
+      await refreshGoogleConnection();
+    } catch (error) {
+      showToast(error.message || 'Google connection failed.', 'error');
     }
     refreshConnected();
   }
@@ -398,6 +440,7 @@ document.addEventListener('DOMContentLoaded', () => {
     await syncGoogleClassroom(e.currentTarget);
     refreshConnected();
   });
+  window.refreshConnectedAccounts = refreshConnected;
 
   // ---------- Security ----------
   // Student layout opens a modal; teacher layout has an inline form (#passwordForm).

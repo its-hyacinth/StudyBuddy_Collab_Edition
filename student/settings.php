@@ -372,14 +372,7 @@ if (is_array($savedStudentProfile)) $studentProfile = array_merge($studentProfil
               </div>
               <button type="button" class="btn btn-outline btn-sm" id="syncClassroomSettingsBtn">Sync now</button>
             </div>
-            <div style="padding:12px 0 4px">
-              <div class="row-label" style="margin-bottom:6px">Classroom OAuth Client ID (optional)</div>
-              <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <input class="form-control" id="googleClientId" placeholder="xxxx.apps.googleusercontent.com" style="flex:1;min-width:220px" />
-                <button type="button" class="btn btn-outline btn-sm" id="saveGoogleClientId">Save</button>
-              </div>
-              <p style="font-size:12px;color:var(--text-muted);margin-top:8px">Leave blank to use your COR enrollment catalog. Add a client ID to pull live courses, teachers, and coursework.</p>
-            </div>
+            <p id="googleSetupNote" style="font-size:12px;color:var(--text-muted);margin-top:8px">Checking the Google connection…</p>
           </div>
 
           <!-- Data & Storage -->
