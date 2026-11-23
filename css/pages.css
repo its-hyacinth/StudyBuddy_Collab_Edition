@@ -232,7 +232,7 @@
   align-items: center;
   gap: 12px;
   padding: 12px 0;
-  border-bottom: 1px solid #F1F5F9;
+  border-bottom: 1px solid var(--border);
 }
 .schedule-item:last-child { border-bottom: none; }
 .schedule-item[role="button"] {
@@ -240,7 +240,7 @@
   cursor: pointer;
   transition: background var(--transition);
 }
-.schedule-item[role="button"]:hover { background: #F8FAFC; }
+.schedule-item[role="button"]:hover { background: var(--page-bg); }
 .schedule-item[role="button"]:focus-visible {
   outline: 3px solid rgba(37, 99, 235, 0.28);
   outline-offset: -2px;
@@ -423,7 +423,7 @@
   gap: 8px;
   margin-top: 14px;
   padding-top: 14px;
-  border-top: 1px solid #F1F5F9;
+  border-top: 1px solid var(--border);
 }
 .subject-card-stats .ss {
   text-align: center;
@@ -507,9 +507,9 @@
   transition: background var(--transition);
 }
 .todo-item:last-child { border-bottom: 0; }
-.todo-item:hover { background: #F8FAFC; }
-.todo-item.done { background: #FBFCFE; }
-.todo-item.done:hover { background: #F5F7FA; }
+.todo-item:hover { background: var(--page-bg); }
+.todo-item.done { background: var(--card-bg); }
+.todo-item.done:hover { background: var(--page-bg); }
 .todo-item.done .todo-title {
   text-decoration: line-through;
   color: var(--text-muted);
@@ -592,7 +592,7 @@
   padding: 12px;
   border: 1px solid #E8EDF4;
   border-radius: 10px;
-  background: #F8FAFC;
+  background: var(--page-bg);
 }
 .task-detail-value {
   display: block;
@@ -649,7 +649,7 @@
 .file-icon.slide { background: #FFEDD5; color: #EA580C; }
 .file-icon.pdf { background: #FEE2E2; color: #DC2626; }
 .file-icon.image { background: #EDE9FE; color: #7C3AED; }
-.file-icon.folder { background: #F1F5F9; color: #64748B; }
+.file-icon.folder { background: var(--page-bg); color: var(--text-muted); }
 
 .storage-legend {
   display: flex;
@@ -858,7 +858,7 @@
   border-radius: 10px;
   padding: 0 12px 0 36px;
   outline: none;
-  background: #fff;
+  background: var(--card-bg);
 }
 .toolbar .search-mini input:focus { border-color: var(--primary); }
 .toolbar .search-mini svg {
@@ -874,7 +874,7 @@
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 0 12px;
-  background: #fff;
+  background: var(--card-bg);
   color: var(--text-body);
   outline: none;
   cursor: pointer;
@@ -899,7 +899,7 @@
   transition: all var(--transition);
 }
 .segmented button.active {
-  background: #fff;
+  background: var(--card-bg);
   color: var(--primary);
   box-shadow: var(--card-shadow);
 }
