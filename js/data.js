@@ -155,10 +155,13 @@ const CLASSROOM_META = {
 };
 
 function subjectToClass(subject) {
+  const subjectCode = String(subject.subjectCode || subject.code || subject.sectionCode || '').trim();
   return {
     id: `cls_${subject.id}`,
-    name: [subject.code, subject.shortName || subject.name].filter(Boolean).join(' · '),
+    name: [subjectCode, subject.shortName || subject.name].filter(Boolean).join(' · '),
     subject: subject.name,
+    subjectCode,
+    code: subjectCode,
     subjectId: subject.id,
     short: subject.short,
     progress: subject.progress ?? null,
@@ -167,6 +170,49 @@ function subjectToClass(subject) {
     section: subject.section || '',
     source: 'classroom',
   };
+}
+
+/** Letters and digits only, so "PC 4112", "pc-4112", and "PC4112" match. */
+function normalizeSubjectCode(code) {
+  return String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+function classSubjectCode(cls) {
+  return String(cls?.subjectCode || cls?.code || '').trim();
+}
+
+function classDisplayName(cls) {
+  if (!cls) return '';
+  const code = classSubjectCode(cls);
+  const name = String(cls.name || cls.subject || 'Untitled class').trim();
+  if (code && !name.toUpperCase().includes(code.toUpperCase())) return `${code} · ${name}`;
+  return name;
+}
+
+function findClassBySubjectCode(code) {
+  const norm = normalizeSubjectCode(code);
+  if (!norm) return null;
+  return getClasses().find((cls) => normalizeSubjectCode(classSubjectCode(cls)) === norm) || null;
+}
+
+function findClassForLabel(label) {
+  const byCode = findClassBySubjectCode(label);
+  if (byCode) return byCode;
+  const needle = String(label || '').trim().toLowerCase();
+  if (!needle) return null;
+  return getClasses().find((cls) =>
+    String(cls.name || '').toLowerCase() === needle
+    || String(cls.subject || '').toLowerCase() === needle
+    || classDisplayName(cls).toLowerCase() === needle
+  ) || null;
+}
+
+function subjectTone(seed) {
+  const palette = ['math', 'science', 'english', 'cs', 'filipino', 'history'];
+  const text = normalizeSubjectCode(seed) || String(seed || '');
+  let hash = 0;
+  for (let i = 0; i < text.length; i++) hash = (hash * 33 + text.charCodeAt(i)) >>> 0;
+  return palette[hash % palette.length];
 }
 
 /* ---------- Demo-only records for non-student pages ---------- */

@@ -65,7 +65,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function classOf(a, classes) {
     return classes.find((c) => c.id === a.classId || c.id === a.subjectId)
-      || classes.find((c) => c.name === a.subject);
+      || classes.find((c) => a.subjectCode && normalizeSubjectCode(classSubjectCode(c)) === normalizeSubjectCode(a.subjectCode))
+      || classes.find((c) => c.name === a.subject || classDisplayName(c) === a.subject);
   }
 
   function displayStatus(assignment) {
@@ -279,7 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
           </div>
         </td>
-        <td><span class="subject-tag ${escapeHtml(short)}"><span class="dot ${escapeHtml(short)}"></span> ${escapeHtml(cls?.name || a.subject)}</span></td>
+        <td><span class="subject-tag ${escapeHtml(short)}"><span class="dot ${escapeHtml(short)}"></span> ${escapeHtml(cls ? classDisplayName(cls) : (a.subjectCode ? `${a.subjectCode} · ${a.subject || ''}`.trim() : a.subject))}</span></td>
         <td>${formatDate(a.dueDate)}${a.dueTime ? `<div class="subtitle">${escapeHtml(formatTimeOfDay(a.dueTime))}</div>` : ''}</td>
         <td>${a.points ? escapeHtml(a.points) + ' pts' : '—'}</td>
         <td style="text-align:center">${Number(a.submissions) || 0} / ${enrolled}</td>
@@ -457,7 +458,9 @@ document.addEventListener('DOMContentLoaded', () => {
       dl.innerHTML = deadlines.length
         ? deadlines.map((a) => {
           const classInfo = isTeacher ? classOf(a, classes) : null;
-          const subject = a.subject || classInfo?.subject || classInfo?.name || 'General';
+          const subject = (isTeacher && classInfo)
+            ? classDisplayName(classInfo)
+            : (a.subject || classInfo?.subject || classInfo?.name || 'General');
           if (isTeacher) {
             const daysUntilDue = Math.round(
               (new Date(`${a.dueDate}T00:00:00`) - new Date(`${localDateStr()}T00:00:00`)) / 86400000
@@ -561,20 +564,28 @@ document.addEventListener('DOMContentLoaded', () => {
     const result = await syncGoogleClassroom(e.currentTarget);
     if (result?.ok) render();
   });
-  // ---- Teacher: fill the class dropdowns from the real classes ----
-  if (isTeacher) {
+  // ---- Teacher: class dropdowns follow the classes she actually created ----
+  function fillTeacherClassSelects() {
     const classes = getClasses();
+    const options = classes.map((c) => `<option value="${escapeHtml(c.id)}">${escapeHtml(classDisplayName(c))}</option>`).join('');
     const filterSel = document.getElementById('asgClassFilter');
     if (filterSel) {
-      filterSel.innerHTML = '<option value="">All Classes</option>' +
-        classes.map((c) => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`).join('');
+      const previous = classFilter;
+      filterSel.innerHTML = '<option value="">All Classes</option>' + options;
+      if ([...filterSel.options].some((option) => option.value === previous)) filterSel.value = previous;
     }
     const classSel = document.getElementById('asgClass');
     if (classSel) {
-      classSel.innerHTML = '<option value="">Select class</option>' +
-        classes.map((c) => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`).join('');
+      const previous = classSel.value;
+      classSel.innerHTML = (classes.length
+        ? '<option value="">Select class</option>'
+        : '<option value="">No classes yet</option>') + options;
+      if ([...classSel.options].some((option) => option.value === previous)) classSel.value = previous;
     }
+    const hint = document.getElementById('asgClassHint');
+    if (hint) hint.hidden = classes.length > 0;
   }
+  if (isTeacher) fillTeacherClassSelects();
 
   // ---- Teacher: assignment details popup + edit ----
   function setEl(id, text) {
@@ -604,7 +615,7 @@ document.addEventListener('DOMContentLoaded', () => {
       : 'No due date';
 
     setEl('tAsgTitle', a.title || 'Untitled assignment');
-    setEl('tAsgClass', cls?.name || a.subject || 'Unassigned');
+    setEl('tAsgClass', cls ? classDisplayName(cls) : (a.subject || 'Unassigned'));
     setEl('tAsgDue', due);
     setEl('tAsgPoints', a.points ? `${a.points} points` : 'Not set');
     setEl('tAsgSubmissions', `${Number(a.submissions) || 0} / ${enrolled}`);
@@ -622,6 +633,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const a = getAssignments().find((x) => x.id === id);
     if (!a) return;
     editingAsgId = id;
+    fillTeacherClassSelects();
     const set = (field, v) => { const el = document.getElementById(field); if (el) el.value = v ?? ''; };
     set('asgTitle', a.title);
     set('asgClass', a.classId || a.subjectId || '');
@@ -663,7 +675,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // ---- Open the create modal (all button IDs used by student + teacher pages) ----
   ['addAssignmentBtn', 'createAssignmentBtn', 'createAsgBtn', 'qaCreateAsg'].forEach((id) => {
     document.getElementById(id)?.addEventListener('click', () => {
-      if (isTeacher) resetAsgForm();
+      if (isTeacher) {
+        resetAsgForm();
+        fillTeacherClassSelects();
+      }
       openModal('addAssignmentModal');
       openModal('createAsgModal');
     });
@@ -703,7 +718,8 @@ document.addEventListener('DOMContentLoaded', () => {
         title, description, dueDate, dueTime, status: 'upcoming',
         classId: cls.id,
         subjectId: cls.id,
-        subject: cls.name,
+        subject: cls.subject || cls.name,
+        subjectCode: classSubjectCode(cls),
         points: Number(val('asgPoints')) || 0,
         submissions: 0,
       };

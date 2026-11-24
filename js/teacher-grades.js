@@ -5,11 +5,30 @@ document.addEventListener('DOMContentLoaded', () => {
   const session = initShell('teacher');
   if (!session) return;
 
-  let classFilter = 'all';
+  let classFilter = '';
+
+  function escapeHtml(str) {
+    return String(str ?? '').replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
+
+  const gradeClassFilter = document.getElementById('gradeClassFilter');
+  if (gradeClassFilter) {
+    gradeClassFilter.innerHTML = '<option value="">All Classes</option>' + getClasses().map((cls) =>
+      `<option value="${escapeHtml(cls.id)}">${escapeHtml(classDisplayName(cls))}</option>`
+    ).join('');
+  }
 
   function render() {
     let grades = getGrades();
-    if (classFilter !== 'all') grades = grades.filter((g) => g.class === classFilter);
+    if (classFilter) {
+      const cls = getClasses().find((item) => item.id === classFilter);
+      const labels = new Set([
+        cls?.name, cls?.subject, classDisplayName(cls), classSubjectCode(cls),
+      ].filter(Boolean));
+      grades = grades.filter((grade) => grade.classId === classFilter || labels.has(grade.class));
+    }
 
     const all = getGrades();
     const vals = document.querySelectorAll('.stat-grid .stat-value');

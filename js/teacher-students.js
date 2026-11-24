@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
       ['Email', student.email || 'Not provided'],
       ['Course', student.course || 'Not provided'],
       ['Year level', student.year || 'Not provided'],
-      ['Class', cls?.name || 'No class assigned'],
+      ['Class', cls ? classDisplayName(cls) : 'No class assigned'],
       ['Student ID', student.studentId || 'Not provided'],
       ['GPA', studentGpa(student)],
     ];
@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="list-item">
           <div class="item-meta">
             <div class="item-title">${escapeHtml(student.name)}</div>
-            <div class="item-sub">${escapeHtml(student.course || 'Course not set')} · ${escapeHtml(student.year || 'Year not set')} · ${escapeHtml(cls?.name || 'No class assigned')}</div>
+            <div class="item-sub">${escapeHtml(student.course || 'Course not set')} · ${escapeHtml(student.year || 'Year not set')} · ${escapeHtml(cls ? classDisplayName(cls) : 'No class assigned')}</div>
           </div>
           <span class="badge ${statusClass(student.status || 'inactive')}">${escapeHtml(statusLabel(student.status || 'inactive'))}</span>
         </div>`;
@@ -107,9 +107,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (search) {
       const q = search.toLowerCase();
       list = list.filter((s) =>
-        s.name.toLowerCase().includes(q) ||
-        s.email.toLowerCase().includes(q) ||
-        s.course.toLowerCase().includes(q)
+        String(s.name || '').toLowerCase().includes(q) ||
+        String(s.email || '').toLowerCase().includes(q) ||
+        String(s.course || '').toLowerCase().includes(q) ||
+        String(s.subjectCode || '').toLowerCase().includes(q)
       );
     }
 
@@ -153,7 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <td>${escapeHtml(s.email)}</td>
           <td>${escapeHtml(s.course)}</td>
           <td>${escapeHtml(s.year)}</td>
-          <td>${escapeHtml(classes.find((c) => c.id === s.classId)?.name || '—')}</td>
+          <td>${escapeHtml((() => { const cls = classes.find((c) => c.id === s.classId); return cls ? classDisplayName(cls) : (s.subjectCode || '—'); })())}</td>
           <td><strong>${escapeHtml(s.gpa)}</strong></td>
           <td><span class="badge ${statusClass(s.status)}">${statusLabel(s.status)}</span></td>
           <td>
@@ -277,13 +278,353 @@ document.addEventListener('DOMContentLoaded', () => {
     const student = getStudents().find((item) => item.id === row.dataset.studentDetails);
     if (student) openStudentDetails(student);
   });
+  function classOptionsHtml(placeholder) {
+    return `<option value="">${placeholder}</option>` +
+      getClasses().map((c) => `<option value="${escapeHtml(c.id)}">${escapeHtml(classDisplayName(c))}</option>`).join('');
+  }
+
   document.getElementById('addStudentBtn')?.addEventListener('click', () => {
     const sel = document.getElementById('studentClass');
-    if (sel) {
-      sel.innerHTML = '<option value="">No class</option>' +
-        getClasses().map((c) => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`).join('');
-    }
+    if (sel) sel.innerHTML = classOptionsHtml('No class');
     openModal('addStudentModal');
+  });
+
+  // ---- Roster import: Excel, CSV, text, and PDF ----
+  let importRows = [];
+
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      if ([...document.scripts].some((script) => script.src === src)) { resolve(); return; }
+      const el = document.createElement('script');
+      el.src = src;
+      el.async = true;
+      el.onload = () => resolve();
+      el.onerror = () => reject(new Error('Could not load a file reader. CSV and text files still work.'));
+      document.head.appendChild(el);
+    });
+  }
+
+  function parseCsv(text) {
+    const rows = [];
+    let row = [];
+    let cell = '';
+    let inQuotes = false;
+    const src = String(text || '').replace(/^\uFEFF/, '');
+    for (let i = 0; i < src.length; i++) {
+      const ch = src[i];
+      if (inQuotes) {
+        if (ch === '"') {
+          if (src[i + 1] === '"') { cell += '"'; i += 1; }
+          else inQuotes = false;
+        } else cell += ch;
+      } else if (ch === '"') inQuotes = true;
+      else if (ch === ',' || ch === '\t' || ch === ';') { row.push(cell.trim()); cell = ''; }
+      else if (ch === '\n') { row.push(cell.trim()); if (row.some(Boolean)) rows.push(row); row = []; cell = ''; }
+      else if (ch !== '\r') cell += ch;
+    }
+    row.push(cell.trim());
+    if (row.some(Boolean)) rows.push(row);
+    return rows;
+  }
+
+  const HEADER_ALIASES = {
+    name: ['name', 'studentname', 'fullname', 'student', 'learner', 'learnername', 'lastname', 'firstname'],
+    email: ['email', 'emailaddress', 'mail', 'e-mail'],
+    studentId: ['studentid', 'idnumber', 'idno', 'studno', 'studentnumber', 'lrn', 'id'],
+    course: ['course', 'program', 'degree'],
+    year: ['year', 'yearlevel', 'level', 'yr'],
+    subjectCode: ['subjectcode', 'coursecode', 'classcode', 'code', 'subject'],
+    gpa: ['gpa', 'qpi'],
+    status: ['status'],
+  };
+
+  function headerIndex(headers) {
+    const norm = headers.map((header) => String(header || '').toLowerCase().replace(/[^a-z0-9]/g, ''));
+    const index = {};
+    Object.entries(HEADER_ALIASES).forEach(([field, aliases]) => {
+      const found = norm.findIndex((header) => aliases.includes(header));
+      if (found >= 0) index[field] = found;
+    });
+    return index;
+  }
+
+  function looksLikeHeader(row) {
+    const index = headerIndex(row);
+    return index.name !== undefined || index.email !== undefined || index.subjectCode !== undefined;
+  }
+
+  function looseLine(line) {
+    const emailMatch = String(line).match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+    const email = emailMatch ? emailMatch[0] : '';
+    let rest = email ? String(line).replace(email, ' ') : String(line);
+    const idMatch = rest.match(/\b(\d{2,4}[-/]\d{3,8}|\d{6,12})\b/);
+    const studentId = idMatch ? idMatch[1] : '';
+    if (idMatch) rest = rest.replace(idMatch[0], ' ');
+    let subjectCode = '';
+    const known = getClasses().map((cls) => normalizeSubjectCode(classSubjectCode(cls))).filter((code) => code.length >= 2);
+    const restNorm = normalizeSubjectCode(rest);
+    const matches = known.filter((code) => restNorm.includes(code)).sort((a, b) => b.length - a.length);
+    subjectCode = matches[0] || '';
+    if (subjectCode) {
+      rest = rest.split(/[\s,|/]+/).filter((token) => {
+        const norm = normalizeSubjectCode(token);
+        return !norm || !subjectCode.includes(norm);
+      }).join(' ');
+    }
+    const name = rest.replace(/^\s*\d+[\.\)\-]\s*/, '').replace(/[|]+/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!name && !email && !studentId) return null;
+    if (!email && !studentId && (/^(name|student|email|subject|course|class list|official)\b/i.test(name) || name.split(/\s+/).length < 2)) {
+      return null;
+    }
+    return {
+      name: name || (email ? email.split('@')[0].replace(/[._]/g, ' ') : ''),
+      email, studentId, subjectCode, course: '', year: '', gpa: '', status: '',
+    };
+  }
+
+  function studentsFromTable(table) {
+    const cleaned = table.filter((row) => row.some((cell) => String(cell || '').trim()));
+    if (!cleaned.length) return [];
+    if (cleaned[0].length === 1 && !looksLikeHeader(cleaned[0])) {
+      return cleaned.map((row) => looseLine(row[0])).filter(Boolean);
+    }
+    let index;
+    let start = 0;
+    if (looksLikeHeader(cleaned[0])) {
+      index = headerIndex(cleaned[0]);
+      start = 1;
+    } else {
+      index = { name: 0, email: 1, studentId: 2, course: 3, year: 4, subjectCode: 5 };
+    }
+    return cleaned.slice(start).map((row) => {
+      const get = (field) => (index[field] === undefined ? '' : String(row[index[field]] || '').trim());
+      const email = get('email');
+      const name = get('name');
+      const studentId = get('studentId');
+      if (!name && !email && !studentId) return null;
+      return {
+        name: name || (email ? email.split('@')[0].replace(/[._]/g, ' ') : studentId),
+        email, studentId,
+        course: get('course'),
+        year: get('year'),
+        subjectCode: get('subjectCode'),
+        gpa: get('gpa'),
+        status: get('status').toLowerCase(),
+      };
+    }).filter(Boolean);
+  }
+
+  async function rowsFromFile(file) {
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    if (ext === 'pdf') {
+      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+      const pdfjsLib = window.pdfjsLib;
+      if (!pdfjsLib) throw new Error('PDF reader failed to load.');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+      const lines = [];
+      for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+        const page = await pdf.getPage(pageNumber);
+        const content = await page.getTextContent();
+        const grouped = new Map();
+        content.items.forEach((item) => {
+          if (!item.str || !item.str.trim()) return;
+          const y = Math.round(item.transform[5]);
+          if (!grouped.has(y)) grouped.set(y, []);
+          grouped.get(y).push({ x: item.transform[4], str: item.str });
+        });
+        [...grouped.keys()].sort((a, b) => b - a).forEach((y) => {
+          const line = grouped.get(y).sort((a, b) => a.x - b.x).map((part) => part.str).join(' ').replace(/\s+/g, ' ').trim();
+          if (line) lines.push(line);
+        });
+      }
+      return lines.map(looseLine).filter(Boolean);
+    }
+    if (ext === 'xls' || ext === 'xlsx') {
+      await loadScript('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js');
+      if (!window.XLSX) throw new Error('Excel reader failed to load. Save the sheet as CSV and try again.');
+      const workbook = window.XLSX.read(await file.arrayBuffer(), { type: 'array' });
+      const sheetName = workbook.SheetNames.find((name) => {
+        const sheet = workbook.Sheets[name];
+        return sheet && window.XLSX.utils.sheet_to_json(sheet, { header: 1 }).length;
+      });
+      if (!sheetName) return [];
+      const table = window.XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, raw: false, defval: '' });
+      return studentsFromTable(table.map((row) => row.map((cell) => String(cell ?? '').trim())));
+    }
+    const text = await file.text();
+    if (ext === 'txt' && !text.includes(',') && !text.includes('\t') && !text.includes(';')) {
+      return text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).map(looseLine).filter(Boolean);
+    }
+    return studentsFromTable(parseCsv(text));
+  }
+
+  function resolveImportClass(row) {
+    if (row.subjectCode) {
+      const match = findClassForLabel(row.subjectCode);
+      if (match) return { classId: match.id, subjectCode: classSubjectCode(match) };
+    }
+    const defaultId = document.getElementById('importDefaultClass')?.value || '';
+    if (defaultId) {
+      const cls = getClasses().find((item) => item.id === defaultId);
+      if (cls) return { classId: cls.id, subjectCode: classSubjectCode(cls) };
+    }
+    if (row.subjectCode) return { error: `No class uses ${row.subjectCode}` };
+    return { classId: null, subjectCode: '' };
+  }
+
+  function parseGpa(value) {
+    if (value === '' || value == null) return null;
+    const number = Number(String(value).replace(/[^\d.]/g, ''));
+    return Number.isFinite(number) ? number : null;
+  }
+
+  function findExistingStudent(list, row) {
+    const email = row.email.toLowerCase();
+    if (email) return list.find((student) => String(student.email || '').toLowerCase() === email) || null;
+    if (row.studentId) {
+      const id = normalizeSubjectCode(row.studentId);
+      return list.find((student) => student.studentId && normalizeSubjectCode(student.studentId) === id) || null;
+    }
+    const name = row.name.toLowerCase();
+    if (!name) return null;
+    return list.find((student) => !student.email && String(student.name || '').toLowerCase() === name) || null;
+  }
+
+  function renderImportPreview() {
+    const box = document.getElementById('importPreview');
+    const confirm = document.getElementById('confirmImportBtn');
+    if (!box || !confirm) return;
+    if (!importRows.length) {
+      box.innerHTML = '';
+      confirm.disabled = true;
+      return;
+    }
+    const existing = getStudents();
+    let ready = 0;
+    let updates = 0;
+    let skipped = 0;
+    const preview = importRows.slice(0, 6).map((row) => {
+      const resolved = resolveImportClass(row);
+      if (resolved.error) skipped += 1;
+      else if (findExistingStudent(existing, row)) updates += 1;
+      else ready += 1;
+      const cls = resolved.classId ? getClasses().find((item) => item.id === resolved.classId) : null;
+      return `<tr>
+        <td>${escapeHtml(row.name || '—')}</td>
+        <td>${escapeHtml(row.email || row.studentId || '—')}</td>
+        <td>${escapeHtml(cls ? classDisplayName(cls) : (resolved.error || 'No class'))}</td>
+      </tr>`;
+    }).join('');
+    const rest = importRows.slice(6);
+    rest.forEach((row) => {
+      const resolved = resolveImportClass(row);
+      if (resolved.error) skipped += 1;
+      else if (findExistingStudent(existing, row)) updates += 1;
+      else ready += 1;
+    });
+    box.innerHTML = `
+      <p class="subtitle" style="margin-bottom:8px">${ready} new · ${updates} updated · ${skipped} skipped</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Name</th><th>Email / ID</th><th>Class</th></tr></thead>
+          <tbody>${preview}</tbody>
+        </table>
+      </div>`;
+    confirm.disabled = ready + updates === 0;
+  }
+
+  async function readRosterFile(file) {
+    const confirm = document.getElementById('confirmImportBtn');
+    if (confirm) confirm.disabled = true;
+    const preview = document.getElementById('importPreview');
+    if (preview) preview.innerHTML = '<p class="subtitle">Reading file…</p>';
+    try {
+      importRows = await rowsFromFile(file);
+      if (!importRows.length) {
+        if (preview) preview.innerHTML = '<p class="subtitle">No students found. Use columns for name and email, or a PDF/text list with one student per line. Scanned PDFs need to be exported to Excel or CSV first.</p>';
+        return;
+      }
+      renderImportPreview();
+    } catch (error) {
+      importRows = [];
+      if (preview) preview.innerHTML = `<p class="subtitle">${escapeHtml(error.message || 'Could not read that file.')}</p>`;
+      showToast(error.message || 'Could not read that file.', 'error');
+    }
+  }
+
+  document.getElementById('importStudentsBtn')?.addEventListener('click', () => {
+    importRows = [];
+    const file = document.getElementById('rosterFile');
+    if (file) file.value = '';
+    const sel = document.getElementById('importDefaultClass');
+    if (sel) sel.innerHTML = classOptionsHtml('No class — subject code column only');
+    const preview = document.getElementById('importPreview');
+    if (preview) preview.innerHTML = '';
+    const confirm = document.getElementById('confirmImportBtn');
+    if (confirm) confirm.disabled = true;
+    openModal('importStudentsModal');
+  });
+
+  document.getElementById('rosterFile')?.addEventListener('change', (event) => {
+    const file = event.target.files?.[0];
+    if (file) readRosterFile(file);
+  });
+  document.getElementById('importDefaultClass')?.addEventListener('change', () => {
+    if (importRows.length) renderImportPreview();
+  });
+  document.getElementById('downloadRosterTemplate')?.addEventListener('click', () => {
+    const sampleCode = classSubjectCode(getClasses()[0]) || 'PC 4112';
+    const csv = `Name,Email,Student ID,Course,Year,Subject Code\nMaria Santos,maria.santos@email.com,2022-00123,BSIT,4th Year,${sampleCode}\n`;
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    link.download = 'studybuddy-student-list.csv';
+    link.click();
+    URL.revokeObjectURL(link.href);
+  });
+  document.getElementById('confirmImportBtn')?.addEventListener('click', () => {
+    const list = getStudents();
+    let added = 0;
+    let updated = 0;
+    let skipped = 0;
+    importRows.forEach((row) => {
+      const resolved = resolveImportClass(row);
+      if (resolved.error || !row.name) { skipped += 1; return; }
+      const gpa = parseGpa(row.gpa);
+      const status = row.status === 'active' || row.status === 'inactive' ? row.status : '';
+      const existing = findExistingStudent(list, row);
+      if (existing) {
+        if (row.name) existing.name = row.name;
+        if (row.email) existing.email = row.email;
+        if (row.studentId) existing.studentId = row.studentId;
+        if (row.course) existing.course = row.course;
+        if (row.year) existing.year = row.year;
+        if (gpa !== null) existing.gpa = gpa;
+        if (status) existing.status = status;
+        existing.classId = resolved.classId;
+        existing.subjectCode = resolved.subjectCode;
+        updated += 1;
+        return;
+      }
+      list.push({
+        id: uid('stu'),
+        name: row.name,
+        email: row.email || '',
+        studentId: row.studentId || '',
+        course: row.course || '',
+        year: row.year || '',
+        classId: resolved.classId,
+        subjectCode: resolved.subjectCode,
+        gpa: gpa === null ? 0 : gpa,
+        status: status || 'active',
+      });
+      added += 1;
+    });
+    sbSet(SB_KEYS.STUDENTS, list);
+    closeModal('importStudentsModal');
+    importRows = [];
+    showToast(`Imported ${added} new and updated ${updated}${skipped ? `. Skipped ${skipped}` : ''}`);
+    render();
   });
 
   // ---- Unenroll: removes the student from their class and from the students list ----
@@ -396,7 +737,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const classId = document.getElementById('studentClass')?.value || null;
-    list.push({ id: uid('stu'), name, email, course, year, classId, gpa: 0, status: 'active' });
+    const cls = getClasses().find((item) => item.id === classId);
+    list.push({
+      id: uid('stu'), name, email, course, year,
+      classId, subjectCode: cls ? classSubjectCode(cls) : '',
+      gpa: 0, status: 'active',
+    });
     sbSet(SB_KEYS.STUDENTS, list);
 
     closeModal('addStudentModal');

@@ -95,7 +95,7 @@
                 <thead>
                   <tr>
                      <th style="width: 24%; text-align: center; padding: 10px 12px;">Class Name</th>
-                     <th style="width: 20%; text-align: center; padding: 10px 12px;">Subject</th>
+                     <th style="width: 20%; text-align: center; padding: 10px 12px;">Subject Code</th>
                     <th>Students</th>
                     <th>Next Activity</th>
                     <th>Progress</th>
@@ -434,21 +434,20 @@
       </div>
       <form id="addClassForm">
         <div class="modal-body">
-          <div class="form-group">
-            <label for="className">Class Name</label>
-            <input class="form-control" type="text" id="className" placeholder="e.g. Math 101" required />
+          <div class="form-row">
+            <div class="form-group">
+              <label for="classSubjectCode">Subject Code</label>
+              <input class="form-control" type="text" id="classSubjectCode" placeholder="e.g. PC 4112" required autocomplete="off" spellcheck="false" />
+            </div>
+            <div class="form-group">
+              <label for="className">Class Name</label>
+              <input class="form-control" type="text" id="className" placeholder="e.g. IAS 2 Lecture" required />
+            </div>
           </div>
           <div class="form-group">
-            <label for="classSubject">Subject</label>
-            <select class="form-control" id="classSubject" required>
-              <option value="">Select subject</option>
-              <option value="Mathematics">Mathematics</option>
-              <option value="Science">Science</option>
-              <option value="English">English</option>
-              <option value="Computer Science">Computer Science</option>
-              <option value="Filipino">Filipino</option>
-              <option value="History">History</option>
-            </select>
+            <label for="classSubject">Subject Title</label>
+            <input class="form-control" type="text" id="classSubject" placeholder="e.g. Information Assurance and Security 2" required />
+            <p class="subtitle" style="margin-top:6px">Assignments and student lists attach to this class through the subject code.</p>
           </div>
           <div class="form-row">
             <div class="form-group">
@@ -495,7 +494,7 @@
       </div>
       <div class="modal-body">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px 16px">
-          <div><div class="stat-label" style="font-weight:700;font-size:15px;color:#0F172A;margin-bottom:2px">Subject</div><div class="title" id="detailSubject"></div></div>
+          <div><div class="stat-label" style="font-weight:700;font-size:15px;color:#0F172A;margin-bottom:2px">Subject Code</div><div class="title" id="detailSubject"></div></div>
           <div><div class="stat-label" style="font-weight:700;font-size:15px;color:#0F172A;margin-bottom:2px">Instructor</div><div class="title" id="detailInstructor"></div></div>
           <div><div class="stat-label" style="font-weight:700;font-size:15px;color:#0F172A;margin-bottom:2px">Room</div><div class="title" id="detailRoom"></div></div>
           <div><div class="stat-label" style="font-weight:700;font-size:15px;color:#0F172A;margin-bottom:2px">Days</div><div class="title" id="detailDays"></div></div>

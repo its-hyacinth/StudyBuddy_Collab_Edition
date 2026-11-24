@@ -78,7 +78,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // ---- Filter by search ----
     const q = search.toLowerCase();
     const list = q
-      ? classes.filter((c) => c.name.toLowerCase().includes(q) || String(c.subject).toLowerCase().includes(q))
+      ? classes.filter((c) => String(c.name || '').toLowerCase().includes(q)
+        || String(c.subject || '').toLowerCase().includes(q)
+        || classSubjectCode(c).toLowerCase().includes(q))
       : classes;
 
     // ---- Table (7 columns, matching the header) ----
@@ -86,6 +88,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (tbody) {
       tbody.innerHTML = list.length
         ? list.map((c) => {
+          const code = classSubjectCode(c);
+          const title = c.subject && c.subject !== c.name ? c.subject : '';
           return `
         <tr data-id="${escapeHtml(c.id)}" style="cursor:pointer" title="Click for class details">
           <td>
@@ -93,11 +97,11 @@ document.addEventListener('DOMContentLoaded', () => {
               <div class="cell-icon"><i data-lucide="graduation-cap"></i></div>
               <div>
                 <div class="title">${escapeHtml(c.name)}</div>
-                <div class="subtitle">${escapeHtml(c.subject)} · ${escapeHtml(c.room || 'Room TBA')}</div>
+                <div class="subtitle">${escapeHtml([title, c.room || 'Room TBA'].filter(Boolean).join(' · '))}</div>
               </div>
             </div>
           </td>
-          <td style="text-align:center"><span class="subject-tag ${escapeHtml(c.short)}"><span class="dot ${escapeHtml(c.short)}"></span> ${escapeHtml(c.subject)}</span></td>
+          <td style="text-align:center"><span class="subject-tag ${escapeHtml(c.short)}"><span class="dot ${escapeHtml(c.short)}"></span> ${escapeHtml(code || c.subject || '—')}</span></td>
          <td style="text-align:center">${enrolledCount(c, students)}</td>
           <td>
             <div class="title">${escapeHtml(c.nextActivity)}</div>
@@ -124,7 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="subject-card ${escapeHtml(c.short)}" data-id="${escapeHtml(c.id)}" style="cursor:pointer" title="Click for class details">
           <div class="subject-card-top">
             <div class="subj-icon" style="background:var(--page-bg)"><i data-lucide="graduation-cap"></i></div>
-            <div class="subj-info"><h3>${escapeHtml(c.name)}</h3><p><span class="subject-tag ${escapeHtml(c.short)}">${escapeHtml(c.subject)}</span></p></div>
+            <div class="subj-info"><h3>${escapeHtml(classDisplayName(c))}</h3><p><span class="subject-tag ${escapeHtml(c.short)}">${escapeHtml(c.subject || classSubjectCode(c))}</span></p></div>
             <span class="badge badge-success">Active</span>
           </div>
           <div class="subject-card-stats" style="display:grid;grid-template-columns:repeat(2,1fr);justify-items:center;text-align:center;width:100%">
@@ -144,7 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (legend) {
       legend.innerHTML = classes.slice(0, 5).map((c) => `
         <div class="donut-legend-row">
-          <div class="lbl"><span>${escapeHtml(c.name)}</span><span>${Number(c.progress) || 0}%</span></div>
+          <div class="lbl"><span>${escapeHtml(classDisplayName(c))}</span><span>${Number(c.progress) || 0}%</span></div>
           <div class="progress-bar"><div class="fill ${escapeHtml(c.short)}" style="width:${Number(c.progress) || 0}%"></div></div>
         </div>`).join('');
     }
@@ -188,8 +192,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const students = getStudents();
     const notSet = 'Not set';
 
+    const code = classSubjectCode(c);
     setText('detailName', c.name);
-    setText('detailSubject', c.subject || notSet);
+    setText('detailSubject', code
+      ? `${code}${c.subject && c.subject !== code ? ' · ' + c.subject : ''}`
+      : (c.subject || notSet));
     setText('detailInstructor', instructorName(c));
     setText('detailRoom', c.room || notSet);
     setText('detailDays', c.schedule || notSet);
@@ -251,13 +258,8 @@ document.addEventListener('DOMContentLoaded', () => {
     editingId = id;
     const setVal = (field, v) => { const el = document.getElementById(field); if (el) el.value = v ?? ''; };
 
-    // Classes synced from Classroom may have a subject that isn't in the dropdown
-    const sel = document.getElementById('classSubject');
-    if (sel && c.subject && ![...sel.options].some((o) => o.value === c.subject)) {
-      sel.add(new Option(c.subject, c.subject));
-    }
-
     setVal('className', c.name);
+    setVal('classSubjectCode', classSubjectCode(c));
     setVal('classSubject', c.subject);
     setVal('classRoom', c.room);
     setVal('classSchedule', c.schedule);
@@ -280,6 +282,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('addClassForm')?.addEventListener('submit', (e) => {
     e.preventDefault();
     const name = document.getElementById('className')?.value.trim();
+    const subjectCode = document.getElementById('classSubjectCode')?.value.trim();
     const subject = document.getElementById('classSubject')?.value.trim();
     const room = document.getElementById('classRoom')?.value.trim() || '';
     const schedule = document.getElementById('classSchedule')?.value.trim() || '';
@@ -287,12 +290,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const endTime = document.getElementById('classEndTime')?.value || '';
     const description = document.getElementById('classDescription')?.value.trim() || '';
 
-    if (!name || !subject) { showToast('Name and subject required', 'error'); return; }
+    if (!name || !subjectCode || !subject) { showToast('Subject code, class name, and subject title are required', 'error'); return; }
+    if (!normalizeSubjectCode(subjectCode)) { showToast('Subject code needs at least one letter or number', 'error'); return; }
     if (!startTime || !endTime) { showToast('Start and end time required', 'error'); return; }
     if (endTime <= startTime) { showToast('End time must be after start time', 'error'); return; }
 
     const list = getClasses();
-    const fields = { name, subject, short: subjectShort(subject), room, schedule, startTime, endTime, description };
+    const duplicate = list.find((c) => c.id !== editingId && normalizeSubjectCode(classSubjectCode(c)) === normalizeSubjectCode(subjectCode));
+    if (duplicate) {
+      showToast(`Subject code ${subjectCode} is already used by ${duplicate.name}`, 'error');
+      return;
+    }
+    const fields = {
+      name, subject, subjectCode, code: subjectCode,
+      short: subjectTone(subjectCode),
+      room, schedule, startTime, endTime, description,
+    };
 
     if (editingId) {
       const idx = list.findIndex((c) => c.id === editingId);

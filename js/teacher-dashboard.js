@@ -60,10 +60,10 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="cell-icon" style="background:var(--${escapeHtml(c.short)}, #2563EB)22">
               <i data-lucide="graduation-cap"></i>
             </div>
-            <div><div class="title">${escapeHtml(c.name)}</div></div>
+            <div><div class="title">${escapeHtml(classDisplayName(c))}</div></div>
           </div>
         </td>
-        <td><span class="subject-tag ${escapeHtml(c.short)}">${escapeHtml(c.subject)}</span></td>
+        <td><span class="subject-tag ${escapeHtml(c.short)}">${escapeHtml(classSubjectCode(c) || c.subject)}</span></td>
         <td style="text-align:center;">${enrolledCount(c, students)}</td>
         <td><div class="title" style="font-size:13px">${escapeHtml(c.nextActivity)}</div><div class="subtitle">${escapeHtml(formatDate(c.nextDate))}</div></td>
         <td>
@@ -101,7 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="bar-col">
         <div class="bar-val">${Number(c.progress) || 0}%</div>
         <div class="bar" style="height:${Number(c.progress) || 0}%;background:var(--${escapeHtml(c.short)})"></div>
-        <div class="bar-label">${escapeHtml(String(c.subject).split(' ')[0].slice(0, 8))}</div>
+        <div class="bar-label">${escapeHtml((classSubjectCode(c) || String(c.subject || c.name)).slice(0, 10))}</div>
       </div>`).join('');
   }
 

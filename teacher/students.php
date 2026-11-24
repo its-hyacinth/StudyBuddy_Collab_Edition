@@ -22,9 +22,14 @@
           </h1>
           <p class="page-subtitle">View and manage students enrolled in your classes.</p>
         </div>
-        <button type="button" class="btn btn-primary" id="addStudentBtn">
-          <i data-lucide="user-plus"></i> Add Student
-        </button>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button type="button" class="btn btn-outline" id="importStudentsBtn">
+            <i data-lucide="upload"></i> Import List
+          </button>
+          <button type="button" class="btn btn-primary" id="addStudentBtn">
+            <i data-lucide="user-plus"></i> Add Student
+          </button>
+        </div>
       </div>
 
       <div class="stat-grid" id="studentStats">
@@ -171,6 +176,35 @@
             <div class="tip-footer"><i data-lucide="sparkles"></i> Student success tip</div>
           </div>
         </aside>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import roster from Excel, CSV, PDF, or text -->
+  <div class="modal-backdrop" id="importStudentsModal">
+    <div class="modal" style="max-width:680px">
+      <div class="modal-header">
+        <h3>Import Student List</h3>
+        <button type="button" class="modal-close" data-close-modal="importStudentsModal" aria-label="Close">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="subtitle" style="margin-bottom:14px">Upload an Excel spreadsheet, CSV, text file, or PDF. A subject code column enrolls each student in that class. Rows without a code use the class you pick below.</p>
+        <div class="form-group">
+          <label for="rosterFile">File</label>
+          <input class="form-control" type="file" id="rosterFile" accept=".csv,.tsv,.txt,.xls,.xlsx,.pdf,application/pdf,text/csv,text/plain" style="height:auto;padding:10px" />
+        </div>
+        <div class="form-group">
+          <label for="importDefaultClass">Class for rows without a subject code</label>
+          <select class="form-control" id="importDefaultClass"></select>
+        </div>
+        <div id="importPreview"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" id="downloadRosterTemplate">CSV template</button>
+        <button type="button" class="btn btn-ghost" data-close-modal="importStudentsModal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="confirmImportBtn" disabled>Import students</button>
       </div>
     </div>
   </div>

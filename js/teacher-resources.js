@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function classNames() {
     const values = [
-      ...getClasses().map((item) => item.name || item.subject),
+      ...getClasses().map((item) => classDisplayName(item) || item.name || item.subject),
       ...getResources().map((item) => item.class),
     ].filter(Boolean);
     return [...new Set(values)].length

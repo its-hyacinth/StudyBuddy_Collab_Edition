@@ -51,11 +51,6 @@
             </div>
             <select id="asgClassFilter" aria-label="Filter by class">
               <option value="">All Classes</option>
-              <option value="Math 101">Math 101</option>
-              <option value="Science 205">Science 205</option>
-              <option value="English 101">English 101</option>
-              <option value="CS 308">CS 308</option>
-              <option value="Filipino 101">Filipino 101</option>
             </select>
             <select id="asgSort" aria-label="Sort by due date">
               <option value="due-asc">Due Date (Earliest)</option>
@@ -293,12 +288,10 @@
             <label for="asgClass">Class</label>
             <select class="form-control" id="asgClass" required>
               <option value="">Select class</option>
-              <option value="cls_1">Math 101</option>
-              <option value="cls_2">Science 205</option>
-              <option value="cls_3">English 101</option>
-              <option value="cls_4">CS 308</option>
-              <option value="cls_5">Filipino 101</option>
             </select>
+            <p id="asgClassHint" class="subtitle" hidden style="margin-top:6px">
+              No classes yet. <a href="classes.php">Add a class with a subject code</a>, then assign work to it.
+            </p>
           </div>
           <!-- NEW: due date + due time -->
           <div class="form-row">
