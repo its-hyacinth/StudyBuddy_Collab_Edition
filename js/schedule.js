@@ -81,18 +81,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       ...entry,
       calendarSource: entry.calendarSource || (entry.source === 'google-calendar' ? 'google' : 'schedule'),
     }));
-    if (isTeacher) {
-      entries.push(...getAssignments()
-        .filter((assignment) => assignment.dueDate && assignment.status !== 'completed')
-        .map((assignment) => ({
-          ...assignment,
-          date: assignment.dueDate,
-          startTime: '',
-          endTime: '',
-          type: 'deadline',
-          calendarSource: 'assignment',
-        })));
-    }
+    entries.push(...getAssignments()
+      .filter((assignment) => assignment.dueDate && assignment.status !== 'completed')
+      .map((assignment) => ({
+        ...assignment,
+        date: assignment.dueDate,
+        startTime: '',
+        endTime: '',
+        type: 'deadline',
+        calendarSource: 'assignment',
+      })));
     return entries;
   }
 
@@ -386,7 +384,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   function renderUpcoming() {
     const el = document.getElementById('scheduleEventsList') || document.getElementById('upcomingEvents');
     if (!el) return;
-    const upcoming = personalEvents()
+    const upcoming = calendarEntries()
       .filter((s) => s.date >= localDateStr())
       .sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime))
       .slice(0, 5);
@@ -396,10 +394,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         <div class="item-meta">
           <button type="button" class="schedule-day-link" data-schedule-date="${escapeHtml(s.date)}">
             <span class="item-title">${escapeHtml(s.title)}</span>
-            <span class="item-sub">${escapeHtml(formatDate(s.date))} · ${escapeHtml(formatTime(s.startTime))}</span>
+            <span class="item-sub">${escapeHtml(formatDate(s.date))}${s.startTime ? ` · ${escapeHtml(formatTime(s.startTime))}` : ' · Due date'}</span>
           </button>
         </div>
-        ${scheduleActions(s, 'upcoming', false)}
+        ${s.calendarSource === 'assignment' ? '<a class="view-all" href="assignments.php">Assignments</a>' : scheduleActions(s, 'upcoming', false)}
       </div>`).join('') : '<p class="empty-state">No upcoming events.</p>';
     wireDayScheduleLinks(el);
     wireScheduleActions(el);
