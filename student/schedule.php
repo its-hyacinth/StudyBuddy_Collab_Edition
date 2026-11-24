@@ -21,7 +21,7 @@
             <span class="title-icon"><i data-lucide="calendar"></i></span>
             Schedule
           </h1>
-          <p class="page-subtitle">Manage your schedule and choose when to sync with Google Calendar.</p>
+          <p class="page-subtitle">View your classes, deadlines, and events in calendar or list view.</p>
         </div>
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
   <div class="view-toggle" id="scheduleViewToggle" role="tablist">
@@ -32,15 +32,6 @@
       <i data-lucide="list"></i> List
     </button>
   </div>
-
-  <button type="button" class="btn btn-outline" id="importGoogleCalBtn">
-    <i data-lucide="download"></i> Sync from Google Calendar
-  </button>
-
-  <button type="button" class="btn btn-outline" id="syncGoogleCalBtn">
-    <i data-lucide="calendar"></i> Sync schedule to Google Calendar
-  </button>
-
   <button type="button" class="btn btn-primary" id="addScheduleBtn">
     <i data-lucide="plus"></i> Add Event
   </button>
