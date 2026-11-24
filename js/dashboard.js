@@ -177,6 +177,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const result = await syncGoogleClassroom(btn);
     if (result?.ok) setTimeout(() => location.reload(), 400);
   };
+  document.getElementById('syncTodayScheduleBtn')?.addEventListener('click', (event) => {
+    syncTodayScheduleToGoogleCalendar(todayItems, todayStr, event.currentTarget);
+  });
   document.getElementById('syncCalendarBtn')?.addEventListener('click', (e) => runClassroomSync(e.currentTarget));
   document.getElementById('syncClassroomBtn')?.addEventListener('click', (e) => runClassroomSync(e.currentTarget));
   document.getElementById('openCalendarBtn')?.addEventListener('click', (e) => {

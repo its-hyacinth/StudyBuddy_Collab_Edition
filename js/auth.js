@@ -1,5 +1,8 @@
 /** StudyBuddy authentication backed by PHP sessions and MySQL. */
 const SB_AUTH_BASE = (window.location.pathname.includes('/student/') || window.location.pathname.includes('/teacher/')) ? '../api/' : 'api/';
+let cachedSession;
+let sessionLoaded = false;
+
 function csrfToken() { return document.querySelector('meta[name="csrf-token"]')?.content || ''; }
 function apiAuth(action, data = {}) {
   const body = new URLSearchParams({ action, ...data });
@@ -10,10 +13,18 @@ function apiAuth(action, data = {}) {
   });
 }
 function getSession() {
+  if (sessionLoaded) return cachedSession;
   const xhr = new XMLHttpRequest();
   xhr.open('GET', `${SB_AUTH_BASE}auth.php?action=session`, false);
   xhr.send();
-  try { const r = JSON.parse(xhr.responseText); return r.user || null; } catch { return null; }
+  try {
+    const result = JSON.parse(xhr.responseText);
+    if (result.ok) {
+      cachedSession = result.user || null;
+      sessionLoaded = true;
+    }
+    return cachedSession || null;
+  } catch { return null; }
 }
 function requireAuth(expectedRole) {
   const session = getSession();

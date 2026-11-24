@@ -66,7 +66,12 @@
                   <div class="card-icon blue"><i data-lucide="calendar-clock"></i></div>
                   <h2 class="card-title">Today's Schedule</h2>
                 </div>
-                <a href="schedule.php?view=list" class="view-all" aria-label="View all schedule entries">View all</a>
+                <div style="display:flex;align-items:center;gap:10px">
+                  <button type="button" class="btn btn-outline btn-sm" id="syncTodayScheduleBtn" aria-label="Sync today's schedule to Google Calendar">
+                    <i data-lucide="calendar-sync"></i> Sync today
+                  </button>
+                  <a href="schedule.php?view=list" class="view-all" aria-label="View all schedule entries">View all</a>
+                </div>
               </div>
               <div id="todaySchedule">
                 <div class="schedule-item">

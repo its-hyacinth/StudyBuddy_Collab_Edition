@@ -346,7 +346,7 @@ if (is_array($savedStudentProfile)) $studentProfile = array_merge($studentProfil
               <div class="conn-icon"><i data-lucide="calendar"></i></div>
               <div class="conn-info">
                 <h4>Google Calendar</h4>
-                <p id="calendarConnectStatus">Not connected · Optional schedule overlay</p>
+                <p id="calendarConnectStatus">Not connected · Sync events and holidays into your schedule</p>
               </div>
               <label class="toggle-switch">
                 <input type="checkbox" id="toggleGoogleCalendar" data-service="calendar" />

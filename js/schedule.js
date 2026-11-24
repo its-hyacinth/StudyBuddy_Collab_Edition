@@ -1,10 +1,20 @@
 /**
  * StudyBuddy — Schedule / Calendar (student + teacher)
  */
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const isTeacher = document.body.dataset.role === 'teacher';
   const session = initShell(isTeacher ? 'teacher' : 'student');
   if (!session) return;
+  try {
+    await sbPrefetchState([
+      SB_KEYS.ASSIGNMENTS,
+      SB_KEYS.SCHEDULE,
+      SB_KEYS.CLASSES,
+      ...(!isTeacher ? [SB_KEYS.SUBJECTS] : []),
+    ]);
+  } catch (error) {
+    console.error('Could not preload schedule data:', error);
+  }
   wireModalClosers();
 
   const pageParams = new URLSearchParams(window.location.search);
@@ -46,10 +56,20 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function personalEvents() {
+    const scheduleEntries = getSchedule().filter((entry) =>
+      entry.source !== 'google-calendar' && entry.source !== 'classroom'
+    );
+    const scheduleIds = new Set(scheduleEntries.map((entry) => String(entry.id)));
     return [
-      ...getSchedule().filter((entry) => entry.source !== 'google-calendar'),
-      ...(window.SB_GOOGLE_EVENTS || []),
+      ...scheduleEntries,
+      ...(window.SB_GOOGLE_EVENTS || []).filter((entry) =>
+        !scheduleIds.has(String(entry.studyBuddyScheduleId || ''))
+      ),
     ];
+  }
+
+  function scheduleSubjects() {
+    return isTeacher ? [] : getSubjects();
   }
 
   function findPersonalEvent(id) {
@@ -61,18 +81,16 @@ document.addEventListener('DOMContentLoaded', () => {
       ...entry,
       calendarSource: entry.calendarSource || (entry.source === 'google-calendar' ? 'google' : 'schedule'),
     }));
-    if (isTeacher) {
-      entries.push(...getAssignments()
-        .filter((assignment) => assignment.dueDate && assignment.status !== 'completed')
-        .map((assignment) => ({
-          ...assignment,
-          date: assignment.dueDate,
-          startTime: '',
-          endTime: '',
-          type: 'deadline',
-          calendarSource: 'assignment',
-        })));
-    }
+    entries.push(...getAssignments()
+      .filter((assignment) => assignment.dueDate && assignment.status !== 'completed')
+      .map((assignment) => ({
+        ...assignment,
+        date: assignment.dueDate,
+        startTime: '',
+        endTime: '',
+        type: 'deadline',
+        calendarSource: 'assignment',
+      })));
     return entries;
   }
 
@@ -96,7 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const classes = new Set([
       ...Array.from(select.options).slice(1).map((option) => option.value),
       ...getClasses().map((item) => item.name),
-      ...getSubjects().map((item) => item.name),
+      ...scheduleSubjects().map((item) => item.name),
       ...getSchedule().map((item) => item.subject),
       ...getAssignments().map((item) => item.subject),
     ].filter(Boolean).map(String));
@@ -127,6 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function scheduleActions(entry, context, reopenDay) {
+    if (entry.readOnly) return '';
     const id = escapeHtml(entry.id);
     const menuId = `schedule-menu-${context}-${String(entry.id).replace(/[^A-Za-z0-9_-]/g, '')}`;
     return `
@@ -277,7 +296,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <h4>${escapeHtml(entry.title)}</h4>
             <span class="badge badge-info">${escapeHtml(entry.type || 'event')}</span>
           </div>
-          <div class="day-schedule-meta">${escapeHtml(entry.subject || 'General')} · ${entry.startTime ? escapeHtml(formatTime(entry.startTime)) : 'Time not set'}${entry.endTime ? ` – ${escapeHtml(formatTime(entry.endTime))}` : ''}</div>
+          <div class="day-schedule-meta">${escapeHtml(entry.subject || 'General')} · ${entry.startTime ? escapeHtml(formatTime(entry.startTime)) : entry.allDay ? 'All day' : 'Time not set'}${entry.endTime ? ` – ${escapeHtml(formatTime(entry.endTime))}` : ''}</div>
           ${entry.room ? `<div class="day-schedule-location">${escapeHtml(entry.room)}</div>` : ''}
         </div>
         ${scheduleActions(entry, 'day', true)}
@@ -316,7 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function openScheduleForm(event = null, date = '', returnToDayDetails = false) {
     editingScheduleId = event?.id || null;
     reopenDayAfterScheduleForm = returnToDayDetails;
-    const subject = getSubjects().find((item) => item.id === event?.subjectId || item.name === event?.subject);
+    const subject = scheduleSubjects().find((item) => item.id === event?.subjectId || item.name === event?.subject);
     document.getElementById('schTitle').value = event?.title || '';
     document.getElementById('schSubject').value = subject?.id || '';
     document.getElementById('schDate').value = event?.date || date || localDateStr();
@@ -340,7 +359,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="item-meta">
           <button type="button" class="schedule-day-link" data-schedule-date="${escapeHtml(s.date)}">
             <span class="item-title">${escapeHtml(s.title)}</span>
-            <span class="item-sub">${escapeHtml(formatDate(s.date))}${s.startTime ? ` · ${escapeHtml(formatTime(s.startTime))}${s.endTime ? ` – ${escapeHtml(formatTime(s.endTime))}` : ''}` : ' · Due date'}${s.room ? ` · ${escapeHtml(s.room)}` : ''}</span>
+            <span class="item-sub">${escapeHtml(formatDate(s.date))}${s.startTime ? ` · ${escapeHtml(formatTime(s.startTime))}${s.endTime ? ` – ${escapeHtml(formatTime(s.endTime))}` : ''}` : s.allDay ? ' · All day' : ' · Due date'}${s.room ? ` · ${escapeHtml(s.room)}` : ''}</span>
           </button>
         </div>
         <span class="badge ${escapeHtml(statusClass(s.calendarSource === 'assignment' && s.date < localDateStr() ? 'overdue' : s.type || 'event'))}">${escapeHtml(statusLabel(s.calendarSource === 'assignment' && s.date < localDateStr() ? 'overdue' : s.type || 'event'))}</span>
@@ -366,7 +385,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderUpcoming() {
     const el = document.getElementById('scheduleEventsList') || document.getElementById('upcomingEvents');
     if (!el) return;
-    const upcoming = personalEvents()
+    const upcoming = calendarEntries()
       .filter((s) => s.date >= localDateStr())
       .sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime))
       .slice(0, 5);
@@ -376,10 +395,10 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="item-meta">
           <button type="button" class="schedule-day-link" data-schedule-date="${escapeHtml(s.date)}">
             <span class="item-title">${escapeHtml(s.title)}</span>
-            <span class="item-sub">${escapeHtml(formatDate(s.date))} · ${escapeHtml(formatTime(s.startTime))}</span>
+            <span class="item-sub">${escapeHtml(formatDate(s.date))}${s.startTime ? ` · ${escapeHtml(formatTime(s.startTime))}` : s.allDay ? ' · All day' : ' · Due date'}</span>
           </button>
         </div>
-        ${scheduleActions(s, 'upcoming', false)}
+        ${s.calendarSource === 'assignment' ? '<a class="view-all" href="assignments.php">Assignments</a>' : scheduleActions(s, 'upcoming', false)}
       </div>`).join('') : '<p class="empty-state">No upcoming events.</p>';
     wireDayScheduleLinks(el);
     wireScheduleActions(el);
@@ -394,7 +413,7 @@ document.addEventListener('DOMContentLoaded', () => {
       .sort((a, b) => String(a.startTime || '').localeCompare(String(b.startTime || '')));
     el.innerHTML = items.length ? items.map((entry) => `
       <div class="schedule-item" ${scheduleDayAttributes(entry.date)}>
-        <span class="time">${entry.startTime ? escapeHtml(formatTime(entry.startTime)) : 'Time not set'}${entry.endTime ? ` – ${escapeHtml(formatTime(entry.endTime))}` : ''}</span>
+        <span class="time">${entry.startTime ? escapeHtml(formatTime(entry.startTime)) : entry.allDay ? 'All day' : 'Time not set'}${entry.endTime ? ` – ${escapeHtml(formatTime(entry.endTime))}` : ''}</span>
         <div class="info">
           <div class="subj">${escapeHtml(entry.title || entry.subject || 'Schedule event')}</div>
           <div class="room">${escapeHtml(entry.room || entry.subject || 'No location set')}</div>
@@ -481,7 +500,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const subjSelect = document.getElementById('schSubject');
   if (subjSelect) {
-    const subjects = getSubjects();
+    const subjects = scheduleSubjects();
     const selected = subjects.some((subject) => subject.id === subjSelect.value) ? subjSelect.value : '';
     subjSelect.innerHTML = '<option value="">General / no subject</option>' + subjects.map((subject) =>
       `<option value="${escapeHtml(subject.id)}">${escapeHtml(subject.name)}</option>`
@@ -494,7 +513,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const title = document.getElementById('schTitle')?.value.trim();
     const subjectId = document.getElementById('schSubject')?.value;
     const existing = editingScheduleId ? findPersonalEvent(editingScheduleId) : null;
-    const subject = getSubjects().find((s) => s.id === subjectId)?.name || existing?.subject || title;
+    const subject = scheduleSubjects().find((s) => s.id === subjectId)?.name || existing?.subject || title;
     const date = document.getElementById('schDate')?.value;
     const startTime = document.getElementById('schStartTime')?.value || '09:00';
     const endTime = document.getElementById('schEndTime')?.value || '10:00';
@@ -503,8 +522,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!title || !date) { showToast('Title and date required', 'error'); return; }
     if (endTime <= startTime) { showToast('End time must be later than start time.', 'error'); return; }
     const schedule = { title, subjectId, subject, date, startTime, endTime, room, type };
-    const calendarReady = !!(window.SB_GOOGLE?.connected && String(window.SB_GOOGLE.scopes || '').includes('/auth/calendar'));
-    const saveOnGoogle = calendarReady && (!existing || existing.source === 'google-calendar');
+    const saveOnGoogle = !!existing && existing.source === 'google-calendar';
     try {
       if (saveOnGoogle) {
         const body = new URLSearchParams({
@@ -556,33 +574,51 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.addEventListener('click', (e) => runClassroomSync(e.currentTarget));
   });
   document.querySelectorAll('#syncCalendarBtn, #syncGoogleCalendarBtn, #syncGoogleCalBtn, #connectGoogleCalBtn').forEach((btn) => {
-    btn.addEventListener('click', (e) => syncGoogleCalendar(e.currentTarget));
-  });
-  window.refreshGoogleCalendar = async () => {
-    const status = window.SB_GOOGLE;
-    if (!status?.connected || !String(status.scopes || '').includes('/auth/calendar')) {
-      window.SB_GOOGLE_EVENTS = [];
-      render();
-      return;
-    }
-    const monthStart = new Date(calY, calM, 1);
-    const monthEnd = new Date(calY, calM + 1, 0);
-    const horizon = new Date();
-    horizon.setDate(horizon.getDate() + 45);
-    const rangeEnd = monthEnd > horizon ? monthEnd : horizon;
-    const start = `${monthStart.getFullYear()}-${String(monthStart.getMonth() + 1).padStart(2, '0')}-01`;
-    const end = `${rangeEnd.getFullYear()}-${String(rangeEnd.getMonth() + 1).padStart(2, '0')}-${String(rangeEnd.getDate()).padStart(2, '0')}`;
-    const params = new URLSearchParams({
-      action: 'calendar',
-      start,
-      end,
-      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Manila',
+    btn.addEventListener('click', (e) => {
+      const scheduleEvents = getSchedule().filter((entry) =>
+        entry.source !== 'google-calendar' && entry.source !== 'classroom'
+      );
+      syncScheduleToGoogleCalendar(scheduleEvents, e.currentTarget);
     });
-    const response = await fetch(`${SB_API_BASE}google.php?${params}`, { credentials: 'same-origin' });
-    const result = await response.json().catch(() => ({}));
-    if (!response.ok || !result.ok) throw new Error(result.message || 'Could not load Google Calendar.');
-    window.SB_GOOGLE_EVENTS = result.events || [];
-    render();
+  });
+  document.getElementById('importGoogleCalBtn')?.addEventListener('click', (event) => {
+    syncGoogleCalendar(event.currentTarget);
+  });
+  let googleCalendarRefreshRequest = null;
+  window.refreshGoogleCalendar = async () => {
+    if (googleCalendarRefreshRequest) return googleCalendarRefreshRequest;
+    googleCalendarRefreshRequest = (async () => {
+      const status = window.SB_GOOGLE;
+      if (!googleCalendarSyncReady(status)) {
+        window.SB_GOOGLE_EVENTS = [];
+        render();
+        return [];
+      }
+      const monthStart = new Date(calY, calM, 1);
+      const monthEnd = new Date(calY, calM + 1, 0);
+      const horizon = new Date();
+      horizon.setDate(horizon.getDate() + 45);
+      const rangeEnd = monthEnd > horizon ? monthEnd : horizon;
+      const start = `${monthStart.getFullYear()}-${String(monthStart.getMonth() + 1).padStart(2, '0')}-01`;
+      const end = `${rangeEnd.getFullYear()}-${String(rangeEnd.getMonth() + 1).padStart(2, '0')}-${String(rangeEnd.getDate()).padStart(2, '0')}`;
+      const params = new URLSearchParams({
+        action: 'calendar',
+        start,
+        end,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Manila',
+      });
+      const response = await fetch(`${SB_API_BASE}google.php?${params}`, { credentials: 'same-origin' });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.ok) throw new Error(result.message || 'Could not load Google Calendar.');
+      window.SB_GOOGLE_EVENTS = result.events || [];
+      render();
+      return window.SB_GOOGLE_EVENTS;
+    })();
+    try {
+      return await googleCalendarRefreshRequest;
+    } finally {
+      googleCalendarRefreshRequest = null;
+    }
   };
   document.querySelectorAll('#openCalendarBtn, #openGoogleCalendarBtn').forEach((btn) => {
     btn.addEventListener('click', (e) => {
@@ -599,4 +635,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   render();
   if (validRequestedDate) openDaySchedule(requestedDate);
+  if (window.SB_PENDING_SCHEDULE_SYNC) {
+    window.SB_PENDING_SCHEDULE_SYNC = false;
+    const scheduleEvents = getSchedule().filter((entry) =>
+      entry.source !== 'google-calendar' && entry.source !== 'classroom'
+    );
+    syncScheduleToGoogleCalendar(scheduleEvents, document.getElementById('syncGoogleCalBtn'));
+  } else if (window.SB_PENDING_CALENDAR_IMPORT) {
+    window.SB_PENDING_CALENDAR_IMPORT = false;
+    syncGoogleCalendar(document.getElementById('importGoogleCalBtn'));
+  } else if (googleCalendarSyncReady(window.SB_GOOGLE)) {
+    window.refreshGoogleCalendar().catch((error) => showToast(error.message || 'Could not load Google Calendar.', 'error'));
+  }
 });

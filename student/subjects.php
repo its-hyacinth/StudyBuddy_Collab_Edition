@@ -35,132 +35,13 @@
       <div class="page-layout">
         <div class="page-main">
           <div class="subject-cards" id="subjectGrid">
-            <div class="subject-card" data-subject-id="subj_math">
-              <div class="subject-card-top">
-                <div class="subj-icon" style="background:#DBEAFE;color:#2563EB"><i data-lucide="calculator"></i></div>
-                <div class="subj-info">
-                  <h3>Mathematics</h3>
-                  <p>Room 302 · Prof. Santos</p>
-                </div>
-                <div class="action-menu-wrap">
-                  <button type="button" class="action-menu-btn" aria-label="Actions"><i data-lucide="more-vertical"></i></button>
-                </div>
-              </div>
-              <div class="progress-row">
-                <div class="progress-bar"><div class="fill math" style="width:75%"></div></div>
-                <span class="progress-pct">75%</span>
-              </div>
-              <div class="subject-card-stats">
-                <div class="ss"><div class="ss-val">5</div><div class="ss-lbl"><i data-lucide="clipboard-list"></i> Assignments</div></div>
-                <div class="ss"><div class="ss-val">4</div><div class="ss-lbl"><i data-lucide="check-circle"></i> Done</div></div>
-                <div class="ss"><div class="ss-val">1</div><div class="ss-lbl"><i data-lucide="clock"></i> Pending</div></div>
-              </div>
-            </div>
-            <div class="subject-card" data-subject-id="subj_sci">
-              <div class="subject-card-top">
-                <div class="subj-icon" style="background:#DCFCE7;color:#16A34A"><i data-lucide="flask-conical"></i></div>
-                <div class="subj-info">
-                  <h3>Science</h3>
-                  <p>Lab 105 · Prof. Reyes</p>
-                </div>
-              </div>
-              <div class="progress-row">
-                <div class="progress-bar"><div class="fill science" style="width:50%"></div></div>
-                <span class="progress-pct">50%</span>
-              </div>
-              <div class="subject-card-stats">
-                <div class="ss"><div class="ss-val">4</div><div class="ss-lbl"><i data-lucide="clipboard-list"></i> Assignments</div></div>
-                <div class="ss"><div class="ss-val">2</div><div class="ss-lbl"><i data-lucide="check-circle"></i> Done</div></div>
-                <div class="ss"><div class="ss-val">2</div><div class="ss-lbl"><i data-lucide="clock"></i> Pending</div></div>
-              </div>
-            </div>
-            <div class="subject-card" data-subject-id="subj_eng">
-              <div class="subject-card-top">
-                <div class="subj-icon" style="background:#EDE9FE;color:#7C3AED"><i data-lucide="book-open"></i></div>
-                <div class="subj-info">
-                  <h3>English</h3>
-                  <p>Room 210 · Prof. Cruz</p>
-                </div>
-              </div>
-              <div class="progress-row">
-                <div class="progress-bar"><div class="fill english" style="width:80%"></div></div>
-                <span class="progress-pct">80%</span>
-              </div>
-              <div class="subject-card-stats">
-                <div class="ss"><div class="ss-val">3</div><div class="ss-lbl"><i data-lucide="clipboard-list"></i> Assignments</div></div>
-                <div class="ss"><div class="ss-val">3</div><div class="ss-lbl"><i data-lucide="check-circle"></i> Done</div></div>
-                <div class="ss"><div class="ss-val">0</div><div class="ss-lbl"><i data-lucide="clock"></i> Pending</div></div>
-              </div>
-            </div>
-            <div class="subject-card" data-subject-id="subj_cs">
-              <div class="subject-card-top">
-                <div class="subj-icon" style="background:#FFEDD5;color:#EA580C"><i data-lucide="code-2"></i></div>
-                <div class="subj-info">
-                  <h3>Computer Science</h3>
-                  <p>Lab 401 · Prof. Garcia</p>
-                </div>
-              </div>
-              <div class="progress-row">
-                <div class="progress-bar"><div class="fill cs" style="width:60%"></div></div>
-                <span class="progress-pct">60%</span>
-              </div>
-              <div class="subject-card-stats">
-                <div class="ss"><div class="ss-val">4</div><div class="ss-lbl"><i data-lucide="clipboard-list"></i> Assignments</div></div>
-                <div class="ss"><div class="ss-val">2</div><div class="ss-lbl"><i data-lucide="check-circle"></i> Done</div></div>
-                <div class="ss"><div class="ss-val">2</div><div class="ss-lbl"><i data-lucide="clock"></i> Pending</div></div>
-              </div>
-            </div>
+            <p class="empty-state">Sync Google Classroom to load your courses.</p>
           </div>
 
-          <div class="subject-tabs" id="subjectTabs" role="group" aria-label="Filter subject assignments">
-            <button type="button" class="subject-tab active" data-filter="all" aria-pressed="true" aria-controls="subjectAssignmentList">All Subjects <span class="count">0</span></button>
-            <button type="button" class="subject-tab" data-filter="pending" aria-pressed="false" aria-controls="subjectAssignmentList">Pending <span class="count">0</span></button>
-            <button type="button" class="subject-tab" data-filter="completed" aria-pressed="false" aria-controls="subjectAssignmentList">Completed <span class="count">0</span></button>
-          </div>
+          <div class="subject-tabs" id="subjectTabs" role="group" aria-label="Filter subject assignments"></div>
 
           <div class="card" id="subjectDetail">
-            <div class="card-header">
-              <div class="card-header-left">
-                <div class="subj-icon" style="background:#DBEAFE;color:#2563EB;width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center"><i data-lucide="calculator"></i></div>
-                <div>
-                  <h2 class="card-title">Mathematics</h2>
-                  <p style="font-size:12.5px;color:var(--text-muted);margin-top:2px">Room 302 · Prof. Santos</p>
-                </div>
-              </div>
-            </div>
-            <p style="font-size:13.5px;color:var(--text-body);margin-bottom:16px">Covers basic and advanced mathematical concepts, problem solving, and applications.</p>
-            <div class="subject-detail-stats">
-              <div class="detail-stat-box">
-                <div class="ds-val">75%</div>
-                <div class="ds-lbl">Progress</div>
-                <div class="progress-bar"><div class="fill math" style="width:75%"></div></div>
-              </div>
-              <div class="detail-stat-box">
-                <div class="ds-val">5</div>
-                <div class="ds-lbl">Assignments</div>
-                <a href="assignments.php">View all</a>
-              </div>
-              <div class="detail-stat-box">
-                <div class="ds-val">1</div>
-                <div class="ds-lbl">Pending</div>
-                <a href="todo.php">View tasks</a>
-              </div>
-            </div>
-            <h3 style="font-size:14px;margin:16px 0 12px">Recent Assignments</h3>
-            <div class="list-item">
-              <div class="item-meta">
-                <div class="item-title">Algebra Homework Set 3</div>
-                <div class="item-sub">Due Sep 12, 2025</div>
-              </div>
-              <span class="badge badge-upcoming">Upcoming</span>
-            </div>
-            <div class="list-item">
-              <div class="item-meta">
-                <div class="item-title">Math Quiz 1</div>
-                <div class="item-sub">Due Sep 5, 2025</div>
-              </div>
-              <span class="badge badge-completed">Completed</span>
-            </div>
+            <p class="empty-state">Sync Google Classroom to view your subjects.</p>
           </div>
         </div>
 
@@ -195,24 +76,7 @@
                 <h2 class="card-title">Quick Facts</h2>
               </div>
             </div>
-            <div style="display:flex;flex-direction:column;gap:10px;font-size:13px">
-              <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F1F5F9">
-                <span style="color:var(--text-muted)">Total Subjects</span>
-                <span style="font-weight:600;color:var(--text-heading)">6</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F1F5F9">
-                <span style="color:var(--text-muted)">Avg. Progress</span>
-                <span style="font-weight:600;color:var(--text-heading)">65%</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F1F5F9">
-                <span style="color:var(--text-muted)">Pending Tasks</span>
-                <span style="font-weight:600;color:var(--text-heading)">4</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;padding:8px 0">
-                <span style="color:var(--text-muted)">Next Class</span>
-                <span style="font-weight:600;color:var(--text-heading)">Mathematics</span>
-              </div>
-            </div>
+            <p class="empty-state">No Classroom data yet.</p>
           </div>
         </aside>
       </div>
@@ -231,16 +95,16 @@
         <div class="modal-body">
           <div class="form-group">
             <label for="subjectName">Subject Name</label>
-            <input type="text" class="form-control" id="subjectName" name="name" placeholder="e.g. Mathematics" required />
+            <input type="text" class="form-control" id="subjectName" name="name" placeholder="Subject name" required />
           </div>
           <div class="form-row">
             <div class="form-group">
               <label for="subjectRoom">Room</label>
-              <input type="text" class="form-control" id="subjectRoom" name="room" placeholder="e.g. Room 302" />
+              <input type="text" class="form-control" id="subjectRoom" name="room" placeholder="Room" />
             </div>
             <div class="form-group">
               <label for="subjectProfessor">Professor</label>
-              <input type="text" class="form-control" id="subjectProfessor" name="professor" placeholder="e.g. Prof. Santos" />
+              <input type="text" class="form-control" id="subjectProfessor" name="professor" placeholder="Instructor" />
             </div>
           </div>
           <div class="form-group">

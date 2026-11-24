@@ -213,6 +213,53 @@ document.addEventListener('DOMContentLoaded', () => {
       status.className = `badge ${statusClass(value)}`;
       status.textContent = statusLabel(value);
     }
+    const isClassroomAssignment = assignment.source === 'classroom' || !!assignment.classroomWorkId;
+    const submissionGroup = document.getElementById('assignmentDetailsSubmissionGroup');
+    const submission = document.getElementById('assignmentDetailsSubmission');
+    if (submissionGroup) submissionGroup.hidden = !isClassroomAssignment;
+    if (submission && isClassroomAssignment) {
+      const state = String(assignment.submissionState || '').toUpperCase();
+      const labels = {
+        NEW: 'Not submitted',
+        CREATED: 'Draft not submitted',
+        TURNED_IN: 'Submitted',
+        RETURNED: 'Returned by teacher',
+        RECLAIMED_BY_STUDENT: 'Submission withdrawn',
+        NOT_APPLICABLE: 'No submission required',
+      };
+      let details = assignment.submissionStatusUnavailable
+        ? 'Submission details could not be loaded.'
+        : labels[state] || 'No submission recorded.';
+      if (assignment.submissionUpdatedAt && ['TURNED_IN', 'RETURNED'].includes(state)) {
+        const submittedAt = new Date(assignment.submissionUpdatedAt);
+        if (!Number.isNaN(submittedAt.getTime())) details += ` · ${submittedAt.toLocaleString()}`;
+      }
+      if (assignment.submissionGrade !== null && assignment.submissionGrade !== undefined) {
+        details += ` · Grade ${assignment.submissionGrade}${assignment.points !== null && assignment.points !== undefined ? ` / ${assignment.points}` : ''}`;
+      }
+      submission.textContent = details;
+    }
+
+    const filesGroup = document.getElementById('assignmentDetailsFilesGroup');
+    const files = document.getElementById('assignmentDetailsFiles');
+    if (filesGroup) filesGroup.hidden = !isClassroomAssignment;
+    if (files && isClassroomAssignment) {
+      const attachments = Array.isArray(assignment.submissionAttachments) ? assignment.submissionAttachments : [];
+      const links = attachments.map((attachment) => {
+        let url;
+        try {
+          const rawUrl = String(attachment.url || '').trim();
+          if (!rawUrl) return '';
+          const parsed = new URL(rawUrl, window.location.href);
+          if (parsed.protocol !== 'https:') return '';
+          url = parsed.href;
+        } catch {
+          return '';
+        }
+        return `<li><a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(attachment.title || 'Submitted file')}</a></li>`;
+      }).join('');
+      files.innerHTML = links ? `<ul>${links}</ul>` : '<p>No submitted files in Google Classroom.</p>';
+    }
     openModal('assignmentDetailsModal');
   }
 

@@ -152,6 +152,22 @@ try {
         json_response(['ok' => true, 'event' => google_calendar_save($pdo, $userId, $_POST)]);
     }
 
+    if ($action === 'calendar-sync-schedule') {
+        if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') json_response(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        verify_csrf();
+        $events = json_decode((string)($_POST['events'] ?? ''), true);
+        if (!is_array($events) || !array_is_list($events)) {
+            json_response(['ok' => false, 'message' => 'The schedule events are invalid.'], 422);
+        }
+        json_response(['ok' => true] + google_calendar_sync_schedule(
+            $pdo,
+            $userId,
+            $events,
+            (string)($_POST['date'] ?? ''),
+            (string)($_POST['timeZone'] ?? '')
+        ));
+    }
+
     if ($action === 'calendar-delete') {
         if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') json_response(['ok' => false, 'message' => 'Method not allowed.'], 405);
         verify_csrf();

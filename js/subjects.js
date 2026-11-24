@@ -86,25 +86,32 @@ document.addEventListener('DOMContentLoaded', () => {
       grid.innerHTML = subjects.length ? subjects.map((s) => {
         const subjectAssignments = assignmentsFor(s.id);
         const completed = subjectAssignments.filter(isCompleted).length;
+        const color = /^#[\da-f]{6}$/i.test(s.color || '') ? s.color : '#2563EB';
+        const subjectProgress = s.progress === null || s.progress === undefined || s.progress === ''
+          ? null
+          : Math.min(Math.max(Number(s.progress) || 0, 0), 100);
+        const courseDetails = [s.code, s.room, s.professor ? `Prof. ${s.professor}` : ''].filter(Boolean).join(' · ');
         return `
-        <div class="subject-card ${!showAllSubjects && s.id === selectedId ? 'is-selected' : ''}" data-subject-id="${s.id}" role="button" tabindex="0" aria-pressed="${!showAllSubjects && s.id === selectedId}">
+        <div class="subject-card ${!showAllSubjects && s.id === selectedId ? 'is-selected' : ''}" data-subject-id="${escapeHTML(s.id)}" role="button" tabindex="0" aria-pressed="${!showAllSubjects && s.id === selectedId}">
           <div class="subject-card-top">
-            <div class="subj-icon" style="background:${iconBg(s.color)};color:${s.color}"><i data-lucide="${s.icon || 'book'}"></i></div>
+            <div class="subj-icon" style="background:${iconBg(color)};color:${color}"><i data-lucide="${escapeHTML(s.icon || 'book')}"></i></div>
             <div class="subj-info">
-              <h3>${s.name}</h3>
-              <p>${s.code || ''} · ${s.room || 'TBA'} · ${s.professor || 'TBA'}</p>
+              <h3>${escapeHTML(s.name)}</h3>
+              <p>${escapeHTML(courseDetails || 'Details not provided by Google Classroom')}</p>
             </div>
             <div class="action-menu-wrap">
-              <button type="button" class="action-menu-btn" data-menu="${s.id}"><i data-lucide="more-vertical"></i></button>
-              <div class="action-dropdown" id="menu-${s.id}">
-                <button type="button" data-delete="${s.id}" class="danger"><i data-lucide="trash-2"></i> Delete</button>
+              <button type="button" class="action-menu-btn" data-menu="${escapeHTML(s.id)}"><i data-lucide="more-vertical"></i></button>
+              <div class="action-dropdown" id="menu-${escapeHTML(s.id)}">
+                <button type="button" data-delete="${escapeHTML(s.id)}" class="danger"><i data-lucide="trash-2"></i> Delete</button>
               </div>
             </div>
           </div>
-          <div class="progress-row">
-            <div class="progress-bar"><div class="fill ${s.short}" style="width:${s.progress}%;background:${s.color}"></div></div>
-            <span class="progress-pct">${s.progress}%</span>
-          </div>
+          ${subjectProgress === null
+            ? '<p class="subject-detail-meta">Progress not provided by Google Classroom</p>'
+            : `<div class="progress-row">
+                <div class="progress-bar"><div class="fill ${escapeHTML(s.short || '')}" style="width:${subjectProgress}%;background:${color}"></div></div>
+                <span class="progress-pct">${subjectProgress}%</span>
+              </div>`}
           <div class="subject-card-stats">
             <div class="ss"><div class="ss-val">${subjectAssignments.length}</div><div class="ss-lbl">Assignments</div></div>
             <div class="ss"><div class="ss-val">${completed}</div><div class="ss-lbl">Completed</div></div>
@@ -205,21 +212,21 @@ document.addEventListener('DOMContentLoaded', () => {
       return true;
     });
     const heading = showAllSubjects ? 'All Subjects' : s.name;
-    const color = showAllSubjects ? '#2563EB' : s.color;
+    const subjectColor = showAllSubjects || !/^#[\da-f]{6}$/i.test(s?.color || '') ? '#2563EB' : s.color;
     const metadata = showAllSubjects
       ? `${subjects.length} subjects · ${subjectAssignments.length} assignments`
-      : `${s.code || ''}${s.sectionCode ? ` · ${s.sectionCode}` : ''}${s.units ? ` · ${s.units} units` : ''} · ${s.room || 'TBA'} · Prof. ${s.professor || 'TBA'}`;
+      : [s.code, s.sectionCode, s.units ? `${s.units} units` : '', s.room, s.professor ? `Prof. ${s.professor}` : ''].filter(Boolean).join(' · ');
     el.innerHTML = `
       <div class="card-header">
         <div class="card-header-left">
-          <div class="card-icon" style="background:${iconBg(color)};color:${color}"><i data-lucide="${showAllSubjects ? 'book-open' : s.icon || 'book'}"></i></div>
+          <div class="card-icon" style="background:${iconBg(subjectColor)};color:${subjectColor}"><i data-lucide="${showAllSubjects ? 'book-open' : escapeHTML(s.icon || 'book')}"></i></div>
           <div>
-            <h2 class="card-title">${heading}</h2>
-            <p class="subject-detail-meta">${metadata}</p>
+            <h2 class="card-title">${escapeHTML(heading)}</h2>
+            <p class="subject-detail-meta">${escapeHTML(metadata)}</p>
           </div>
         </div>
       </div>
-      ${showAllSubjects ? '<p class="subject-detail-description">Assignments from all of your subjects.</p>' : s.description ? `<p class="subject-detail-description">${s.description}</p>` : ''}
+      ${showAllSubjects ? '<p class="subject-detail-description">Assignments from all of your subjects.</p>' : s.description ? `<p class="subject-detail-description">${escapeHTML(s.description)}</p>` : ''}
       <div class="subject-detail-stats">
         <button type="button" class="detail-stat-box ${assignmentFilter === 'all' ? 'is-active' : ''}" data-assignment-filter="all" aria-pressed="${assignmentFilter === 'all'}" aria-controls="subjectAssignmentList">
           <div class="ds-val">${subjectAssignments.length}</div>
@@ -245,8 +252,8 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="list-item">
             <div class="cell-icon" style="width:32px;height:32px;border-radius:8px;background:${iconBg(assignmentColor)};color:${assignmentColor};display:flex;align-items:center;justify-content:center"><i data-lucide="file-text"></i></div>
             <div class="item-meta">
-              <div class="item-title">${assignment.title}</div>
-              <div class="item-sub">${showAllSubjects ? `${subjectName} · ` : ''}${assignment.dueDate ? `Due ${formatDate(assignment.dueDate)}` : 'No due date'}</div>
+              <div class="item-title">${escapeHTML(assignment.title)}</div>
+              <div class="item-sub">${showAllSubjects ? `${escapeHTML(subjectName)} · ` : ''}${assignment.dueDate ? `Due ${formatDate(assignment.dueDate)}` : 'No due date'}</div>
             </div>
             <span class="badge ${statusClass(status)}">${statusLabel(status)}</span>
           </div>`;
@@ -269,9 +276,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="list-item" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="quickFactModal" data-quick-fact="assignments"><div class="item-meta"><div class="item-title">Total Assignments</div></div><strong>${allAssignments.length}</strong></div>
       <div class="list-item" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="quickFactModal" data-quick-fact="completed"><div class="item-meta"><div class="item-title">Completed</div></div><strong>${completed}</strong></div>
       <div class="list-item" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="quickFactModal" data-quick-fact="pending"><div class="item-meta"><div class="item-title">Pending</div></div><strong>${pending}</strong></div>
-      <div class="tip-footer" style="margin-top:12px;font-style:italic;color:var(--text-muted);font-size:12px">
-        <i data-lucide="graduation-cap"></i> Small steps every day lead to big results.
-      </div>`;
+    `;
   }
 
   function showQuickFact(type) {

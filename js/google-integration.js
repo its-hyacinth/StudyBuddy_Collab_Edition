@@ -10,9 +10,8 @@
  * include this site. Scopes: classroom.courses.readonly,
  * classroom.coursework.me.readonly, classroom.rosters.readonly.
  *
- * Without a client ID, sync uses the COR-based Classroom catalog
- * (BSIT 4, 1st Sem SY 2026-2027). Teachers stay TBA until Classroom
- * returns instructor names.
+ * Without Google Classroom data, the student sections remain empty until
+ * the account is connected and synced.
  */
 
 const CLASSROOM_SCOPES = [
@@ -20,10 +19,6 @@ const CLASSROOM_SCOPES = [
   'https://www.googleapis.com/auth/classroom.coursework.me.readonly',
   'https://www.googleapis.com/auth/classroom.rosters.readonly',
 ].join(' ');
-
-function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 function getGoogleClientId() {
   return String(window.SB_GOOGLE_CLIENT_ID || localStorage.getItem('studybuddy_google_client_id') || '').trim();
@@ -51,51 +46,25 @@ function withButtonLoading(buttonEl, label = 'Syncing...') {
   };
 }
 
-function classroomCourseworkMock() {
-  return CLASSROOM_COURSES.flatMap((course) =>
-    (course.coursework || []).map((work) => ({
-      ...work,
-      classroomId: course.id,
-      subjectId: course.subjectId,
-      subject: course.name,
-      source: 'classroom',
-    }))
-  );
-}
-
 function mapLiveCourseToSubject(course, teacherName) {
-  const catalog = CLASSROOM_COURSES.find((c) => {
-    const hay = `${course.name || ''} ${course.section || ''} ${course.descriptionHeading || ''}`.toUpperCase();
-    return hay.includes(c.code.replace(/\s/g, '')) || hay.includes(c.code) || hay.includes(c.shortName.toUpperCase());
-  });
-  const base = catalog || {
-    subjectId: `subj_${course.id}`,
-    short: subjectShort(course.name || 'Class'),
-    color: '#2563EB',
-    icon: 'book-open',
-    units: 3,
-    meetings: [],
+  const courseId = String(course.id || '').trim();
+  const courseName = String(course.name || '').trim();
+  if (!courseId || !courseName) throw new Error('Google Classroom returned a course without an ID or name.');
+  return {
+    id: `subj_gc_${courseId}`,
+    classroomId: courseId,
+    name: courseName,
+    shortName: courseName,
+    short: subjectShort(courseName),
     code: course.section || '',
     sectionCode: '',
-    shortName: course.name,
-  };
-  return {
-    id: base.subjectId,
-    classroomId: course.id,
-    name: course.name || base.name,
-    shortName: base.shortName || course.name,
-    short: base.short,
-    code: base.code,
-    sectionCode: base.sectionCode,
-    section: course.section || CLASSROOM_META.section,
-    units: base.units,
-    color: base.color,
-    icon: base.icon,
-    room: course.room || 'TBA',
-    professor: teacherName || 'TBA',
-    description: course.descriptionHeading || course.description || base.description || '',
-    meetings: base.meetings,
-    progress: base.progress || 0,
+    section: course.section || '',
+    color: '#2563EB',
+    icon: 'book-open',
+    room: course.room || '',
+    professor: teacherName || '',
+    description: course.descriptionHeading || course.description || '',
+    progress: null,
     assignments: 0,
     completed: 0,
     pending: 0,
@@ -103,23 +72,46 @@ function mapLiveCourseToSubject(course, teacherName) {
   };
 }
 
+function mapSubmittedFiles(submission) {
+  const attachments = submission?.assignmentSubmission?.attachments;
+  if (!Array.isArray(attachments)) return [];
+  return attachments.flatMap((attachment) => {
+    const file = attachment?.driveFile;
+    const id = String(file?.id || '').trim();
+    if (!id) return [];
+    return [{
+      id,
+      title: String(file.title || 'Submitted file'),
+      url: String(file.alternateLink || `https://drive.google.com/open?id=${encodeURIComponent(id)}`),
+    }];
+  });
+}
+
 function mapLiveCoursework(work, subject) {
-  const due = work.dueDate
+  const dueDate = work.dueDate
     ? `${work.dueDate.year}-${String(work.dueDate.month).padStart(2, '0')}-${String(work.dueDate.day).padStart(2, '0')}`
-    : localDateStr(new Date(Date.now() + 7 * 86400000));
+    : '';
+  const submission = work.studentSubmission || null;
+  const submissionState = String(submission?.state || (work.workType === 'MATERIAL' ? 'NOT_APPLICABLE' : '')).toUpperCase();
+  const submitted = ['TURNED_IN', 'RETURNED'].includes(submissionState);
   const today = localDateStr();
-  let status = 'upcoming';
-  if (due < today) status = 'overdue';
+  let status = submitted ? 'completed' : 'upcoming';
+  if (!submitted && dueDate && dueDate < today) status = 'overdue';
   return {
     id: `asg_gc_${work.id}`,
     classroomWorkId: work.id,
     title: work.title || 'Untitled coursework',
     subjectId: subject.id,
     subject: subject.name,
-    dueDate: due,
+    dueDate,
     status,
     description: work.description || '',
-    points: work.maxPoints || 50,
+    points: work.maxPoints ?? null,
+    submissionState,
+    submissionStatusUnavailable: !!work.studentSubmissionError,
+    submissionUpdatedAt: submitted ? submission?.updateTime || submission?.creationTime || '' : '',
+    submissionGrade: submission?.assignedGrade ?? null,
+    submissionAttachments: submitted ? mapSubmittedFiles(submission) : [],
     source: 'classroom',
   };
 }
@@ -133,6 +125,21 @@ async function classroomApi(path, token) {
     throw new Error(err.error?.message || `Classroom API ${res.status}`);
   }
   return res.json();
+}
+
+async function classroomApiPages(path, listKey, token, maxPages = 5) {
+  const items = [];
+  let pageToken = '';
+  for (let pageIndex = 0; pageIndex < maxPages; pageIndex++) {
+    const pagePath = pageToken
+      ? `${path}${path.includes('?') ? '&' : '?'}pageToken=${encodeURIComponent(pageToken)}`
+      : path;
+    const page = await classroomApi(pagePath, token);
+    if (Array.isArray(page[listKey])) items.push(...page[listKey]);
+    pageToken = String(page.nextPageToken || '');
+    if (!pageToken) break;
+  }
+  return items;
 }
 
 function requestClassroomAccessToken(clientId) {
@@ -164,9 +171,16 @@ async function googleConnectionStatus(force = false) {
   return data;
 }
 
-function beginGoogleConnect() {
-  const next = `${window.location.pathname}${window.location.search}`;
+function beginGoogleConnect(nextPath) {
+  const next = nextPath || `${window.location.pathname}${window.location.search}`;
   window.location.href = `${SB_API_BASE}google.php?action=start&next=${encodeURIComponent(next)}`;
+}
+
+function googleCalendarSyncReady(status) {
+  const scopes = String(status?.scopes || '');
+  return !!status?.connected
+    && scopes.includes('/auth/calendar.events')
+    && scopes.includes('/auth/calendar.calendarlist.readonly');
 }
 
 function applyGoogleConnection(status) {
@@ -178,7 +192,7 @@ function applyGoogleConnection(status) {
       ...settings.connected,
       googleClassroom: !!status.connected,
       googleDrive: !!status.connected,
-      googleCalendar: !!status.connected && String(status.scopes || '').includes('/auth/calendar'),
+      googleCalendar: googleCalendarSyncReady(status),
     },
     googleEmail: status.email || '',
   });
@@ -210,12 +224,13 @@ async function fetchServerClassroom() {
   if (!response.ok || !data.ok) throw new Error(data.message || 'Classroom sync failed.');
   const subjects = [];
   const assignments = [];
+  const submissionErrors = Array.isArray(data.submissionErrors) ? data.submissionErrors : [];
   (data.courses || []).forEach((course) => {
     const subject = mapLiveCourseToSubject(course, course.teacherName || 'TBA');
     subjects.push(subject);
     (course.courseWork || []).forEach((work) => assignments.push(mapLiveCoursework(work, subject)));
   });
-  return { courses: subjects, assignments, live: true, email: data.email || '' };
+  return { courses: subjects, assignments, live: true, email: data.email || '', submissionErrors };
 }
 
 function loadScript(src) {
@@ -238,49 +253,63 @@ async function fetchLiveClassroomPayload() {
   if (!clientId) return null;
   await loadScript('https://accounts.google.com/gsi/client');
   const token = await requestClassroomAccessToken(clientId);
-  const list = await classroomApi('courses?courseStates=ACTIVE&pageSize=50', token);
-  const courses = list.courses || [];
+  const courses = await classroomApiPages('courses?courseStates=ACTIVE&pageSize=50', 'courses', token);
   if (!courses.length) return { courses: [], assignments: [], empty: true, live: true };
 
   const subjects = [];
   const assignments = [];
+  const submissionErrors = [];
   for (const course of courses) {
-    let teacherName = 'TBA';
+    let teacherName = '';
     try {
       const teachers = await classroomApi(`courses/${course.id}/teachers?pageSize=5`, token);
       const named = (teachers.teachers || []).find((t) => t.profile?.name?.fullName);
       if (named) teacherName = named.profile.name.fullName;
-    } catch {
-      teacherName = 'TBA';
+    } catch (error) {
+      console.warn('Could not load course teacher information from Google Classroom.', error);
     }
     const subject = mapLiveCourseToSubject(course, teacherName);
     subjects.push(subject);
     try {
-      const work = await classroomApi(`courses/${course.id}/courseWork?pageSize=50`, token);
-      (work.courseWork || []).forEach((item) => assignments.push(mapLiveCoursework(item, subject)));
-    } catch {
-      /* coursework scope may be denied */
+      const coursePath = `courses/${encodeURIComponent(course.id)}`;
+      const courseWork = await classroomApiPages(`${coursePath}/courseWork?pageSize=50`, 'courseWork', token, 3);
+      let submissionsByWork = new Map();
+      let submissionFetchFailed = false;
+      if (courseWork.length) {
+        try {
+          const submissions = await classroomApiPages(
+            `${coursePath}/courseWork/-/studentSubmissions?userId=me&pageSize=100`,
+            'studentSubmissions',
+            token,
+            10
+          );
+          submissionsByWork = new Map(submissions.map((submission) => [String(submission.courseWorkId), submission]));
+        } catch (error) {
+          submissionFetchFailed = true;
+          submissionErrors.push({ courseId: course.id, message: error.message || 'Could not load course submissions.' });
+        }
+      }
+      assignments.push(...courseWork.map((item) => mapLiveCoursework({
+        ...item,
+        studentSubmission: submissionsByWork.get(String(item.id)) || null,
+        studentSubmissionError: submissionFetchFailed,
+      }, subject)));
+    } catch (error) {
+      console.warn('Could not load coursework from Google Classroom for this course.', error);
     }
   }
-  return { courses: subjects, assignments, live: true };
+  return { courses: subjects, assignments, submissionErrors, live: true };
 }
 
 function applyClassroomPayload(payload) {
-  const isLivePayload = !!payload.live;
-  const courses = isLivePayload
-    ? (payload.courses || [])
-    : payload.courses && payload.courses.length
-      ? payload.courses
-      : CLASSROOM_COURSES.map(catalogCourseToSubject);
-
+  const courses = Array.isArray(payload.courses) ? payload.courses : [];
+  const classroomAsg = Array.isArray(payload.assignments) ? payload.assignments : [];
+  const localSubjects = getSubjects().filter((subject) => subject.source !== 'classroom');
   const existingAsg = getAssignments().filter((a) =>
     a.source !== 'classroom' && !a.classroomId && !a.classroomWorkId
   );
-  const classroomAsg = isLivePayload
-    ? (payload.assignments || [])
-    : payload.assignments && payload.assignments.length
-      ? payload.assignments
-      : classroomCourseworkMock();
+  const localSchedule = getSchedule().filter((entry) => entry.source !== 'classroom');
+  const localClasses = getClasses().filter((item) => item.source !== 'classroom');
 
   const withCounts = courses.map((s) => {
     const asgs = classroomAsg.filter((a) => a.subjectId === s.id);
@@ -289,10 +318,10 @@ function applyClassroomPayload(payload) {
     return { ...s, assignments: asgs.length, completed, pending, source: 'classroom' };
   });
 
-  sbSet(SB_KEYS.SUBJECTS, withCounts);
+  sbSet(SB_KEYS.SUBJECTS, [...withCounts, ...localSubjects]);
   sbSet(SB_KEYS.ASSIGNMENTS, [...classroomAsg, ...existingAsg]);
-  sbSet(SB_KEYS.SCHEDULE, buildScheduleFromSubjects(withCounts));
-  sbSet(SB_KEYS.CLASSES, withCounts.map(subjectToClass));
+  sbSet(SB_KEYS.SCHEDULE, localSchedule);
+  sbSet(SB_KEYS.CLASSES, [...withCounts.map(subjectToClass), ...localClasses]);
 
   const settings = getSettings();
   updateSettings({
@@ -303,13 +332,12 @@ function applyClassroomPayload(payload) {
   return {
     courseCount: withCounts.length,
     assignmentCount: classroomAsg.length,
-    live: !!payload.live,
+    live: true,
   };
 }
 
 /**
  * Sync classes + coursework from Google Classroom.
- * Live Classroom API when a client ID is set; otherwise COR catalog.
  */
 async function syncGoogleClassroom(buttonEl) {
   const done = withButtonLoading(buttonEl, 'Syncing Classroom...');
@@ -323,24 +351,31 @@ async function syncGoogleClassroom(buttonEl) {
       const payload = await fetchServerClassroom();
       const result = applyClassroomPayload(payload);
       const who = payload.email ? ` (${payload.email})` : '';
-      showToast(`Synced ${result.courseCount} classes and ${result.assignmentCount} coursework items from Google Classroom${who}`, 'success');
+      const submissionErrorCount = Array.isArray(payload.submissionErrors) ? payload.submissionErrors.length : 0;
+      const completedCount = Array.isArray(payload.assignments)
+        ? payload.assignments.filter((assignment) => assignment.status === 'completed').length
+        : 0;
+      const message = `Synced ${result.courseCount} classes and ${result.assignmentCount} coursework items from Google Classroom${who}; ${completedCount} submitted`;
+      showToast(
+        submissionErrorCount ? `${message}. Could not load submissions for ${submissionErrorCount} courses.` : message,
+        submissionErrorCount ? 'warning' : 'success'
+      );
       return { ok: true, ...result };
     }
-    let payload = { courses: [], assignments: [] };
     const clientId = getGoogleClientId();
-    if (clientId) {
-      try {
-        payload = await fetchLiveClassroomPayload();
-      } catch (err) {
-        showToast(err.message || 'Classroom sign-in failed. Using enrolled courses.', 'warning');
-        payload = { courses: [], assignments: [] };
-      }
-    } else {
-      await delay(900);
-    }
-    const result = applyClassroomPayload(payload || {});
-    const source = result.live ? 'Google Classroom' : 'your enrolled Classroom courses';
-    showToast(`Synced ${result.courseCount} classes from ${source}`, 'success');
+    if (!clientId) throw new Error('Google Classroom is not configured. Connect Google in Settings before syncing.');
+    const payload = await fetchLiveClassroomPayload();
+    if (!payload) throw new Error('Google Classroom did not return any course data.');
+    const result = applyClassroomPayload(payload);
+    const submissionErrorCount = Array.isArray(payload.submissionErrors) ? payload.submissionErrors.length : 0;
+    const completedCount = Array.isArray(payload.assignments)
+      ? payload.assignments.filter((assignment) => assignment.status === 'completed').length
+      : 0;
+    const message = `Synced ${result.courseCount} classes and ${result.assignmentCount} coursework items; ${completedCount} submitted.`;
+    showToast(
+      submissionErrorCount ? `${message} Could not load submissions for ${submissionErrorCount} courses.` : message,
+      submissionErrorCount ? 'warning' : 'success'
+    );
     return { ok: true, ...result };
   } catch (err) {
     showToast(err.message || 'Classroom sync failed. Try again.', 'error');
@@ -393,20 +428,110 @@ async function syncGoogleCalendar(buttonEl) {
       showToast('Add the Google client ID and secret in config/google.php, then connect Calendar.', 'warning');
       return { ok: false };
     }
-    if (!status.connected || !String(status.scopes || '').includes('/auth/calendar')) {
-      beginGoogleConnect();
+    if (!googleCalendarSyncReady(status)) {
+      const next = new URL(window.location.href);
+      next.searchParams.set('syncCalendarAfterConnect', '1');
+      beginGoogleConnect(`${next.pathname}${next.search}${next.hash}`);
       return { ok: false, pending: true };
     }
     applyGoogleConnection(status);
-    if (typeof window.refreshGoogleCalendar === 'function') await window.refreshGoogleCalendar();
-    showToast(status.email ? `Synced Google Calendar for ${status.email}` : 'Synced Google Calendar', 'success');
-    return { ok: true };
+    if (typeof window.refreshGoogleCalendar !== 'function') {
+      showToast('Google Calendar is connected. Open Schedule to import events and holidays.', 'success');
+      return { ok: true, imported: false };
+    }
+    const events = await window.refreshGoogleCalendar();
+    const holidayCount = events.filter((event) => event.calendarSource === 'google-holiday').length;
+    showToast(`Synced ${events.length} Google Calendar events, including ${holidayCount} holidays.`, 'success');
+    return { ok: true, imported: true, eventCount: events.length, holidayCount };
   } catch (err) {
     showToast(err.message || 'Calendar sync failed.', 'error');
     return { ok: false, error: err };
   } finally {
     done();
   }
+}
+
+async function syncScheduleEventsToGoogleCalendar(events, date, buttonEl) {
+  const isTodaySync = Boolean(date);
+  const done = withButtonLoading(buttonEl, isTodaySync ? 'Syncing today...' : 'Syncing schedule...');
+  let synced = 0;
+  try {
+    const scheduleEvents = (Array.isArray(events) ? events : [])
+      .filter((entry) => entry && (!date || entry.date === date));
+    if (!scheduleEvents.length) {
+      showToast(isTodaySync ? 'There are no schedule entries for today to sync.' : 'There are no schedule entries to sync.', 'info');
+      return { ok: false };
+    }
+
+    const status = await googleConnectionStatus(true);
+    if (!status.configured) {
+      showToast('Google Calendar is not configured on this server.', 'error');
+      return { ok: false };
+    }
+    if (!status.connected || !String(status.scopes || '').includes('/auth/calendar')) {
+      beginGoogleConnect();
+      return { ok: false, pending: true };
+    }
+    applyGoogleConnection(status);
+
+    const failed = [];
+    for (let index = 0; index < scheduleEvents.length; index += 100) {
+      const batch = scheduleEvents.slice(index, index + 100);
+      const body = new URLSearchParams({
+        date,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Manila',
+        events: JSON.stringify(batch.map((entry) => ({
+          id: entry.id,
+          title: entry.title,
+          subject: entry.subject || '',
+          date: entry.date,
+          startTime: entry.startTime || '',
+          endTime: entry.endTime || '',
+          room: entry.room || '',
+        }))),
+      });
+      const response = await fetch(`${SB_API_BASE}google.php?action=calendar-sync-schedule`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || '',
+        },
+        body,
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.ok) throw new Error(result.message || 'Could not sync the schedule.');
+      synced += Number(result.synced) || 0;
+      if (Array.isArray(result.failed)) failed.push(...result.failed);
+    }
+
+    if (failed.length) {
+      const firstFailure = failed[0];
+      showToast(
+        `Synced ${synced} of ${scheduleEvents.length}. ${firstFailure.title}: ${String(firstFailure.message || 'Could not sync event.').slice(0, 120)}`,
+        'warning'
+      );
+    } else {
+      showToast(`Synced ${synced} schedule events to Google Calendar.`, 'success');
+    }
+    return { ok: true, synced, failed };
+  } catch (error) {
+    const message = synced
+      ? `Synced ${synced} events, but could not finish: ${error.message || 'Google Calendar sync failed.'}`
+      : error.message || 'Google Calendar sync failed.';
+    showToast(message, 'error');
+    return { ok: false, error };
+  } finally {
+    done();
+  }
+}
+
+async function syncTodayScheduleToGoogleCalendar(events, date, buttonEl) {
+  return syncScheduleEventsToGoogleCalendar(events, date, buttonEl);
+}
+
+async function syncScheduleToGoogleCalendar(events, buttonEl) {
+  return syncScheduleEventsToGoogleCalendar(events, '', buttonEl);
 }
 
 async function mockGoogleCalendarSync(buttonEl) {
@@ -443,12 +568,20 @@ document.addEventListener('DOMContentLoaded', () => {
   if (flag) {
     if (flag === 'connected') {
       showToast('Google Classroom, Calendar, and Drive are connected.', 'success');
-      syncGoogleClassroom();
+      if (params.get('syncCalendarAfterConnect') === '1') {
+        window.SB_PENDING_CALENDAR_IMPORT = true;
+      } else if (params.get('syncScheduleAfterConnect') === '1') {
+        window.SB_PENDING_SCHEDULE_SYNC = true;
+      } else {
+        syncGoogleClassroom();
+      }
     } else if (flag === 'error') {
       showToast(params.get('message') || 'Google connection failed.', 'error');
     }
     params.delete('google');
     params.delete('message');
+    params.delete('syncCalendarAfterConnect');
+    params.delete('syncScheduleAfterConnect');
     const query = params.toString();
     window.history.replaceState({}, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`);
   }

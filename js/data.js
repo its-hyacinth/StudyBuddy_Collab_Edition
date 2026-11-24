@@ -24,6 +24,8 @@ const SB_KEYS = {
 const SB_SEED_VERSION = 2;
 
 const SB_API_BASE = (window.location.pathname.includes('/student/') || window.location.pathname.includes('/teacher/')) ? '../api/' : 'api/';
+const SB_STATE_CACHE = new Map();
+
 function sbRequest(method, key, value) {
   const xhr = new XMLHttpRequest();
   const url = `${SB_API_BASE}state.php?key=${encodeURIComponent(key)}`;
@@ -36,13 +38,47 @@ function sbRequest(method, key, value) {
   try { return JSON.parse(xhr.responseText); } catch { return null; }
 }
 function sbGet(key, fallback = null) {
+  if (SB_STATE_CACHE.has(key)) return SB_STATE_CACHE.get(key) ?? fallback;
   const result = sbRequest('GET', key);
-  return result && result.ok && result.value !== null ? result.value : fallback;
+  if (result && result.ok) {
+    SB_STATE_CACHE.set(key, result.value);
+    return result.value ?? fallback;
+  }
+  return fallback;
 }
-function sbSet(key, value) { sbRequest('POST', key, value); }
+async function sbPrefetchState(keys) {
+  const missingKeys = keys.filter((key) => !SB_STATE_CACHE.has(key));
+  if (!missingKeys.length) return;
+  const params = new URLSearchParams({ keys: missingKeys.join(',') });
+  const response = await fetch(`${SB_API_BASE}state.php?${params}`, {
+    credentials: 'same-origin',
+    cache: 'no-store',
+  });
+  if (response.status === 401) {
+    window.location.href = window.location.pathname.includes('/student/') || window.location.pathname.includes('/teacher/') ? '../index.php' : 'index.php';
+    return;
+  }
+  if (!response.ok) throw new Error(`Could not load schedule data: HTTP ${response.status}`);
+  const result = await response.json();
+  if (!result.ok) throw new Error(result.message || 'Could not load schedule data.');
+  missingKeys.forEach((key) => {
+    if (!Object.prototype.hasOwnProperty.call(result.values, key)) {
+      throw new Error(`Schedule data response was missing ${key}.`);
+    }
+    SB_STATE_CACHE.set(key, result.values[key]);
+  });
+}
+function sbSet(key, value) {
+  const result = sbRequest('POST', key, value);
+  if (result && result.ok) {
+    SB_STATE_CACHE.set(key, value);
+    window.dispatchEvent(new CustomEvent('studybuddy:state-updated', { detail: { key } }));
+  }
+}
 function sbRemove(key) {
   const xhr = new XMLHttpRequest(); xhr.open('DELETE', `${SB_API_BASE}state.php?key=${encodeURIComponent(key)}`, false);
   xhr.setRequestHeader('X-CSRF-Token', document.querySelector('meta[name="csrf-token"]')?.content || ''); xhr.send();
+  if (xhr.status >= 200 && xhr.status < 300) SB_STATE_CACHE.delete(key);
 }
 
 function uid(prefix = 'id') {
@@ -56,7 +92,7 @@ function localDateStr(d = new Date()) {
   return `${y}-${m}-${day}`;
 }
 
-/* COR + Google Classroom catalog — BSIT 4, 1st Sem SY 2026-2027, CTU Consolacion */
+/* Default profile values used by the settings page. */
 const CLASSROOM_META = {
   school: 'Cebu Technological University — Consolacion Campus',
   campus: 'Consolacion Campus',
@@ -67,237 +103,22 @@ const CLASSROOM_META = {
   totalUnits: 17,
 };
 
-const CLASSROOM_COURSES = [
-  {
-    id: 'gc_pc4112',
-    subjectId: 'subj_ias_lec',
-    name: 'Information Assurance and Security 2 (Lec)',
-    shortName: 'IAS 2 Lec',
-    code: 'PC 4112',
-    sectionCode: 'CM236',
-    units: 2,
-    short: 'ias',
-    color: '#2563EB',
-    icon: 'shield',
-    room: 'TBA',
-    professor: 'TBA',
-    progress: 48,
-    meetings: [{ days: [1], start: '07:00', end: '09:00' }],
-    description: 'Lecture for Information Assurance and Security 2. Instructor listed as TBA until Google Classroom returns the teacher.',
-    coursework: [
-      { id: 'asg_ias_quiz', title: 'Quiz 1 — Threat Models', dueDate: '2026-10-28', status: 'completed', description: 'CIA triad, STRIDE, and risk scoring.', points: 30 },
-      { id: 'asg_ias_threat', title: 'Threat Modeling Worksheet', dueDate: '2026-11-10', status: 'upcoming', description: 'Model threats for a campus web app.', points: 50 },
-    ],
-  },
-  {
-    id: 'gc_pc4112l',
-    subjectId: 'subj_ias_lab',
-    name: 'Information Assurance and Security 2 (Lab)',
-    shortName: 'IAS 2 Lab',
-    code: 'PC 4112L',
-    sectionCode: 'CM237',
-    units: 3,
-    short: 'iaslab',
-    color: '#16A34A',
-    icon: 'lock',
-    room: 'TBA',
-    professor: 'TBA',
-    progress: 40,
-    meetings: [{ days: [1, 3, 5], start: '07:00', end: '12:00' }],
-    description: 'Laboratory for IAS 2 (MWF 7:00 AM–12:00 PM). Room and professor TBA.',
-    coursework: [
-      { id: 'asg_ias_pcap', title: 'Packet Capture Lab', dueDate: '2026-11-07', status: 'upcoming', description: 'Wireshark capture and analysis write-up.', points: 100 },
-      { id: 'asg_ias_audit', title: 'Security Audit Checklist', dueDate: '2026-11-21', status: 'upcoming', description: 'Walk a small service against OWASP ASVS.', points: 80 },
-    ],
-  },
-  {
-    id: 'gc_pc4113',
-    subjectId: 'subj_sysad',
-    name: 'Systems Administration and Maintenance',
-    shortName: 'SysAdmin',
-    code: 'PC 4113',
-    sectionCode: 'CM238',
-    units: 3,
-    short: 'sysad',
-    color: '#7C3AED',
-    icon: 'server',
-    room: 'TBA',
-    professor: 'TBA',
-    progress: 55,
-    meetings: [{ days: [3], start: '09:30', end: '12:00' }],
-    description: 'Systems administration and maintenance. Wednesday 9:30 AM–12:00 PM.',
-    coursework: [
-      { id: 'asg_sys_mid', title: 'Midterm Lab — User Admin', dueDate: '2026-10-22', status: 'completed', description: 'Linux users, groups, and sudoers.', points: 50 },
-      { id: 'asg_sys_lab', title: 'Linux User Administration Lab', dueDate: '2026-11-12', status: 'upcoming', description: 'Create users, ACLs, and a backup cron.', points: 100 },
-    ],
-  },
-  {
-    id: 'gc_pc4114',
-    subjectId: 'subj_capstone',
-    name: 'Capstone Project and Research 2',
-    shortName: 'Capstone 2',
-    code: 'PC 4114',
-    sectionCode: 'CM239',
-    units: 3,
-    short: 'capstone',
-    color: '#EA580C',
-    icon: 'graduation-cap',
-    room: 'TBA',
-    professor: 'TBA',
-    progress: 62,
-    meetings: [{ days: [5], start: '13:00', end: '16:00' }],
-    description: 'Capstone Project and Research 2. Friday 1:00 PM–4:00 PM.',
-    coursework: [
-      { id: 'asg_cap_notes', title: 'Proposal Defense Notes', dueDate: '2026-10-15', status: 'completed', description: 'Panel comments compiled.', points: 40 },
-      { id: 'asg_cap_ch4', title: 'Chapter 4 Draft', dueDate: '2026-11-14', status: 'upcoming', description: 'Results and discussion draft.', points: 100 },
-    ],
-  },
-  {
-    id: 'gc_pelec4',
-    subjectId: 'subj_sia',
-    name: 'Systems Integration and Architecture 2',
-    shortName: 'SIA 2',
-    code: 'P ELEC 4',
-    sectionCode: 'CM240',
-    units: 3,
-    short: 'sia',
-    color: '#0D9488',
-    icon: 'blocks',
-    room: 'TBA',
-    professor: 'TBA',
-    progress: 35,
-    meetings: [{ days: [1, 2, 4], start: '10:00', end: '12:00' }],
-    description: 'Systems Integration and Architecture 2. Monday, Tuesday, Thursday 10:00 AM–12:00 PM.',
-    coursework: [
-      { id: 'asg_sia_rtm', title: 'Requirements Traceability Matrix', dueDate: '2026-11-03', status: 'overdue', description: 'Map requirements to integration components.', points: 60 },
-      { id: 'asg_sia_arch', title: 'Integration Architecture Diagram', dueDate: '2026-11-18', status: 'upcoming', description: 'Context + container diagrams for the system.', points: 80 },
-    ],
-  },
-  {
-    id: 'gc_ap6',
-    subjectId: 'subj_xplat',
-    name: 'Cross-Platform Script Development Technology',
-    shortName: 'Cross-Platform Script Dev',
-    code: 'AP 6',
-    sectionCode: 'CM241',
-    units: 3,
-    short: 'xplat',
-    color: '#E11D48',
-    icon: 'smartphone',
-    room: 'TBA',
-    professor: 'TBA',
-    progress: 28,
-    meetings: [{ days: [2, 4], start: '07:00', end: '09:30' }],
-    description: 'Cross-platform script development. Tuesday and Thursday 7:00 AM–9:30 AM.',
-    coursework: [
-      { id: 'asg_xp_ui', title: 'Flutter Screen Prototype', dueDate: '2026-11-04', status: 'overdue', description: 'Build two screens with navigation.', points: 50 },
-      { id: 'asg_xp_api', title: 'API Integration Mini App', dueDate: '2026-11-20', status: 'upcoming', description: 'Consume a REST API from a cross-platform client.', points: 100 },
-    ],
-  },
-];
-
-function catalogCourseToSubject(course) {
-  const asgs = course.coursework || [];
-  const completed = asgs.filter((a) => a.status === 'completed').length;
-  const pending = asgs.filter((a) => a.status !== 'completed').length;
-  return {
-    id: course.subjectId,
-    classroomId: course.id,
-    name: course.name,
-    shortName: course.shortName,
-    short: course.short,
-    code: course.code,
-    sectionCode: course.sectionCode,
-    section: CLASSROOM_META.section,
-    units: course.units,
-    color: course.color,
-    icon: course.icon,
-    room: course.room || 'TBA',
-    professor: course.professor || 'TBA',
-    description: course.description,
-    meetings: course.meetings,
-    progress: course.progress,
-    assignments: asgs.length,
-    completed,
-    pending,
-    source: 'classroom',
-  };
-}
-
 function subjectToClass(subject) {
   return {
     id: `cls_${subject.id}`,
-    name: `${subject.code} · ${subject.shortName || subject.name}`,
+    name: [subject.code, subject.shortName || subject.name].filter(Boolean).join(' · '),
     subject: subject.name,
     subjectId: subject.id,
     short: subject.short,
-    students: 28,
-    nextActivity: 'Classroom coursework',
-    nextDate: '2026-11-14',
-    progress: subject.progress || 0,
-    professor: subject.professor || 'TBA',
-    room: subject.room || 'TBA',
-    section: subject.section || CLASSROOM_META.section,
+    progress: subject.progress ?? null,
+    professor: subject.professor || '',
+    room: subject.room || '',
+    section: subject.section || '',
     source: 'classroom',
   };
 }
 
-function buildScheduleFromSubjects(subjects, start = new Date(2026, 10, 2), end = new Date(2026, 11, 18)) {
-  const list = [];
-  const cursor = new Date(start.getFullYear(), start.getMonth(), start.getDate());
-  while (cursor <= end) {
-    const dow = cursor.getDay();
-    const date = localDateStr(cursor);
-    subjects.forEach((s) => {
-      (s.meetings || []).forEach((m) => {
-        if (!m.days.includes(dow)) return;
-        list.push({
-          id: `sch_${s.id}_${date}`,
-          title: s.shortName || s.name,
-          subjectId: s.id,
-          subject: s.name,
-          date,
-          startTime: m.start,
-          endTime: m.end,
-          room: s.room || 'TBA',
-          type: 'class',
-          source: 'classroom',
-        });
-      });
-    });
-    cursor.setDate(cursor.getDate() + 1);
-  }
-  return list;
-}
-
-/* ---------- Seed Data ---------- */
-const SEED_SUBJECTS = CLASSROOM_COURSES.map(catalogCourseToSubject);
-
-const SEED_ASSIGNMENTS = CLASSROOM_COURSES.flatMap((course) =>
-  (course.coursework || []).map((work) => ({
-    ...work,
-    classroomId: course.id,
-    subjectId: course.subjectId,
-    subject: course.name,
-    source: 'classroom',
-  }))
-);
-
-const SEED_TASKS = [
-  { id: 'task_1', title: 'Review IAS 2 lecture notes', subjectId: 'subj_ias_lec', subject: 'Information Assurance and Security 2 (Lec)', dueDate: '2026-11-06', dueTime: '10:00', status: 'pending', today: true },
-  { id: 'task_2', title: 'Finish packet capture write-up', subjectId: 'subj_ias_lab', subject: 'Information Assurance and Security 2 (Lab)', dueDate: '2026-11-06', dueTime: '14:00', status: 'pending', today: true },
-  { id: 'task_3', title: 'Draft Capstone Chapter 4 outline', subjectId: 'subj_capstone', subject: 'Capstone Project and Research 2', dueDate: '2026-11-07', dueTime: '18:00', status: 'upcoming', today: false },
-  { id: 'task_4', title: 'Fix Flutter navigation bug', subjectId: 'subj_xplat', subject: 'Cross-Platform Script Development Technology', dueDate: '2026-11-06', dueTime: '16:00', status: 'pending', today: true },
-  { id: 'task_5', title: 'Read SysAdmin backup chapter', subjectId: 'subj_sysad', subject: 'Systems Administration and Maintenance', dueDate: '2026-11-05', dueTime: '09:00', status: 'completed', today: false },
-  { id: 'task_6', title: 'Sketch SIA 2 container diagram', subjectId: 'subj_sia', subject: 'Systems Integration and Architecture 2', dueDate: '2026-11-08', dueTime: '11:00', status: 'upcoming', today: false },
-  { id: 'task_7', title: 'Prepare Friday capstone demo notes', subjectId: 'subj_capstone', subject: 'Capstone Project and Research 2', dueDate: '2026-11-07', dueTime: '13:00', status: 'upcoming', today: false },
-  { id: 'task_8', title: 'Organize IAS lab screenshots', subjectId: 'subj_ias_lab', subject: 'Information Assurance and Security 2 (Lab)', dueDate: '2026-11-04', dueTime: '20:00', status: 'completed', today: false },
-];
-
-const SEED_SCHEDULE = buildScheduleFromSubjects(SEED_SUBJECTS);
-
-const SEED_CLASSES = SEED_SUBJECTS.map(subjectToClass);
-
+/* ---------- Demo-only records for non-student pages ---------- */
 const SEED_STUDENTS = [
   { id: 'stu_1', name: 'Maria Santos', email: 'maria.santos@email.com', course: 'BSIT', year: '2nd Year', gpa: 3.8, status: 'active' },
   { id: 'stu_2', name: 'Juan Dela Cruz', email: 'juan.delacruz@email.com', course: 'BSIT', year: '2nd Year', gpa: 3.5, status: 'active' },

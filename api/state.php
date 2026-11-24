@@ -86,32 +86,82 @@ function persistCollectionRows(PDO $pdo, int $userId, string $key, array $value,
         $insert->execute($params);
     }
 }
+function existingCollectionIds(PDO $pdo, int $userId, string $key, array $collections): array {
+    $table = $collections[$key]['table'];
+    $stmt = $pdo->prepare("SELECT external_id FROM {$table} WHERE user_id=?");
+    $stmt->execute([$userId]);
+    $ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    if ($ids) return array_fill_keys(array_map('strval', $ids), true);
+
+    $stmt = $pdo->prepare('SELECT state_value FROM app_state WHERE user_id=? AND state_key=?');
+    $stmt->execute([$userId, $key]);
+    $legacy = json_decode((string)($stmt->fetchColumn() ?: 'null'), true);
+    $existing = [];
+    if (is_array($legacy)) {
+        foreach (array_values($legacy) as $index => $item) {
+            if (!is_array($item)) continue;
+            $id = (string)firstValue($item, ['id','externalId','classroomWorkId','classroomId'], 'row_' . $index);
+            $existing[$id] = true;
+        }
+    }
+    return $existing;
+}
+function notifyStudentCollectionAdditions(PDO $pdo, int $userId, string $key, array $items, array $existingIds): void {
+    $seen = $existingIds;
+    $insert = $pdo->prepare('INSERT INTO notifications (user_id,title,body) VALUES (?,?,?)');
+    foreach (array_values($items) as $index => $item) {
+        if (!is_array($item)) continue;
+        $id = (string)firstValue($item, ['id','externalId','classroomWorkId','classroomId'], 'row_' . $index);
+        if (isset($seen[$id])) continue;
+        $seen[$id] = true;
+
+        $itemTitle = trim((string)firstValue($item, ['title','name'], ''));
+        if ($itemTitle === '') $itemTitle = $key === 'studybuddy_tasks' ? 'Untitled task' : 'Untitled activity';
+        $isTask = $key === 'studybuddy_tasks';
+        $isClassroom = !$isTask && (($item['source'] ?? '') === 'classroom' || !empty($item['classroomWorkId']));
+        $title = $isTask ? 'New task added' : ($isClassroom ? 'New Google Classroom activity' : 'New activity added');
+        $subject = trim((string)($item['subject'] ?? ''));
+        $body = $itemTitle . ($subject !== '' ? ' · ' . $subject : '');
+        $insert->execute([$userId, $title, $body]);
+    }
+}
 
 try {
     if ($method === 'GET') {
-        $key = (string)($_GET['key'] ?? '');
-        if (!in_array($key, $allowed, true)) json_response(['ok'=>false,'message'=>'Invalid data key for this account role.'], 403);
-        if (isset($collections[$key])) {
-            $table = $collections[$key]['table'];
-            $stmt = $pdo->prepare("SELECT payload_json FROM {$table} WHERE user_id = ? ORDER BY sort_order ASC, id ASC");
-            $stmt->execute([(int)$user['id']]);
-            $rows = $stmt->fetchAll(PDO::FETCH_COLUMN);
-            if ($rows) {
-                $value = array_map(static fn($json) => json_decode((string)$json, true) ?? [], $rows);
-                json_response(['ok'=>true,'value'=>$value]);
+        $isBatch = isset($_GET['keys']);
+        $keysParam = $isBatch ? $_GET['keys'] : ($_GET['key'] ?? '');
+        if (!is_string($keysParam)) json_response(['ok'=>false,'message'=>'Invalid data key.'], 400);
+        $keys = $isBatch ? array_values(array_unique(explode(',', $keysParam))) : [$keysParam];
+        if (!$keys || in_array('', $keys, true) || array_diff($keys, $allowed)) {
+            json_response(['ok'=>false,'message'=>'Invalid data key for this account role.'], 403);
+        }
+
+        $values = [];
+        foreach ($keys as $key) {
+            if (isset($collections[$key])) {
+                $table = $collections[$key]['table'];
+                $stmt = $pdo->prepare("SELECT payload_json FROM {$table} WHERE user_id = ? ORDER BY sort_order ASC, id ASC");
+                $stmt->execute([(int)$user['id']]);
+                $rows = $stmt->fetchAll(PDO::FETCH_COLUMN);
+                if ($rows) {
+                    $values[$key] = array_map(static fn($json) => json_decode((string)$json, true) ?? [], $rows);
+                    continue;
+                }
             }
+
+            $stmt = $pdo->prepare('SELECT state_value FROM app_state WHERE user_id=? AND state_key=?');
+            $stmt->execute([(int)$user['id'], $key]);
+            $row = $stmt->fetch();
+            $legacyValue = $row ? json_decode($row['state_value'], true) : null;
+            // Lazy migration: older versions stored whole collections only in app_state.
+            if (isset($collections[$key]) && is_array($legacyValue)) {
+                $pdo->beginTransaction();
+                persistCollectionRows($pdo, (int)$user['id'], $key, $legacyValue, $collections);
+                $pdo->commit();
+            }
+            $values[$key] = $legacyValue;
         }
-        $stmt = $pdo->prepare('SELECT state_value FROM app_state WHERE user_id=? AND state_key=?');
-        $stmt->execute([(int)$user['id'], $key]);
-        $row = $stmt->fetch();
-        $legacyValue = $row ? json_decode($row['state_value'], true) : null;
-        // Lazy migration: older versions stored whole collections only in app_state.
-        if (isset($collections[$key]) && is_array($legacyValue)) {
-            $pdo->beginTransaction();
-            persistCollectionRows($pdo, (int)$user['id'], $key, $legacyValue, $collections);
-            $pdo->commit();
-        }
-        json_response(['ok'=>true,'value'=>$legacyValue]);
+        json_response($isBatch ? ['ok'=>true,'values'=>$values] : ['ok'=>true,'value'=>$values[$keys[0]]]);
     }
 
     if ($method === 'POST') {
@@ -125,6 +175,10 @@ try {
         if ($json === false) json_response(['ok'=>false,'message'=>'The submitted data could not be encoded.'], 422);
 
         $pdo->beginTransaction();
+        $notifyKey = ($user['role'] ?? '') === 'student'
+            && in_array($key, ['studybuddy_assignments','studybuddy_tasks'], true)
+            && is_array($value);
+        $existingIds = $notifyKey ? existingCollectionIds($pdo, (int)$user['id'], $key, $collections) : [];
         $stmt = $pdo->prepare('INSERT INTO app_state(user_id,state_key,state_value) VALUES(?,?,?) ON DUPLICATE KEY UPDATE state_value=VALUES(state_value)');
         $stmt->execute([(int)$user['id'], $key, $json]);
 
@@ -135,6 +189,7 @@ try {
             }
             persistCollectionRows($pdo, (int)$user['id'], $key, $value, $collections);
         }
+        if ($notifyKey) notifyStudentCollectionAdditions($pdo, (int)$user['id'], $key, $value, $existingIds);
         $pdo->commit();
         json_response(['ok'=>true]);
     }

@@ -457,19 +457,60 @@
 }
 
 .student-app #driveTable {
-  min-width: 720px;
+  width: 100%;
+  min-width: 786px;
+  table-layout: fixed;
 }
 
 .student-app #driveTable th:first-child,
-.student-app #driveTable td:first-child,
+.student-app #driveTable td:first-child {
+  width: 44px;
+  text-align: center;
+}
+
 .student-app #driveTable th:nth-child(2),
-.student-app #driveTable td:nth-child(2),
+.student-app #driveTable td:nth-child(2) {
+  width: 260px;
+  text-align: left;
+}
+
+.student-app #driveTable td:nth-child(2) .cell-title > div:last-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.student-app #driveTable td:nth-child(2) .title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .student-app #driveTable th:nth-child(3),
-.student-app #driveTable td:nth-child(3),
+.student-app #driveTable td:nth-child(3) {
+  width: 180px;
+  text-align: left;
+  white-space: nowrap;
+}
+
 .student-app #driveTable th:nth-child(4),
-.student-app #driveTable td:nth-child(4),
+.student-app #driveTable td:nth-child(4) {
+  width: 150px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.student-app #driveTable th:nth-child(5),
+.student-app #driveTable td:nth-child(5) {
+  width: 80px;
+  text-align: left;
+  white-space: nowrap;
+}
+
 .student-app #driveTable th:last-child,
 .student-app #driveTable td:last-child {
+  width: 72px;
+  padding-right: 8px;
+  padding-left: 8px;
   text-align: center;
 }
 
@@ -512,5 +553,15 @@
 
   .student-app .page-content {
     padding: 16px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .student-drive-page .page-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .student-drive-page .page-aside {
+    position: static;
   }
 }
