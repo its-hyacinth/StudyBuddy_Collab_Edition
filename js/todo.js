@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let filter = 'all';
   let sortBy = 'due';
+  let editingTaskId = null;
 
   function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, (char) => ({
@@ -90,6 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="action-menu-wrap">
           <button type="button" class="action-menu-btn" data-menu="${safeId}"><i data-lucide="more-vertical"></i></button>
           <div class="action-dropdown" id="tmenu-${safeId}">
+            <button type="button" data-edit="${safeId}"><i data-lucide="pencil"></i> Edit</button>
             <button type="button" data-delete="${safeId}" class="danger"><i data-lucide="trash-2"></i> Delete</button>
           </div>
         </div>
@@ -111,6 +113,17 @@ document.addEventListener('DOMContentLoaded', () => {
         e.stopPropagation();
         document.querySelectorAll('.action-dropdown').forEach((d) => d.classList.remove('open'));
         document.getElementById(`tmenu-${btn.dataset.menu}`)?.classList.toggle('open');
+      });
+    });
+    el.querySelectorAll('[data-edit]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const task = getTasks().find((item) => item.id === btn.dataset.edit);
+        if (!task) {
+          showToast('This task is no longer available.', 'error');
+          render();
+          return;
+        }
+        openTaskForm(task);
       });
     });
     el.querySelectorAll('[data-delete]').forEach((btn) => {
@@ -204,7 +217,24 @@ document.addEventListener('DOMContentLoaded', () => {
     return true;
   }
 
-  document.getElementById('addTaskBtn')?.addEventListener('click', () => openModal('addTaskModal'));
+  function openTaskForm(task = null) {
+    editingTaskId = task?.id || null;
+    const form = document.getElementById('addTaskForm');
+    form?.reset();
+    document.getElementById('addTaskTitle').textContent = task ? 'Edit Task' : 'Add Task';
+    const submitButton = form?.querySelector('[type="submit"]');
+    if (submitButton) submitButton.textContent = task ? 'Save Changes' : 'Add Task';
+    if (task) {
+      document.getElementById('taskTitle').value = task.title || '';
+      document.getElementById('taskSubject').value = task.subjectId || '';
+      document.getElementById('taskDueDate').value = task.dueDate || localDateStr();
+      document.getElementById('taskDueTime').value = task.dueTime || '';
+      document.getElementById('taskNotes').value = task.notes || '';
+    }
+    openModal('addTaskModal');
+  }
+
+  document.getElementById('addTaskBtn')?.addEventListener('click', () => openTaskForm());
   document.getElementById('todoSort')?.addEventListener('change', (e) => { sortBy = e.target.value; render(); });
 
   const taskSubjects = getSubjects();
@@ -226,9 +256,35 @@ document.addEventListener('DOMContentLoaded', () => {
     const dueTime = document.getElementById('taskDueTime')?.value;
     const notes = document.getElementById('taskNotes')?.value;
     if (!title || !dueDate) { showToast('Title and due date required', 'error'); return; }
-    if (!createTask({ title, subjectId, dueDate, dueTime, notes })) return;
+    const isEditing = Boolean(editingTaskId);
+    if (isEditing) {
+      const task = getTasks().find((item) => item.id === editingTaskId);
+      if (!task) {
+        showToast('This task is no longer available.', 'error');
+        render();
+        return;
+      }
+      const subject = getSubjects().find((item) => item.id === subjectId)?.name || 'General';
+      updateTask(task.id, {
+        title,
+        subjectId,
+        subject,
+        dueDate,
+        dueTime: dueTime || '',
+        notes: notes || '',
+        today: dueDate === localDateStr(),
+      });
+      showToast('Task updated');
+    } else if (!createTask({ title, subjectId, dueDate, dueTime, notes })) {
+      return;
+    }
     closeModal('addTaskModal');
     e.target.reset();
+    editingTaskId = null;
+    document.getElementById('addTaskTitle').textContent = 'Add Task';
+    const submitButton = e.target.querySelector('[type="submit"]');
+    if (submitButton) submitButton.textContent = 'Add Task';
+    if (isEditing) render();
   });
 
   document.getElementById('quickAddForm')?.addEventListener('submit', (e) => {
