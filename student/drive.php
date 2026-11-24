@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="../css/student.css" />
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
-<body class="student-app">
+<body class="student-app student-drive-page">
   <div class="app-shell" id="appShell">
     <div class="page-content">
       <div class="page-header">
