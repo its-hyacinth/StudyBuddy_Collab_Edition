@@ -317,14 +317,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       const isToday = today.getFullYear() === calY && today.getMonth() === calM && today.getDate() === day;
       const dateKey = `${calY}-${String(calM + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      const events = eventsForDay(calY, calM, day, entries);
+      const events = eventsForDay(calY, calM, day, entries).sort((a, b) =>
+        Number(b.type === 'deadline') - Number(a.type === 'deadline')
+        || String(a.startTime || '').localeCompare(String(b.startTime || ''))
+      );
       const dayButtonAttributes = scheduleDayAttributes(dateKey);
       html += `<div class="cal-day${isToday ? ' today' : ''}" ${dayButtonAttributes}>
         <span class="day-num">${day}</span>
         ${events.slice(0, 3).map((ev) => `
           <div class="cal-event-chip ${escapeHtml(subjectShort(ev.subject))} ${ev.type === 'deadline' ? 'task' : ''}">
             <span class="dot ${escapeHtml(subjectShort(ev.subject))}" style="width:6px;height:6px"></span>
-            <span class="cal-event-label">${escapeHtml(ev.title)} ${ev.startTime ? escapeHtml(formatTime(ev.startTime)) : ''}</span>
+            <span class="cal-event-label">${ev.calendarSource === 'assignment' ? 'Assignment due: ' : ev.calendarSource === 'task' ? 'Task due: ' : ''}${escapeHtml(ev.title)} ${ev.startTime ? escapeHtml(formatTime(ev.startTime)) : ''}</span>
           </div>`).join('')}
         ${events.length > 3 ? `<div style="font-size:10px;color:var(--text-muted)">+${events.length - 3} more</div>` : ''}
       </div>`;
