@@ -230,8 +230,20 @@ function sb_postgres_statements(): array {
 function sb_ensure_postgres(PDO $pdo): void {
     static $ready = false;
     if ($ready) return;
+    $version = '20261125a';
+    try {
+        $marker = $pdo->query('SELECT value FROM sb_schema_meta WHERE id = 1');
+        if ($marker && (string)$marker->fetchColumn() === $version) {
+            $ready = true;
+            return;
+        }
+    } catch (Throwable $error) {
+        // The version table is created with the rest of the schema.
+    }
     foreach (sb_postgres_statements() as $statement) {
         $pdo->exec($statement);
     }
+    $pdo->exec('CREATE TABLE IF NOT EXISTS sb_schema_meta (id SMALLINT PRIMARY KEY, value VARCHAR(40) NOT NULL)');
+    $pdo->prepare('INSERT INTO sb_schema_meta (id, value) VALUES (1, ?) ON CONFLICT (id) DO UPDATE SET value = EXCLUDED.value')->execute([$version]);
     $ready = true;
 }

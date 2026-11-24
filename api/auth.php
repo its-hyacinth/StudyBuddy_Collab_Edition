@@ -30,7 +30,6 @@ function auth_save_signup_profile(PDO $pdo, int $userId, string $stateKey, array
 }
 
 try {
-    $pdo = db();
     if ($method === 'GET' && $action === 'session') {
         $pending = google_signup_pending();
         json_response([
@@ -44,6 +43,7 @@ try {
             'remember' => !empty($_SESSION['pending_totp']['remember']),
         ]);
     }
+    $pdo = db();
     if ($method === 'GET' && $action === 'account') {
         $sessionUser = require_user();
         $row = fetch_user_by_id($pdo, (int)$sessionUser['id']);

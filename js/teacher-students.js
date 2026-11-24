@@ -289,11 +289,11 @@ document.addEventListener('DOMContentLoaded', () => {
       getClasses().map((c) => `<option value="${escapeHtml(c.id)}">${escapeHtml(classDisplayName(c))}</option>`).join('');
   }
 
-  const courseFilter = document.getElementById('studentCourseFilter');
-  if (courseFilter) {
-    const current = courseFilter.value;
-    courseFilter.innerHTML = courseOptionsHtml('All Courses');
-    if ([...courseFilter.options].some((option) => option.value === current)) courseFilter.value = current;
+  const courseFilterSelect = document.getElementById('studentCourseFilter');
+  if (courseFilterSelect) {
+    const current = courseFilterSelect.value;
+    courseFilterSelect.innerHTML = courseOptionsHtml('All Courses');
+    if ([...courseFilterSelect.options].some((option) => option.value === current)) courseFilterSelect.value = current;
   }
   const studentCourse = document.getElementById('studentCourse');
   if (studentCourse) studentCourse.innerHTML = courseOptionsHtml('Select course');

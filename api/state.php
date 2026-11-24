@@ -4,6 +4,7 @@ require_once __DIR__ . '/../includes/bootstrap.php';
 require_once __DIR__ . '/../config/database.php';
 
 $user = require_user();
+sb_commit_session();
 $pdo = db();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 

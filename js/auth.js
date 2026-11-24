@@ -14,6 +14,11 @@ function apiAuth(action, data = {}) {
 }
 function getSession() {
   if (sessionLoaded) return cachedSession;
+  if (window.SB_SESSION && window.SB_SESSION.id) {
+    cachedSession = window.SB_SESSION;
+    sessionLoaded = true;
+    return cachedSession;
+  }
   const xhr = new XMLHttpRequest();
   xhr.open('GET', `${SB_AUTH_BASE}auth.php?action=session`, false);
   xhr.send();
