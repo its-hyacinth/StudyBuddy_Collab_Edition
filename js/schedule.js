@@ -83,7 +83,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       .map((assignment) => ({
         ...assignment,
         date: assignment.dueDate,
-        startTime: '',
+        startTime: assignment.dueTime || '',
         endTime: '',
         type: 'deadline',
         calendarSource: 'assignment',
@@ -126,7 +126,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         title: entry.title,
         subject: entry.subject || '',
         date: entry.date,
-        startTime: '',
+        startTime: entry.dueTime || entry.startTime || '',
         endTime: '',
         room: '',
       })));
@@ -703,6 +703,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   render();
+  sbWhenReady(render);
   if (validRequestedDate) openDaySchedule(requestedDate);
   if (window.SB_PENDING_SCHEDULE_SYNC) {
     window.SB_PENDING_SCHEDULE_SYNC = false;

@@ -447,7 +447,22 @@
           <div class="form-group">
             <label for="classSubject">Subject Title</label>
             <input class="form-control" type="text" id="classSubject" placeholder="e.g. Information Assurance and Security 2" required />
-            <p class="subtitle" style="margin-top:6px">Assignments and student lists attach to this class through the subject code.</p>
+            <p class="subtitle" style="margin-top:6px">The same subject can be offered to more than one block. Assignments go to the block you choose here.</p>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="classCourse">Course</label>
+              <select class="form-control" id="classCourse" required></select>
+            </div>
+            <div class="form-group">
+              <label for="classYear">Year Level</label>
+              <select class="form-control" id="classYear" required></select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="classBlock">Block / Section</label>
+            <input class="form-control" type="text" id="classBlock" placeholder="e.g. B or 1-B" required autocomplete="off" />
+            <p class="subtitle" style="margin-top:6px">Regular students in this course, year, and block receive the work. Irregular students receive it when they are enrolled in this class.</p>
           </div>
           <div class="form-row">
             <div class="form-group">

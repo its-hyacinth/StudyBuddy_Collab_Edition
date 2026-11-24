@@ -290,8 +290,13 @@
               <option value="">Select class</option>
             </select>
             <p id="asgClassHint" class="subtitle" hidden style="margin-top:6px">
-              No classes yet. <a href="classes.php">Add a class with a subject code</a>, then assign work to it.
+              No classes yet. <a href="classes.php">Add a class</a> and set its course, year, and block first.
             </p>
+            <label class="check-line" for="asgIncludeIrregular">
+              <input type="checkbox" id="asgIncludeIrregular" checked />
+              <span>Include irregular students enrolled in this class</span>
+            </label>
+            <p id="asgAudienceHint" class="subtitle"></p>
           </div>
           <!-- NEW: due date + due time -->
           <div class="form-row">

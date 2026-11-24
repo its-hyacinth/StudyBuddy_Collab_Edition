@@ -346,6 +346,42 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('addSubjectBtn')?.addEventListener('click', () => openModal('addSubjectModal'));
+  document.getElementById('joinClassBtn')?.addEventListener('click', () => openModal('joinClassModal'));
+  document.getElementById('joinClassForm')?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const button = event.target.querySelector('button[type="submit"]');
+    const code = document.getElementById('joinCodeInput')?.value.trim() || '';
+    if (button) button.disabled = true;
+    try {
+      const response = await fetch('../api/enroll.php', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || '',
+        },
+        body: JSON.stringify({ code }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.ok) {
+        showToast(result.message || 'Could not join that class', 'error');
+        return;
+      }
+      sbInvalidate(SB_KEYS.SUBJECTS, SB_KEYS.ASSIGNMENTS);
+      subjects = getSubjects();
+      assignments = getAssignments();
+      selectedId = result.classId || selectedId;
+      showAllSubjects = false;
+      closeModal('joinClassModal');
+      event.target.reset();
+      showToast(result.className ? `Joined ${result.className}` : 'You joined the class');
+      render();
+    } catch {
+      showToast('Could not join that class', 'error');
+    } finally {
+      if (button) button.disabled = false;
+    }
+  });
   document.getElementById('syncClassroomBtn')?.addEventListener('click', async (e) => {
     const result = await syncGoogleClassroom(e.currentTarget);
     if (result?.ok) render();
@@ -395,4 +431,5 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   render();
+  sbWhenReady(render);
 });

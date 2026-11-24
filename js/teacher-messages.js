@@ -96,5 +96,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   renderList();
   renderThread();
+  sbWhenReady(() => { renderList(); renderThread(); });
   if (typeof lucide !== 'undefined') lucide.createIcons();
 });

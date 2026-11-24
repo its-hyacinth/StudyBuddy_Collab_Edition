@@ -622,6 +622,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelector('#driveTabs [data-tab="shared"]')?.remove();
   }
   render();
+  sbWhenReady(render);
   window.refreshDriveFromGoogle = async () => {
     const status = window.SB_GOOGLE;
     liveDrive = !!(status?.configured && status.connected);

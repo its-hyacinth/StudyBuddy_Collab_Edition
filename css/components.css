@@ -336,6 +336,24 @@
 .cell-title .subtitle { font-size: 12px; color: var(--text-muted); }
 
 /* ========== Checkbox ========== */
+.check-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-heading);
+  cursor: pointer;
+}
+.check-line input {
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+.check-line span { flex: 1; min-width: 0; }
+.check-line + .subtitle { display: block; margin-top: 8px; }
 .custom-check {
   position: relative;
   width: 18px;

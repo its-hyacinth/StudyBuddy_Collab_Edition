@@ -44,6 +44,8 @@ document.addEventListener('DOMContentLoaded', () => {
       ['Email', student.email || 'Not provided'],
       ['Course', student.course || 'Not provided'],
       ['Year level', student.year || 'Not provided'],
+      ['Block', student.section ? `Block ${student.section}` : 'Not set'],
+      ['Standing', isIrregularStudent(student) ? 'Irregular' : 'Regular'],
       ['Class', cls ? classDisplayName(cls) : 'No class assigned'],
       ['Student ID', student.studentId || 'Not provided'],
       ['GPA', studentGpa(student)],
@@ -102,7 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ---- Filtering ----
     let list = all.slice();
     if (statusFilter) list = list.filter((s) => s.status === statusFilter);
-    if (courseFilter) list = list.filter((s) => s.course === courseFilter);
+    if (courseFilter) list = list.filter((s) => normalizeCourseCode(s.course) === courseFilter);
     if (yearFilter) list = list.filter((s) => s.year === yearFilter);
     if (search) {
       const q = search.toLowerCase();
@@ -110,7 +112,8 @@ document.addEventListener('DOMContentLoaded', () => {
         String(s.name || '').toLowerCase().includes(q) ||
         String(s.email || '').toLowerCase().includes(q) ||
         String(s.course || '').toLowerCase().includes(q) ||
-        String(s.subjectCode || '').toLowerCase().includes(q)
+        String(s.subjectCode || '').toLowerCase().includes(q) ||
+        String(s.section || '').toLowerCase().includes(q)
       );
     }
 
@@ -153,10 +156,13 @@ document.addEventListener('DOMContentLoaded', () => {
           </td>
           <td>${escapeHtml(s.email)}</td>
           <td>${escapeHtml(s.course)}</td>
-          <td>${escapeHtml(s.year)}</td>
+          <td>${escapeHtml(s.year || '—')}${s.section ? `<div class="subtitle">Block ${escapeHtml(s.section)}</div>` : ''}</td>
           <td>${escapeHtml((() => { const cls = classes.find((c) => c.id === s.classId); return cls ? classDisplayName(cls) : (s.subjectCode || '—'); })())}</td>
           <td><strong>${escapeHtml(s.gpa)}</strong></td>
-          <td><span class="badge ${statusClass(s.status)}">${statusLabel(s.status)}</span></td>
+          <td>
+            <span class="badge ${statusClass(s.status)}">${statusLabel(s.status)}</span>
+            ${isIrregularStudent(s) ? '<div class="subtitle">Irregular</div>' : ''}
+          </td>
           <td>
             <div class="action-menu-wrap">
               <button type="button" class="action-menu-btn" data-student-menu
@@ -171,7 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
           </td>
         </tr>`).join('')
-        : '<tr><td colspan="8" style="text-align:center;padding:24px">No students found.</td></tr>';
+        : `<tr><td colspan="8" style="text-align:center;padding:24px">${search || statusFilter || courseFilter || yearFilter ? 'No students match these filters.' : 'No students on this list yet. Import a class list, add a student, or have them join with a class code.'}</td></tr>`;
     }
 
     // ---- Student overview (donut center + legend; keeps the donut markup intact) ----
@@ -283,6 +289,17 @@ document.addEventListener('DOMContentLoaded', () => {
       getClasses().map((c) => `<option value="${escapeHtml(c.id)}">${escapeHtml(classDisplayName(c))}</option>`).join('');
   }
 
+  const courseFilter = document.getElementById('studentCourseFilter');
+  if (courseFilter) {
+    const current = courseFilter.value;
+    courseFilter.innerHTML = courseOptionsHtml('All Courses');
+    if ([...courseFilter.options].some((option) => option.value === current)) courseFilter.value = current;
+  }
+  const studentCourse = document.getElementById('studentCourse');
+  if (studentCourse) studentCourse.innerHTML = courseOptionsHtml('Select course');
+  const studentYear = document.getElementById('studentYear');
+  if (studentYear) studentYear.innerHTML = yearOptionsHtml('Select year');
+
   document.getElementById('addStudentBtn')?.addEventListener('click', () => {
     const sel = document.getElementById('studentClass');
     if (sel) sel.innerHTML = classOptionsHtml('No class');
@@ -333,6 +350,8 @@ document.addEventListener('DOMContentLoaded', () => {
     studentId: ['studentid', 'idnumber', 'idno', 'studno', 'studentnumber', 'lrn', 'id'],
     course: ['course', 'program', 'degree'],
     year: ['year', 'yearlevel', 'level', 'yr'],
+    section: ['section', 'block', 'sectionblock', 'classblock'],
+    standing: ['standing', 'enrollment', 'studenttype', 'regularity'],
     subjectCode: ['subjectcode', 'coursecode', 'classcode', 'code', 'subject'],
     gpa: ['gpa', 'qpi'],
     status: ['status'],
@@ -394,7 +413,7 @@ document.addEventListener('DOMContentLoaded', () => {
       index = headerIndex(cleaned[0]);
       start = 1;
     } else {
-      index = { name: 0, email: 1, studentId: 2, course: 3, year: 4, subjectCode: 5 };
+      index = { name: 0, email: 1, studentId: 2, course: 3, year: 4, section: 5, standing: 6, subjectCode: 7 };
     }
     return cleaned.slice(start).map((row) => {
       const get = (field) => (index[field] === undefined ? '' : String(row[index[field]] || '').trim());
@@ -407,6 +426,8 @@ document.addEventListener('DOMContentLoaded', () => {
         email, studentId,
         course: get('course'),
         year: get('year'),
+        section: get('section'),
+        standing: get('standing'),
         subjectCode: get('subjectCode'),
         gpa: get('gpa'),
         status: get('status').toLowerCase(),
@@ -575,7 +596,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('downloadRosterTemplate')?.addEventListener('click', () => {
     const sampleCode = classSubjectCode(getClasses()[0]) || 'PC 4112';
-    const csv = `Name,Email,Student ID,Course,Year,Subject Code\nMaria Santos,maria.santos@email.com,2022-00123,BSIT,4th Year,${sampleCode}\n`;
+    const csv = `Name,Email,Student ID,Course,Year,Section,Standing,Subject Code\nMaria Santos,maria.santos@email.com,2022-00123,BSIT,1st Year,B,Regular,${sampleCode}\nJuan Cruz,juan.cruz@email.com,2021-00991,BSIT,3rd Year,A,Irregular,${sampleCode}\n`;
     const link = document.createElement('a');
     link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
     link.download = 'studybuddy-student-list.csv';
@@ -597,8 +618,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (row.name) existing.name = row.name;
         if (row.email) existing.email = row.email;
         if (row.studentId) existing.studentId = row.studentId;
-        if (row.course) existing.course = row.course;
-        if (row.year) existing.year = row.year;
+        if (row.course) existing.course = normalizeCourseCode(row.course);
+        if (row.year) existing.year = yearLevelLabel(row.year) || row.year;
+        if (row.section) existing.section = row.section;
+        if (row.standing) existing.standing = String(row.standing).toLowerCase().includes('irreg') ? 'irregular' : 'regular';
         if (gpa !== null) existing.gpa = gpa;
         if (status) existing.status = status;
         existing.classId = resolved.classId;
@@ -611,8 +634,10 @@ document.addEventListener('DOMContentLoaded', () => {
         name: row.name,
         email: row.email || '',
         studentId: row.studentId || '',
-        course: row.course || '',
-        year: row.year || '',
+        course: normalizeCourseCode(row.course),
+        year: yearLevelLabel(row.year) || row.year || '',
+        section: row.section || '',
+        standing: String(row.standing || '').toLowerCase().includes('irreg') ? 'irregular' : 'regular',
         classId: resolved.classId,
         subjectCode: resolved.subjectCode,
         gpa: gpa === null ? 0 : gpa,
@@ -721,8 +746,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // IDs now match the HTML (studentName, studentEmail, studentCourse, studentYear)
     const name = document.getElementById('studentName')?.value.trim();
     const email = document.getElementById('studentEmail')?.value.trim();
-    const course = document.getElementById('studentCourse')?.value.trim() || 'BSIT';
-    const year = document.getElementById('studentYear')?.value.trim() || '1st Year';
+    const course = normalizeCourseCode(document.getElementById('studentCourse')?.value || '');
+    const year = yearLevelLabel(document.getElementById('studentYear')?.value || '');
+    const section = document.getElementById('studentSection')?.value.trim() || '';
+    const standing = document.getElementById('studentStanding')?.value === 'irregular' ? 'irregular' : 'regular';
 
     if (!name || !email) {
       showToast('Name and email required', 'error');
@@ -738,8 +765,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const classId = document.getElementById('studentClass')?.value || null;
     const cls = getClasses().find((item) => item.id === classId);
+    const homeBlock = section || (standing === 'regular' ? (cls?.block || '') : '');
     list.push({
-      id: uid('stu'), name, email, course, year,
+      id: uid('stu'), name, email, course, year, section: homeBlock, standing,
       classId, subjectCode: cls ? classSubjectCode(cls) : '',
       gpa: 0, status: 'active',
     });
@@ -752,4 +780,5 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   render();
+  sbWhenReady(render);
 });

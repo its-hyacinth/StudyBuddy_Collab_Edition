@@ -50,7 +50,8 @@ const TEACHER_NAV = [
 
 function getActivePage() {
   const parts = window.location.pathname.split('/');
-  return parts[parts.length - 1] || 'dashboard.php';
+  const page = parts[parts.length - 1] || 'dashboard.php';
+  return page === 'class.php' ? 'classes.php' : page;
 }
 
 let deleteConfirmationCallback = null;

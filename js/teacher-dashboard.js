@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Students from Google Classroom + students added on the Students page.
   // Same formula as the My Classes page, so the numbers always match.
   function enrolledCount(cls, students) {
-    return (Number(cls.students) || 0) + students.filter((s) => s.classId === cls.id).length;
+    return (Number(cls.students) || 0) + classRoster(cls, students, true).length;
   }
 
   const setText = (id, value) => {
@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     greeting.textContent = `${greetingTime()}, ${lastName ? 'Prof. ' + lastName : 'Prof.'}! 👋`;
   }
 
+  function paintDashboard() {
   const students = getStudents();
   const classes = getClasses();
   const assignments = getAssignments();
@@ -129,6 +130,11 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="item-sub">${escapeHtml(formatDate(a.dueDate))}</div></div>
       </div>`).join('');
   }
+
+  }
+
+  paintDashboard();
+  sbWhenReady(paintDashboard);
 
   document.querySelectorAll('[data-action]').forEach((btn) => {
     btn.addEventListener('click', () => {

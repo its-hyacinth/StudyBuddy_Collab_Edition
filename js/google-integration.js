@@ -215,15 +215,20 @@ function applyGoogleConnection(status) {
   window.SB_GOOGLE = status;
   if (!status || !status.configured || typeof getSettings !== 'function') return;
   const settings = getSettings();
-  updateSettings({
-    connected: {
-      ...settings.connected,
-      googleClassroom: !!status.connected,
-      googleDrive: !!status.connected,
-      googleCalendar: googleCalendarSyncReady(status),
-    },
-    googleEmail: status.email || '',
-  });
+  const connected = {
+    ...settings.connected,
+    googleClassroom: !!status.connected,
+    googleDrive: !!status.connected,
+    googleCalendar: googleCalendarSyncReady(status),
+  };
+  const email = status.email || '';
+  const unchanged = !!settings.connected
+    && settings.connected.googleClassroom === connected.googleClassroom
+    && settings.connected.googleDrive === connected.googleDrive
+    && settings.connected.googleCalendar === connected.googleCalendar
+    && (settings.googleEmail || '') === email;
+  if (unchanged) return;
+  updateSettings({ connected, googleEmail: email });
 }
 
 async function refreshGoogleConnection() {
@@ -349,7 +354,18 @@ function applyClassroomPayload(payload) {
   sbSet(SB_KEYS.SUBJECTS, [...withCounts, ...localSubjects]);
   sbSet(SB_KEYS.ASSIGNMENTS, [...classroomAsg, ...existingAsg]);
   sbSet(SB_KEYS.SCHEDULE, localSchedule);
-  sbSet(SB_KEYS.CLASSES, [...withCounts.map(subjectToClass), ...localClasses]);
+  const previousClasses = getClasses();
+  sbSet(SB_KEYS.CLASSES, [...withCounts.map((subject) => {
+    const cls = subjectToClass(subject);
+    const saved = previousClasses.find((item) => item.id === cls.id);
+    if (!saved) return cls;
+    return {
+      ...cls,
+      course: saved.course || '',
+      year: saved.year || '',
+      block: saved.block || '',
+    };
+  }), ...localClasses]);
 
   const settings = getSettings();
   updateSettings({

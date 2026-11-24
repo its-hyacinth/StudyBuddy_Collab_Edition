@@ -47,6 +47,66 @@ const SB_ROLE_STATE_KEYS = window.location.pathname.includes('/teacher/')
       SB_KEYS.DRIVE,
     ];
 
+let SB_BOOT_SETTLED = false;
+let SB_BOOT_FAILED = false;
+
+const SB_BOOT = (function prefetchRoleState() {
+  const keys = SB_ROLE_STATE_KEYS;
+  if (!keys.length) return Promise.resolve();
+  const params = new URLSearchParams({ keys: keys.join(',') });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 12000);
+  return fetch(`${SB_API_BASE}state.php?${params}`, {
+    credentials: 'same-origin',
+    cache: 'no-store',
+    signal: controller.signal,
+  })
+    .then((response) => {
+      if (response.status === 401) {
+        window.location.href = window.location.pathname.includes('/student/') || window.location.pathname.includes('/teacher/') ? '../index.php' : 'index.php';
+        return null;
+      }
+      if (!response.ok) return null;
+      return response.json();
+    })
+    .then((result) => {
+      if (!result?.ok || !result.values) {
+        SB_BOOT_FAILED = true;
+        return;
+      }
+      keys.forEach((key) => {
+        if (Object.prototype.hasOwnProperty.call(result.values, key)) SB_STATE_CACHE.set(key, result.values[key]);
+      });
+    })
+    .catch((error) => {
+      SB_BOOT_FAILED = true;
+      console.error('StudyBuddy could not preload data:', error);
+    })
+    .finally(() => clearTimeout(timer));
+})();
+
+SB_BOOT.finally(() => {
+  SB_BOOT_SETTLED = true;
+  document.dispatchEvent(new CustomEvent('sb-ready'));
+});
+
+function sbWhenReady(callback) {
+  if (typeof callback !== 'function') return;
+  if (SB_BOOT_SETTLED) callback();
+  else document.addEventListener('sb-ready', () => callback(), { once: true });
+}
+
+function sbInvalidate(...keys) {
+  keys.forEach((key) => SB_STATE_CACHE.delete(key));
+}
+
+function makeJoinCode() {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 7; i++) code += alphabet[Math.floor(Math.random() * alphabet.length)];
+  return code;
+}
+
 function sbRequest(method, key, value) {
   const xhr = new XMLHttpRequest();
   const url = `${SB_API_BASE}state.php?key=${encodeURIComponent(key)}`;
@@ -60,6 +120,7 @@ function sbRequest(method, key, value) {
 }
 function sbGet(key, fallback = null) {
   if (SB_STATE_CACHE.has(key)) return SB_STATE_CACHE.get(key) ?? fallback;
+  if (!SB_BOOT_SETTLED || SB_BOOT_FAILED) return fallback;
   const missingKeys = SB_ROLE_STATE_KEYS.filter((stateKey) => !SB_STATE_CACHE.has(stateKey));
   if (missingKeys.includes(key)) {
     const xhr = new XMLHttpRequest();
@@ -123,6 +184,7 @@ function sbSet(key, value) {
   const result = sbRequest('POST', key, value);
   if (result && result.ok) {
     SB_STATE_CACHE.set(key, value);
+    window.SB_LAST_DELIVERY = result.delivery || null;
     window.dispatchEvent(new CustomEvent('studybuddy:state-updated', { detail: { key } }));
   }
 }
@@ -181,12 +243,110 @@ function classSubjectCode(cls) {
   return String(cls?.subjectCode || cls?.code || '').trim();
 }
 
+const SB_COURSES = [
+  { code: 'BEEd', name: 'Bachelor of Elementary Education' },
+  { code: 'BSEd-English', name: 'Bachelor of Secondary Education – English' },
+  { code: 'BSEd-Filipino', name: 'Bachelor of Secondary Education – Filipino' },
+  { code: 'BSEd-Math', name: 'Bachelor of Secondary Education – Mathematics' },
+  { code: 'AB Political Science', name: 'Bachelor of Arts in Political Science' },
+  { code: 'BSBA-FM', name: 'Bachelor of Science in Business Administration – Financial Management' },
+  { code: 'BSHM', name: 'Bachelor of Science in Hospitality Management' },
+  { code: 'BSIT', name: 'Bachelor of Science in Information Technology' },
+];
+
+const SB_YEAR_LEVELS = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
+
+function courseOptionsHtml(placeholder = 'Select course') {
+  return `<option value="">${placeholder}</option>` + SB_COURSES.map((course) =>
+    `<option value="${course.code}">${course.code} — ${course.name}</option>`
+  ).join('');
+}
+
+function yearOptionsHtml(placeholder = 'Select year') {
+  return `<option value="">${placeholder}</option>` + SB_YEAR_LEVELS.map((year) =>
+    `<option value="${year}">${year}</option>`
+  ).join('');
+}
+
+function normalizeCourseCode(value) {
+  const raw = String(value || '').trim().toLowerCase();
+  if (!raw) return '';
+  const match = SB_COURSES.find((course) => {
+    const code = course.code.toLowerCase();
+    const name = course.name.toLowerCase();
+    return raw === code || raw === name || name.includes(raw) || raw.includes(code);
+  });
+  return match ? match.code : String(value || '').trim();
+}
+
+function normalizeYearLevel(value) {
+  const text = String(value || '').trim().toLowerCase();
+  const words = { first: '1', second: '2', third: '3', fourth: '4' };
+  for (const [word, number] of Object.entries(words)) {
+    if (text.includes(word)) return number;
+  }
+  const digit = text.match(/[1-4]/);
+  return digit ? digit[0] : '';
+}
+
+function yearLevelLabel(value) {
+  const number = normalizeYearLevel(value);
+  return number ? SB_YEAR_LEVELS[Number(number) - 1] : String(value || '').trim();
+}
+
+function normalizeBlock(value) {
+  return String(value || '').toLowerCase().replace(/block|section/g, '').replace(/[^a-z0-9]/g, '');
+}
+
+function isIrregularStudent(student) {
+  const standing = String(student?.standing || '').trim().toLowerCase();
+  return standing === 'irregular' || standing === 'irreg';
+}
+
+function classBlockLabel(cls) {
+  if (!cls) return '';
+  const course = normalizeCourseCode(cls.course);
+  const year = yearLevelLabel(cls.year);
+  const block = String(cls.block || '').trim();
+  return [course, year, block ? `Block ${block}` : ''].filter(Boolean).join(' · ');
+}
+
+function classOfferingKey(cls) {
+  return [
+    normalizeSubjectCode(classSubjectCode(cls)),
+    normalizeCourseCode(cls?.course).toLowerCase(),
+    normalizeYearLevel(cls?.year),
+    normalizeBlock(cls?.block),
+  ].join('|');
+}
+
 function classDisplayName(cls) {
   if (!cls) return '';
   const code = classSubjectCode(cls);
   const name = String(cls.name || cls.subject || 'Untitled class').trim();
-  if (code && !name.toUpperCase().includes(code.toUpperCase())) return `${code} · ${name}`;
-  return name;
+  const subject = code && !name.toUpperCase().includes(code.toUpperCase()) ? `${code} · ${name}` : name;
+  const block = classBlockLabel(cls);
+  return block ? `${block} — ${subject}` : subject;
+}
+
+function studentMatchesClass(student, cls, includeIrregular = true) {
+  if (!student || !cls) return false;
+  if (String(student.status || 'active').toLowerCase() === 'inactive') return false;
+  const enrolledIds = Array.isArray(student.classIds) ? student.classIds.map(String) : [];
+  const enrolled = !!(student.classId && student.classId === cls.id) || enrolledIds.includes(String(cls.id));
+  if (isIrregularStudent(student)) return includeIrregular && enrolled;
+  if (enrolled) return true;
+  const course = normalizeCourseCode(student.course);
+  const year = normalizeYearLevel(student.year);
+  const block = normalizeBlock(student.section);
+  const classCourse = normalizeCourseCode(cls.course);
+  const classYear = normalizeYearLevel(cls.year);
+  const classBlock = normalizeBlock(cls.block);
+  return !!(course && year && block && course === classCourse && year === classYear && block === classBlock);
+}
+
+function classRoster(cls, students, includeIrregular = true) {
+  return (Array.isArray(students) ? students : []).filter((student) => studentMatchesClass(student, cls, includeIrregular));
 }
 
 function findClassBySubjectCode(code) {

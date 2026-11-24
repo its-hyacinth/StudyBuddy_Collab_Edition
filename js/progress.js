@@ -527,4 +527,5 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   render();
+  sbWhenReady(render);
 });

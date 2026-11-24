@@ -30,101 +30,7 @@ $studentKeys = ['studybuddy_subjects','studybuddy_assignments','studybuddy_tasks
 $teacherKeys = ['studybuddy_assignments','studybuddy_schedule','studybuddy_classes','studybuddy_students','studybuddy_grades','studybuddy_messages','studybuddy_resources','studybuddy_settings'];
 $allowed = ($user['role'] ?? '') === 'teacher' ? $teacherKeys : $studentKeys;
 
-function cleanDateValue(mixed $value): ?string {
-    $value = trim((string)($value ?? ''));
-    return preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) ? $value : null;
-}
-function cleanTimeValue(mixed $value): ?string {
-    $value = trim((string)($value ?? ''));
-    if (preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $value)) return strlen($value) === 5 ? $value . ':00' : $value;
-    return null;
-}
-function firstValue(array $row, array $keys, mixed $default = null): mixed {
-    foreach ($keys as $key) if (array_key_exists($key, $row)) return $row[$key];
-    return $default;
-}
-function collectionRow(string $key, array $row, int $index): array {
-    $id = (string)firstValue($row, ['id','externalId','classroomWorkId','classroomId'], 'row_' . $index);
-    $json = json_encode($row, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
-    $common = ['external_id'=>$id, 'payload_json'=>$json, 'sort_order'=>$index];
-    switch ($key) {
-        case 'studybuddy_subjects':
-            return $common + ['name'=>(string)firstValue($row,['name','title'],'Untitled subject'), 'code'=>firstValue($row,['code']), 'description'=>firstValue($row,['description'])];
-        case 'studybuddy_assignments':
-            return $common + ['subject_external_id'=>firstValue($row,['subjectId']), 'title'=>(string)firstValue($row,['title','name'],'Untitled assignment'), 'description'=>firstValue($row,['description']), 'due_date'=>cleanDateValue(firstValue($row,['dueDate','due_date'])), 'status'=>(string)firstValue($row,['status'],'upcoming')];
-        case 'studybuddy_tasks':
-            return $common + ['title'=>(string)firstValue($row,['title','name'],'Untitled task'), 'description'=>firstValue($row,['description']), 'due_date'=>cleanDateValue(firstValue($row,['dueDate','due_date'])), 'status'=>(string)firstValue($row,['status'],'pending')];
-        case 'studybuddy_schedule':
-            return $common + ['title'=>(string)firstValue($row,['title','subject'],'Class schedule'), 'schedule_date'=>cleanDateValue(firstValue($row,['date','scheduleDate','schedule_date'])), 'day_name'=>firstValue($row,['day','dayName','day_name']), 'start_time'=>cleanTimeValue(firstValue($row,['startTime','start_time','start'])), 'end_time'=>cleanTimeValue(firstValue($row,['endTime','end_time','end'])), 'room'=>firstValue($row,['room'])];
-        case 'studybuddy_classes':
-            return $common + ['class_name'=>(string)firstValue($row,['name','className'],'Class'), 'subject_name'=>firstValue($row,['subject']), 'section'=>firstValue($row,['section']), 'room'=>firstValue($row,['room'])];
-        case 'studybuddy_students':
-            return $common + ['student_name'=>(string)firstValue($row,['name','fullName'],'Student'), 'email'=>firstValue($row,['email']), 'student_number'=>firstValue($row,['studentNumber','student_number'])];
-        case 'studybuddy_grades':
-            return $common + ['student_external_id'=>firstValue($row,['studentId','student_id']), 'assignment_external_id'=>firstValue($row,['assignmentId','assignment_id']), 'score'=>is_numeric(firstValue($row,['score','grade'])) ? (float)firstValue($row,['score','grade']) : null, 'max_score'=>is_numeric(firstValue($row,['maxPoints','maxScore','max_score'])) ? (float)firstValue($row,['maxPoints','maxScore','max_score']) : null];
-        case 'studybuddy_messages':
-            return $common + ['sender_name'=>firstValue($row,['sender','senderName']), 'recipient_name'=>firstValue($row,['recipient','recipientName']), 'message_body'=>(string)firstValue($row,['text','message','body'],''), 'is_read'=>!empty($row['read']) ? 1 : 0];
-        case 'studybuddy_resources':
-            return $common + ['title'=>(string)firstValue($row,['title','name'],'Resource'), 'description'=>firstValue($row,['description']), 'file_url'=>firstValue($row,['url','fileUrl','file_url'])];
-        case 'studybuddy_drive':
-            return $common + ['title'=>(string)firstValue($row,['name','title'],'Drive file'), 'mime_type'=>firstValue($row,['mimeType','mime_type']), 'file_url'=>firstValue($row,['url','webViewLink','file_url'])];
-    }
-    return $common;
-}
-function persistCollectionRows(PDO $pdo, int $userId, string $key, array $value, array $collections): void {
-    $table = $collections[$key]['table'];
-    $pdo->prepare("DELETE FROM {$table} WHERE user_id=?")->execute([$userId]);
-    $columns = $collections[$key]['columns'];
-    $placeholders = implode(',', array_fill(0, count($columns) + 1, '?'));
-    $columnSql = implode(',', $columns);
-    $insert = $pdo->prepare("INSERT INTO {$table}(user_id,{$columnSql}) VALUES({$placeholders})");
-    foreach (array_values($value) as $index => $item) {
-        if (!is_array($item)) continue;
-        $mapped = collectionRow($key, $item, $index);
-        $params = [$userId];
-        foreach ($columns as $column) $params[] = $mapped[$column] ?? null;
-        $insert->execute($params);
-    }
-}
-function existingCollectionIds(PDO $pdo, int $userId, string $key, array $collections): array {
-    $table = $collections[$key]['table'];
-    $stmt = $pdo->prepare("SELECT external_id FROM {$table} WHERE user_id=?");
-    $stmt->execute([$userId]);
-    $ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
-    if ($ids) return array_fill_keys(array_map('strval', $ids), true);
-
-    $stmt = $pdo->prepare('SELECT state_value FROM app_state WHERE user_id=? AND state_key=?');
-    $stmt->execute([$userId, $key]);
-    $legacy = json_decode((string)($stmt->fetchColumn() ?: 'null'), true);
-    $existing = [];
-    if (is_array($legacy)) {
-        foreach (array_values($legacy) as $index => $item) {
-            if (!is_array($item)) continue;
-            $id = (string)firstValue($item, ['id','externalId','classroomWorkId','classroomId'], 'row_' . $index);
-            $existing[$id] = true;
-        }
-    }
-    return $existing;
-}
-function notifyStudentCollectionAdditions(PDO $pdo, int $userId, string $key, array $items, array $existingIds): void {
-    $seen = $existingIds;
-    $insert = $pdo->prepare('INSERT INTO notifications (user_id,title,body) VALUES (?,?,?)');
-    foreach (array_values($items) as $index => $item) {
-        if (!is_array($item)) continue;
-        $id = (string)firstValue($item, ['id','externalId','classroomWorkId','classroomId'], 'row_' . $index);
-        if (isset($seen[$id])) continue;
-        $seen[$id] = true;
-
-        $itemTitle = trim((string)firstValue($item, ['title','name'], ''));
-        if ($itemTitle === '') $itemTitle = $key === 'studybuddy_tasks' ? 'Untitled task' : 'Untitled activity';
-        $isTask = $key === 'studybuddy_tasks';
-        $isClassroom = !$isTask && (($item['source'] ?? '') === 'classroom' || !empty($item['classroomWorkId']));
-        $title = $isTask ? 'New task added' : ($isClassroom ? 'New Google Classroom activity' : 'New activity added');
-        $subject = trim((string)($item['subject'] ?? ''));
-        $body = $itemTitle . ($subject !== '' ? ' · ' . $subject : '');
-        $insert->execute([$userId, $title, $body]);
-    }
-}
+require_once __DIR__ . '/../includes/collections.php';
 
 try {
     if ($method === 'GET') {
@@ -137,7 +43,16 @@ try {
         }
 
         $values = [];
+        if ($isBatch) {
+            $placeholders = implode(',', array_fill(0, count($keys), '?'));
+            $batch = $pdo->prepare("SELECT state_key, state_value FROM app_state WHERE user_id=? AND state_key IN ($placeholders)");
+            $batch->execute(array_merge([(int)$user['id']], $keys));
+            foreach ($batch->fetchAll() as $row) {
+                $values[$row['state_key']] = json_decode((string)$row['state_value'], true);
+            }
+        }
         foreach ($keys as $key) {
+            if (array_key_exists($key, $values)) continue;
             if (isset($collections[$key])) {
                 $table = $collections[$key]['table'];
                 $stmt = $pdo->prepare("SELECT payload_json FROM {$table} WHERE user_id = ? ORDER BY sort_order ASC, id ASC");
@@ -173,11 +88,23 @@ try {
         $value = $input['value'] ?? null;
         $json = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
         if ($json === false) json_response(['ok'=>false,'message'=>'The submitted data could not be encoded.'], 422);
+        if ($key === 'studybuddy_classes' && is_array($value)) {
+            require_once __DIR__ . '/../includes/join_codes.php';
+            sb_ensure_join_codes($pdo);
+        }
 
         $pdo->beginTransaction();
         $notifyKey = ($user['role'] ?? '') === 'student'
             && in_array($key, ['studybuddy_assignments','studybuddy_tasks'], true)
             && is_array($value);
+        $deliverAssignments = ($user['role'] ?? '') === 'teacher'
+            && $key === 'studybuddy_assignments'
+            && is_array($value);
+        $previousAssignments = [];
+        if ($deliverAssignments) {
+            require_once __DIR__ . '/../includes/assignment_delivery.php';
+            $previousAssignments = sb_load_user_collection($pdo, (int)$user['id'], $key, $collections);
+        }
         $existingIds = $notifyKey ? existingCollectionIds($pdo, (int)$user['id'], $key, $collections) : [];
         $stmt = $pdo->prepare('INSERT INTO app_state(user_id,state_key,state_value) VALUES(?,?,?) ON DUPLICATE KEY UPDATE state_value=VALUES(state_value)');
         $stmt->execute([(int)$user['id'], $key, $json]);
@@ -188,10 +115,32 @@ try {
                 json_response(['ok'=>false,'message'=>'This data collection must be an array.'], 422);
             }
             persistCollectionRows($pdo, (int)$user['id'], $key, $value, $collections);
+            if ($key === 'studybuddy_classes') {
+                require_once __DIR__ . '/../includes/join_codes.php';
+                sb_sync_join_codes($pdo, (int)$user['id'], $value);
+            }
         }
         if ($notifyKey) notifyStudentCollectionAdditions($pdo, (int)$user['id'], $key, $value, $existingIds);
+        $delivery = null;
+        $mailQueue = [];
+        if ($deliverAssignments) {
+            $delivery = deliver_teacher_assignments(
+                $pdo,
+                (int)$user['id'],
+                (string)($user['name'] ?? 'Your teacher'),
+                $previousAssignments,
+                $value,
+                $collections
+            );
+            $mailQueue = $delivery['mailQueue'] ?? [];
+            unset($delivery['mailQueue']);
+        }
         $pdo->commit();
-        json_response(['ok'=>true]);
+        foreach ($mailQueue as $message) {
+            if (sb_send_assignment_mail($message)) $delivery['emailed']++;
+            else $delivery['emailFailed']++;
+        }
+        json_response($delivery ? ['ok'=>true, 'delivery'=>$delivery] : ['ok'=>true]);
     }
 
     if ($method === 'DELETE') {

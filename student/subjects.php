@@ -26,6 +26,9 @@
           <button type="button" class="btn btn-outline" id="syncClassroomBtn">
             <i data-lucide="refresh-cw"></i> Sync Classroom
           </button>
+          <button type="button" class="btn btn-outline" id="joinClassBtn">
+            <i data-lucide="key-round"></i> Join class
+          </button>
           <button type="button" class="btn btn-primary" id="addSubjectBtn">
             <i data-lucide="plus"></i> Add Subject
           </button>
@@ -144,6 +147,28 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-primary" data-close-modal="quickFactModal">Done</button>
       </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="joinClassModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Join a class</h3>
+        <button type="button" class="modal-close" data-close-modal="joinClassModal" aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <form id="joinClassForm">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="joinCodeInput">Class code</label>
+            <input class="form-control" id="joinCodeInput" required placeholder="Example: K7M2Q9P" autocomplete="off" />
+          </div>
+          <p class="subtitle">Ask your teacher for the code from the class page. Joining adds the class and its assignments here.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-close-modal="joinClassModal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Join</button>
+        </div>
+      </form>
     </div>
   </div>
 

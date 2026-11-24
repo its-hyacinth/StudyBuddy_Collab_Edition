@@ -9,6 +9,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const greeting = document.getElementById('greeting');
   if (greeting) greeting.textContent = `${greetingTime()}, ${firstName}! 👋`;
 
+  let todayItems = [];
+  let todayStr = '';
+  function paintDashboard() {
   const subjects = getSubjects();
   const assignments = getAssignments();
   const tasks = getTasks();
@@ -27,7 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const overallProgress = subjects.length
     ? Math.round(subjects.reduce((sum, subject) => sum + Math.min(Math.max(Number(subject.progress) || 0, 0), 100), 0) / subjects.length)
     : 0;
-  const todayStr = localDateStr();
+  todayStr = localDateStr();
 
   const setStat = (id, value) => {
     const el = document.getElementById(id);
@@ -52,7 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
     taskDelta.textContent = `${dueToday} due today`;
   }
 
-  const todayItems = schedule.filter((s) => s.date === todayStr).sort((a, b) => String(a.startTime || '').localeCompare(String(b.startTime || '')));
+  todayItems = schedule.filter((s) => s.date === todayStr).sort((a, b) => String(a.startTime || '').localeCompare(String(b.startTime || '')));
   const schedEl = document.getElementById('todaySchedule');
   if (schedEl) {
     schedEl.innerHTML = todayItems.length
@@ -172,6 +175,11 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       </div>`;
   }
+
+  }
+
+  paintDashboard();
+  sbWhenReady(paintDashboard);
 
   const runClassroomSync = async (btn) => {
     const result = await syncGoogleClassroom(btn);

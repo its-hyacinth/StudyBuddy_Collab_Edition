@@ -38,7 +38,7 @@
           <div class="stat-body">
             <div class="stat-label">Total Students</div>
             <div class="stat-value" id="statTotalStudents">0</div>
-            <div class="stat-delta up"><i data-lucide="users"></i> Loading…</div>
+            <div class="stat-delta up" id="statStudentsDelta"><i data-lucide="users"></i> Across your classes</div>
           </div>
         </div>
         <div class="stat-card">
@@ -76,9 +76,6 @@
             </div>
             <select id="studentCourseFilter" aria-label="Filter by course">
               <option value="">All Courses</option>
-              <option value="BSIT">BSIT</option>
-              <option value="BSCS">BSCS</option>
-              <option value="BSECE">BSECE</option>
             </select>
             <select id="studentYearFilter" aria-label="Filter by year">
               <option value="">All Years</option>
@@ -102,7 +99,7 @@
                     <th>Student</th>
                     <th>Email</th>
                     <th>Course</th>
-                    <th>Year</th>
+                    <th>Year / Block</th>
                     <th>Class</th>
                     <th style="text-align: left;">GPA</th>
                     <th>Status</th>
@@ -231,21 +228,23 @@
           <div class="form-row">
             <div class="form-group">
               <label for="studentCourse">Course</label>
-              <select class="form-control" id="studentCourse" required>
-                <option value="">Select course</option>
-                <option value="BSIT">BSIT</option>
-                <option value="BSCS">BSCS</option>
-                <option value="BSECE">BSECE</option>
-              </select>
+              <select class="form-control" id="studentCourse" required></select>
             </div>
             <div class="form-group">
               <label for="studentYear">Year Level</label>
-              <select class="form-control" id="studentYear" required>
-                <option value="">Select year</option>
-                <option value="1st Year">1st Year</option>
-                <option value="2nd Year">2nd Year</option>
-                <option value="3rd Year">3rd Year</option>
-                <option value="4th Year">4th Year</option>
+              <select class="form-control" id="studentYear" required></select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="studentSection">Block / Section</label>
+              <input class="form-control" type="text" id="studentSection" placeholder="e.g. B" autocomplete="off" />
+            </div>
+            <div class="form-group">
+              <label for="studentStanding">Standing</label>
+              <select class="form-control" id="studentStanding">
+                <option value="regular">Regular</option>
+                <option value="irregular">Irregular</option>
               </select>
             </div>
           </div>

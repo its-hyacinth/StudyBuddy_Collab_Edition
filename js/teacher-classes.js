@@ -49,8 +49,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Students from Google Classroom (c.students) + students you added yourself to this class
   function enrolledCount(c, students) {
-    const added = students.filter((s) => s.classId === c.id).length;
-    return (Number(c.students) || 0) + added;
+    return (Number(c.students) || 0) + classRoster(c, students, true).length;
+  }
+
+  function fillClassOfferingSelects() {
+    const course = document.getElementById('classCourse');
+    const year = document.getElementById('classYear');
+    if (course && !course.options.length) course.innerHTML = courseOptionsHtml('Select course');
+    if (year && !year.options.length) year.innerHTML = yearOptionsHtml('Select year');
   }
 
   function setText(id, value) {
@@ -97,7 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <div class="cell-icon"><i data-lucide="graduation-cap"></i></div>
               <div>
                 <div class="title">${escapeHtml(c.name)}</div>
-                <div class="subtitle">${escapeHtml([title, c.room || 'Room TBA'].filter(Boolean).join(' · '))}</div>
+                <div class="subtitle">${escapeHtml([classBlockLabel(c), title, c.room || 'Room TBA'].filter(Boolean).join(' · '))}</div>
               </div>
             </div>
           </td>
@@ -193,7 +199,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const notSet = 'Not set';
 
     const code = classSubjectCode(c);
-    setText('detailName', c.name);
+    setText('detailName', classBlockLabel(c) ? `${c.name} — ${classBlockLabel(c)}` : c.name);
     setText('detailSubject', code
       ? `${code}${c.subject && c.subject !== code ? ' · ' + c.subject : ''}`
       : (c.subject || notSet));
@@ -210,10 +216,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function handleClassClick(e) {
-    // Ignore clicks on buttons/links (e.g. the actions menu)
     if (e.target.closest('button, a, .action-menu-wrap')) return;
     const item = e.target.closest('[data-id]');
-    if (item) openClassDetails(item.dataset.id);
+    if (item) window.location.href = `class.php?id=${encodeURIComponent(item.dataset.id)}`;
   }
   document.getElementById('classesTableBody')?.addEventListener('click', handleClassClick);
   document.getElementById('classesGridView')?.addEventListener('click', handleClassClick);
@@ -247,6 +252,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function openAddClass() {
     editingId = null;
+    fillClassOfferingSelects();
     document.getElementById('addClassForm')?.reset();
     setFormMode(false);
     openModal('addClassModal');
@@ -258,9 +264,18 @@ document.addEventListener('DOMContentLoaded', () => {
     editingId = id;
     const setVal = (field, v) => { const el = document.getElementById(field); if (el) el.value = v ?? ''; };
 
+    fillClassOfferingSelects();
+    const courseSelect = document.getElementById('classCourse');
+    const courseCode = normalizeCourseCode(c.course);
+    if (courseSelect && courseCode && ![...courseSelect.options].some((option) => option.value === courseCode)) {
+      courseSelect.add(new Option(courseCode, courseCode));
+    }
     setVal('className', c.name);
     setVal('classSubjectCode', classSubjectCode(c));
     setVal('classSubject', c.subject);
+    setVal('classCourse', courseCode);
+    setVal('classYear', yearLevelLabel(c.year));
+    setVal('classBlock', c.block || '');
     setVal('classRoom', c.room);
     setVal('classSchedule', c.schedule);
     setVal('classStartTime', c.startTime || '09:00');
@@ -271,6 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
     openModal('addClassModal');
   }
 
+  fillClassOfferingSelects();
   document.getElementById('addClassBtn')?.addEventListener('click', openAddClass);
 
   document.getElementById('editClassBtn')?.addEventListener('click', () => {
@@ -284,6 +300,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const name = document.getElementById('className')?.value.trim();
     const subjectCode = document.getElementById('classSubjectCode')?.value.trim();
     const subject = document.getElementById('classSubject')?.value.trim();
+    const course = normalizeCourseCode(document.getElementById('classCourse')?.value || '');
+    const year = yearLevelLabel(document.getElementById('classYear')?.value || '');
+    const block = document.getElementById('classBlock')?.value.trim() || '';
     const room = document.getElementById('classRoom')?.value.trim() || '';
     const schedule = document.getElementById('classSchedule')?.value.trim() || '';
     const startTime = document.getElementById('classStartTime')?.value || '';
@@ -291,18 +310,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const description = document.getElementById('classDescription')?.value.trim() || '';
 
     if (!name || !subjectCode || !subject) { showToast('Subject code, class name, and subject title are required', 'error'); return; }
+    if (!course || !year || !block) { showToast('Course, year level, and block are required', 'error'); return; }
     if (!normalizeSubjectCode(subjectCode)) { showToast('Subject code needs at least one letter or number', 'error'); return; }
     if (!startTime || !endTime) { showToast('Start and end time required', 'error'); return; }
     if (endTime <= startTime) { showToast('End time must be after start time', 'error'); return; }
 
     const list = getClasses();
-    const duplicate = list.find((c) => c.id !== editingId && normalizeSubjectCode(classSubjectCode(c)) === normalizeSubjectCode(subjectCode));
+    const offering = classOfferingKey({ subjectCode, course, year, block });
+    const duplicate = list.find((c) => c.id !== editingId && classOfferingKey(c) === offering);
     if (duplicate) {
-      showToast(`Subject code ${subjectCode} is already used by ${duplicate.name}`, 'error');
+      showToast(`${subjectCode} is already offered to ${classBlockLabel({ course, year, block })}`, 'error');
       return;
     }
     const fields = {
       name, subject, subjectCode, code: subjectCode,
+      course, year, block,
       short: subjectTone(subjectCode),
       room, schedule, startTime, endTime, description,
     };
@@ -313,7 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
       list[idx] = { ...list[idx], ...fields };
     } else {
       list.push({
-        id: uid('cls'), ...fields,
+        id: uid('cls'), ...fields, joinCode: makeJoinCode(),
         students: 0, nextActivity: 'TBD', nextDate: '2025-09-30', progress: 0,
       });
     }
@@ -327,5 +349,18 @@ document.addEventListener('DOMContentLoaded', () => {
     render();
   });
 
+  function ensureJoinCodes() {
+    const classes = getClasses();
+    if (!classes.some((item) => !item.joinCode)) return;
+    sbSet(SB_KEYS.CLASSES, classes.map((item) => item.joinCode ? item : { ...item, joinCode: makeJoinCode() }));
+  }
+  const editId = new URLSearchParams(window.location.search).get('edit');
+  ensureJoinCodes();
+  if (editId) openEditClass(editId);
   render();
+  sbWhenReady(() => {
+    ensureJoinCodes();
+    if (editId) openEditClass(editId);
+    render();
+  });
 });

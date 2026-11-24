@@ -59,8 +59,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Same formula as My Classes / Dashboard: Classroom students + students you added
-  function enrolledCount(cls, students) {
-    return (Number(cls.students) || 0) + students.filter((s) => s.classId === cls.id).length;
+  function enrolledCount(cls, students, includeIrregular = true) {
+    return (Number(cls.students) || 0) + classRoster(cls, students, includeIrregular).length;
   }
 
   function classOf(a, classes) {
@@ -267,7 +267,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function teacherRow(a, classes, students) {
     const cls = classOf(a, classes);
     const short = cls?.short || subjectShort(a.subject);
-    const enrolled = cls ? enrolledCount(cls, students) : '—';
+    const enrolled = cls ? enrolledCount(cls, students, a.includeIrregular !== false) : '—';
     const status = a.displayStatus || a.status;
     return `
       <tr data-id="${escapeHtml(a.id)}" data-status="${escapeHtml(a.status)}" style="cursor:pointer" title="Click for details">
@@ -585,7 +585,31 @@ document.addEventListener('DOMContentLoaded', () => {
     const hint = document.getElementById('asgClassHint');
     if (hint) hint.hidden = classes.length > 0;
   }
-  if (isTeacher) fillTeacherClassSelects();
+
+  function updateAsgAudienceHint() {
+    const hint = document.getElementById('asgAudienceHint');
+    if (!hint) return;
+    const classId = document.getElementById('asgClass')?.value || '';
+    const cls = getClasses().find((item) => item.id === classId);
+    if (!cls) {
+      hint.textContent = 'Choose the course, year, and block. Students in that block are notified, and the deadline is added to their calendar.';
+      return;
+    }
+    const includeIrregular = document.getElementById('asgIncludeIrregular')?.checked !== false;
+    const roster = classRoster(cls, getStudents(), includeIrregular);
+    const irregular = roster.filter((student) => isIrregularStudent(student)).length;
+    const block = classBlockLabel(cls) || classDisplayName(cls);
+    hint.textContent = `${block} · ${roster.length} student${roster.length === 1 ? '' : 's'} will receive this`
+      + (irregular ? ` (${irregular} irregular)` : '')
+      + '. The deadline notifies them and appears on their calendar.';
+  }
+
+  if (isTeacher) {
+    fillTeacherClassSelects();
+    document.getElementById('asgClass')?.addEventListener('change', updateAsgAudienceHint);
+    document.getElementById('asgIncludeIrregular')?.addEventListener('change', updateAsgAudienceHint);
+    updateAsgAudienceHint();
+  }
 
   // ---- Teacher: assignment details popup + edit ----
   function setEl(id, text) {
@@ -609,7 +633,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!a) { showToast('Assignment is no longer available.', 'error'); return; }
     currentAsgId = id;
     const cls = classOf(a, getClasses());
-    const enrolled = cls ? enrolledCount(cls, getStudents()) : '—';
+    const enrolled = cls ? enrolledCount(cls, getStudents(), a.includeIrregular !== false) : '—';
     const due = a.dueDate
       ? formatDate(a.dueDate) + (a.dueTime ? ' · ' + formatTimeOfDay(a.dueTime) : '')
       : 'No due date';
@@ -641,6 +665,9 @@ document.addEventListener('DOMContentLoaded', () => {
     set('asgDueTime', a.dueTime || '23:59');
     set('asgPoints', a.points);
     set('asgDescription', a.description);
+    const irregularBox = document.getElementById('asgIncludeIrregular');
+    if (irregularBox) irregularBox.checked = a.includeIrregular !== false;
+    updateAsgAudienceHint();
     setAsgFormMode(true);
     openModal('createAsgModal');
   }
@@ -678,6 +705,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (isTeacher) {
         resetAsgForm();
         fillTeacherClassSelects();
+        const irregularBox = document.getElementById('asgIncludeIrregular');
+        if (irregularBox) irregularBox.checked = true;
+        updateAsgAudienceHint();
       }
       openModal('addAssignmentModal');
       openModal('createAsgModal');
@@ -720,6 +750,10 @@ document.addEventListener('DOMContentLoaded', () => {
         subjectId: cls.id,
         subject: cls.subject || cls.name,
         subjectCode: classSubjectCode(cls),
+        course: normalizeCourseCode(cls.course),
+        year: yearLevelLabel(cls.year),
+        block: cls.block || '',
+        includeIrregular: document.getElementById('asgIncludeIrregular')?.checked !== false,
         points: Number(val('asgPoints')) || 0,
         submissions: 0,
       };
@@ -746,7 +780,18 @@ document.addEventListener('DOMContentLoaded', () => {
     closeModal('createAsgModal');
     form.reset();
     if (isTeacher) { editingAsgId = null; setAsgFormMode(false); }
-    showToast(wasEditing ? 'Assignment updated' : 'Assignment created');
+    const delivery = window.SB_LAST_DELIVERY;
+    window.SB_LAST_DELIVERY = null;
+    let message = wasEditing ? 'Assignment updated' : 'Assignment created';
+    if (delivery) {
+      const notes = [];
+      if (delivery.notified) notes.push(`notified ${delivery.notified} student${delivery.notified === 1 ? '' : 's'}`);
+      if (delivery.emailed) notes.push(`emailed ${delivery.emailed}`);
+      else if (delivery.emailFailed) notes.push('in-app notice sent, but this server could not send email');
+      if (delivery.unmatched) notes.push(`${delivery.unmatched} on the roster ${delivery.unmatched === 1 ? 'has' : 'have'} no StudyBuddy account yet`);
+      if (notes.length) message += `. ${notes.join(', ')}`;
+    }
+    showToast(message);
     render();
   });
 
@@ -761,6 +806,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   render();
+  sbWhenReady(render);
   const requestedAssignmentId = !isTeacher
     ? new URLSearchParams(window.location.search).get('assignment')
     : null;
