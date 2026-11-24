@@ -127,6 +127,21 @@ async function classroomApi(path, token) {
   return res.json();
 }
 
+async function classroomApiPages(path, listKey, token, maxPages = 5) {
+  const items = [];
+  let pageToken = '';
+  for (let pageIndex = 0; pageIndex < maxPages; pageIndex++) {
+    const pagePath = pageToken
+      ? `${path}${path.includes('?') ? '&' : '?'}pageToken=${encodeURIComponent(pageToken)}`
+      : path;
+    const page = await classroomApi(pagePath, token);
+    if (Array.isArray(page[listKey])) items.push(...page[listKey]);
+    pageToken = String(page.nextPageToken || '');
+    if (!pageToken) break;
+  }
+  return items;
+}
+
 function requestClassroomAccessToken(clientId) {
   return new Promise((resolve, reject) => {
     if (!window.google?.accounts?.oauth2) {
@@ -231,8 +246,7 @@ async function fetchLiveClassroomPayload() {
   if (!clientId) return null;
   await loadScript('https://accounts.google.com/gsi/client');
   const token = await requestClassroomAccessToken(clientId);
-  const list = await classroomApi('courses?courseStates=ACTIVE&pageSize=50', token);
-  const courses = list.courses || [];
+  const courses = await classroomApiPages('courses?courseStates=ACTIVE&pageSize=50', 'courses', token);
   if (!courses.length) return { courses: [], assignments: [], empty: true, live: true };
 
   const subjects = [];
@@ -250,25 +264,29 @@ async function fetchLiveClassroomPayload() {
     const subject = mapLiveCourseToSubject(course, teacherName);
     subjects.push(subject);
     try {
-      const work = await classroomApi(`courses/${course.id}/courseWork?pageSize=50`, token);
-      const courseWork = work.courseWork || [];
-      for (let index = 0; index < courseWork.length; index += 5) {
-        const batch = courseWork.slice(index, index + 5);
-        const withSubmissions = await Promise.all(batch.map(async (item) => {
-          if (!item.id || item.workType === 'MATERIAL') return item;
-          try {
-            const result = await classroomApi(
-              `courses/${encodeURIComponent(course.id)}/courseWork/${encodeURIComponent(item.id)}/studentSubmissions?userId=me&pageSize=10`,
-              token
-            );
-            return { ...item, studentSubmission: result.studentSubmissions?.[0] || null };
-          } catch (error) {
-            submissionErrors.push({ courseWorkId: item.id, message: error.message || 'Could not load this submission.' });
-            return { ...item, studentSubmissionError: true };
-          }
-        }));
-        assignments.push(...withSubmissions.map((item) => mapLiveCoursework(item, subject)));
+      const coursePath = `courses/${encodeURIComponent(course.id)}`;
+      const courseWork = await classroomApiPages(`${coursePath}/courseWork?pageSize=50`, 'courseWork', token, 3);
+      let submissionsByWork = new Map();
+      let submissionFetchFailed = false;
+      if (courseWork.length) {
+        try {
+          const submissions = await classroomApiPages(
+            `${coursePath}/courseWork/-/studentSubmissions?userId=me&pageSize=100`,
+            'studentSubmissions',
+            token,
+            10
+          );
+          submissionsByWork = new Map(submissions.map((submission) => [String(submission.courseWorkId), submission]));
+        } catch (error) {
+          submissionFetchFailed = true;
+          submissionErrors.push({ courseId: course.id, message: error.message || 'Could not load course submissions.' });
+        }
       }
+      assignments.push(...courseWork.map((item) => mapLiveCoursework({
+        ...item,
+        studentSubmission: submissionsByWork.get(String(item.id)) || null,
+        studentSubmissionError: submissionFetchFailed,
+      }, subject)));
     } catch (error) {
       console.warn('Could not load coursework from Google Classroom for this course.', error);
     }
@@ -327,9 +345,12 @@ async function syncGoogleClassroom(buttonEl) {
       const result = applyClassroomPayload(payload);
       const who = payload.email ? ` (${payload.email})` : '';
       const submissionErrorCount = Array.isArray(payload.submissionErrors) ? payload.submissionErrors.length : 0;
-      const message = `Synced ${result.courseCount} classes and ${result.assignmentCount} coursework items from Google Classroom${who}`;
+      const completedCount = Array.isArray(payload.assignments)
+        ? payload.assignments.filter((assignment) => assignment.status === 'completed').length
+        : 0;
+      const message = `Synced ${result.courseCount} classes and ${result.assignmentCount} coursework items from Google Classroom${who}; ${completedCount} submitted`;
       showToast(
-        submissionErrorCount ? `${message}. Could not load submissions for ${submissionErrorCount} items.` : message,
+        submissionErrorCount ? `${message}. Could not load submissions for ${submissionErrorCount} courses.` : message,
         submissionErrorCount ? 'warning' : 'success'
       );
       return { ok: true, ...result };
@@ -340,9 +361,12 @@ async function syncGoogleClassroom(buttonEl) {
     if (!payload) throw new Error('Google Classroom did not return any course data.');
     const result = applyClassroomPayload(payload);
     const submissionErrorCount = Array.isArray(payload.submissionErrors) ? payload.submissionErrors.length : 0;
-    const message = `Synced ${result.courseCount} classes and ${result.assignmentCount} coursework items from Google Classroom.`;
+    const completedCount = Array.isArray(payload.assignments)
+      ? payload.assignments.filter((assignment) => assignment.status === 'completed').length
+      : 0;
+    const message = `Synced ${result.courseCount} classes and ${result.assignmentCount} coursework items; ${completedCount} submitted.`;
     showToast(
-      submissionErrorCount ? `${message} Could not load submissions for ${submissionErrorCount} items.` : message,
+      submissionErrorCount ? `${message} Could not load submissions for ${submissionErrorCount} courses.` : message,
       submissionErrorCount ? 'warning' : 'success'
     );
     return { ok: true, ...result };

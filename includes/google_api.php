@@ -236,23 +236,30 @@ function google_classroom_payload(PDO $pdo, int $userId): array {
         } catch (Throwable $error) {
             $courseWork = [];
         }
-        foreach ($courseWork as &$work) {
-            $workId = (string)($work['id'] ?? '');
-            $work['studentSubmission'] = null;
-            if ($workId === '' || ($work['workType'] ?? '') === 'MATERIAL') continue;
+        $submissionsByWork = [];
+        $submissionFetchFailed = false;
+        if ($courseWork) {
             try {
                 $submissions = google_api_pages(
                     'https://classroom.googleapis.com/v1/courses/' . rawurlencode($courseId)
-                        . '/courseWork/' . rawurlencode($workId) . '/studentSubmissions?userId=me&pageSize=10',
+                        . '/courseWork/-/studentSubmissions?userId=me&pageSize=100',
                     $access,
                     'studentSubmissions',
-                    1
+                    10
                 );
-                $work['studentSubmission'] = $submissions[0] ?? null;
+                foreach ($submissions as $submission) {
+                    $workId = (string)($submission['courseWorkId'] ?? '');
+                    if ($workId !== '') $submissionsByWork[$workId] = $submission;
+                }
             } catch (Throwable $error) {
-                $work['studentSubmissionError'] = true;
-                $submissionErrors[] = ['courseWorkId' => $workId, 'message' => $error->getMessage()];
+                $submissionFetchFailed = true;
+                $submissionErrors[] = ['courseId' => $courseId, 'message' => $error->getMessage()];
             }
+        }
+        foreach ($courseWork as &$work) {
+            $workId = (string)($work['id'] ?? '');
+            $work['studentSubmission'] = $submissionsByWork[$workId] ?? null;
+            if ($submissionFetchFailed) $work['studentSubmissionError'] = true;
         }
         unset($work);
         $course['teacherName'] = $teacherName;
