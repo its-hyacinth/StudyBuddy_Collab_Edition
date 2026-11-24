@@ -201,13 +201,6 @@
 }
 .auth-footer a { font-weight: 600; }
 
-.demo-toggles {
-  display: flex;
-  gap: 8px;
-  margin-top: 20px;
-}
-.demo-toggles .btn { flex: 1; font-size: 12px; padding: 8px; }
-
 .auth-error {
   background: var(--danger-bg);
   color: var(--danger);

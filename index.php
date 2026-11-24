@@ -14,7 +14,7 @@ if (!empty($_SESSION['user'])) { header('Location: ' . ($_SESSION['user']['role'
   <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="css/components.css" />
   <link rel="stylesheet" href="css/pages.css" />
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <script defer src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
   <div class="auth-page">
@@ -161,11 +161,6 @@ if (!empty($_SESSION['user'])) { header('Location: ' . ($_SESSION['user']['role'
           Continue with Google
         </a>
 
-        <div class="demo-toggles">
-          <button type="button" class="btn btn-ghost" id="demoStudent">Demo as Student</button>
-          <button type="button" class="btn btn-outline" id="demoTeacher">Demo as Teacher</button>
-        </div>
-
         <div class="auth-footer">
           By continuing, you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
         </div>
@@ -173,8 +168,7 @@ if (!empty($_SESSION['user'])) { header('Location: ' . ($_SESSION['user']['role'
     </div>
   </div>
 
-  <script src="js/data.js"></script>
   <script src="js/auth.js"></script>
-  <script>lucide.createIcons();</script>
+  <script>document.addEventListener('DOMContentLoaded', () => { if (window.lucide) lucide.createIcons(); });</script>
 </body>
 </html>

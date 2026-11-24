@@ -67,7 +67,6 @@ function showAuthStep(step) {
   document.getElementById('googleRoleForm')?.toggleAttribute('hidden', step !== 'role');
   document.querySelector('.auth-divider')?.toggleAttribute('hidden', step !== 'login');
   document.getElementById('googleLogin')?.toggleAttribute('hidden', step !== 'login');
-  document.querySelector('.demo-toggles')?.toggleAttribute('hidden', step !== 'login');
 }
 
 function configureSignupRoleFields(roleId, studentFieldsId, teacherFieldsId) {
@@ -291,8 +290,6 @@ function initLoginPage() {
     showAuthStep('login');
   });
   wireGoogleRoleForm(errorEl);
-  document.getElementById('demoStudent')?.addEventListener('click', () => showAuthError(errorEl, 'Demo accounts are disabled. Please register a student account.'));
-  document.getElementById('demoTeacher')?.addEventListener('click', () => showAuthError(errorEl, 'Demo accounts are disabled. Please register a teacher account.'));
   document.querySelector('.auth-options a')?.addEventListener('click', (event) => {
     event.preventDefault();
     showAuthError(errorEl, 'Email password reset is not set up on this server. Sign in with Google, or use a backup code if Google Authenticator is enabled.');

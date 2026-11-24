@@ -51,6 +51,9 @@ let SB_BOOT_SETTLED = false;
 let SB_BOOT_FAILED = false;
 
 const SB_BOOT = (function prefetchRoleState() {
+  const path = window.location.pathname;
+  const onAuthPage = /\/(index|signup)\.php$/i.test(path) || /\/$/.test(path);
+  if (onAuthPage) return Promise.resolve();
   const keys = SB_ROLE_STATE_KEYS;
   if (!keys.length) return Promise.resolve();
   const params = new URLSearchParams({ keys: keys.join(',') });
@@ -63,7 +66,11 @@ const SB_BOOT = (function prefetchRoleState() {
   })
     .then((response) => {
       if (response.status === 401) {
-        window.location.href = window.location.pathname.includes('/student/') || window.location.pathname.includes('/teacher/') ? '../index.php' : 'index.php';
+        const path = window.location.pathname;
+        const onAuthPage = /\/(index|signup)\.php$/i.test(path) || /\/$/.test(path);
+        if (!onAuthPage) {
+          window.location.href = path.includes('/student/') || path.includes('/teacher/') ? '../index.php' : 'index.php';
+        }
         return null;
       }
       if (!response.ok) return null;
