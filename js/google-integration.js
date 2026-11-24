@@ -409,6 +409,69 @@ async function syncGoogleCalendar(buttonEl) {
   }
 }
 
+async function syncTodayScheduleToGoogleCalendar(events, date, buttonEl) {
+  const done = withButtonLoading(buttonEl, 'Syncing today...');
+  try {
+    const todayEvents = (Array.isArray(events) ? events : []).filter((entry) => entry.date === date);
+    if (!todayEvents.length) {
+      showToast('There are no schedule entries for today to sync.', 'info');
+      return { ok: false };
+    }
+
+    const status = await googleConnectionStatus(true);
+    if (!status.configured) {
+      showToast('Google Calendar is not configured on this server.', 'error');
+      return { ok: false };
+    }
+    if (!status.connected || !String(status.scopes || '').includes('/auth/calendar')) {
+      beginGoogleConnect();
+      return { ok: false, pending: true };
+    }
+    applyGoogleConnection(status);
+
+    const body = new URLSearchParams({
+      date,
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Manila',
+      events: JSON.stringify(todayEvents.map((entry) => ({
+        id: entry.id,
+        title: entry.title,
+        subject: entry.subject || '',
+        date: entry.date,
+        startTime: entry.startTime || '',
+        endTime: entry.endTime || '',
+        room: entry.room || '',
+      }))),
+    });
+    const response = await fetch(`${SB_API_BASE}google.php?action=calendar-sync-schedule`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || '',
+      },
+      body,
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok) throw new Error(result.message || 'Could not sync today’s schedule.');
+
+    if (result.failed?.length) {
+      const firstFailure = result.failed[0];
+      showToast(
+        `Synced ${result.synced} of ${todayEvents.length}. ${firstFailure.title}: ${String(firstFailure.message || 'Could not sync event.').slice(0, 120)}`,
+        'warning'
+      );
+    } else {
+      showToast(`Synced ${result.synced} schedule events to Google Calendar.`, 'success');
+    }
+    return { ok: true, ...result };
+  } catch (error) {
+    showToast(error.message || 'Could not sync today’s schedule.', 'error');
+    return { ok: false, error };
+  } finally {
+    done();
+  }
+}
+
 async function mockGoogleCalendarSync(buttonEl) {
   return syncGoogleCalendar(buttonEl);
 }

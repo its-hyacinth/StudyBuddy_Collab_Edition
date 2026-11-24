@@ -541,6 +541,86 @@ function google_calendar_save(PDO $pdo, int $userId, array $input): array {
     ];
 }
 
+function google_calendar_sync_schedule(PDO $pdo, int $userId, array $events, string $date, string $zone): array {
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+        throw new RuntimeException('Choose a valid date to sync.');
+    }
+    if (count($events) > 100) {
+        throw new RuntimeException('Sync fewer schedule events at a time.');
+    }
+    $zone = google_calendar_zone($zone);
+    $today = (new DateTimeImmutable('now', new DateTimeZone($zone)))->format('Y-m-d');
+    if ($date !== $today) {
+        throw new RuntimeException('Only today’s schedule can be synced from the dashboard.');
+    }
+
+    $access = google_access_token($pdo, $userId);
+    $synced = 0;
+    $failed = [];
+    foreach ($events as $entry) {
+        $title = is_array($entry) ? trim((string)($entry['title'] ?? '')) : 'Untitled event';
+        try {
+            if (!is_array($entry)) throw new RuntimeException('Invalid schedule event.');
+            $entryId = trim((string)($entry['id'] ?? ''));
+            if ($entryId === '' || strlen($entryId) > 180) throw new RuntimeException('This event has no valid schedule ID.');
+            if ((string)($entry['date'] ?? '') !== $date) throw new RuntimeException('This event is not scheduled for today.');
+            if ($title === '' || strlen($title) > 200) throw new RuntimeException('Enter an event title.');
+
+            $startTime = trim((string)($entry['startTime'] ?? ''));
+            $endTime = trim((string)($entry['endTime'] ?? ''));
+            if (($startTime === '') !== ($endTime === '')) throw new RuntimeException('Both start and end times are required.');
+            if ($startTime !== '' && (!preg_match('/^\d{2}:\d{2}$/', $startTime)
+                || !preg_match('/^\d{2}:\d{2}$/', $endTime) || $endTime <= $startTime)) {
+                throw new RuntimeException('Enter a valid start and end time.');
+            }
+
+            $room = trim((string)($entry['room'] ?? ''));
+            $body = [
+                'summary' => $title,
+                'location' => substr($room, 0, 200),
+                'description' => trim((string)($entry['subject'] ?? '')),
+            ];
+            if ($startTime === '') {
+                $body['start'] = ['date' => $date];
+                $body['end'] = ['date' => (new DateTimeImmutable($date, new DateTimeZone($zone)))->modify('+1 day')->format('Y-m-d')];
+            } else {
+                $body['start'] = ['dateTime' => $date . 'T' . $startTime . ':00', 'timeZone' => $zone];
+                $body['end'] = ['dateTime' => $date . 'T' . $endTime . ':00', 'timeZone' => $zone];
+            }
+
+            $eventId = substr(hash('sha256', 'studybuddy:' . $userId . ':' . $entryId), 0, 40);
+            $body['id'] = $eventId;
+            $url = 'https://www.googleapis.com/calendar/v3/calendars/primary/events/' . rawurlencode($eventId);
+            $headers = ['Authorization: Bearer ' . $access, 'Content-Type: application/json'];
+            $updateBody = $body;
+            unset($updateBody['id']);
+            $response = google_http('PATCH', $url, $headers, json_encode($updateBody));
+            if ($response['status'] === 404) {
+                $response = google_http(
+                    'POST',
+                    'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+                    $headers,
+                    json_encode($body)
+                );
+                if ($response['status'] === 409) {
+                    $response = google_http('PATCH', $url, $headers, json_encode($updateBody));
+                }
+            }
+            if ($response['status'] < 200 || $response['status'] >= 300) {
+                $message = (string)($response['json']['error']['message'] ?? 'Google Calendar rejected this event.');
+                if (str_contains(strtolower($message), 'insufficient') || str_contains(strtolower($message), 'scope')) {
+                    $message = 'Reconnect Google so StudyBuddy can use Google Calendar.';
+                }
+                throw new RuntimeException($message);
+            }
+            $synced++;
+        } catch (Throwable $error) {
+            $failed[] = ['title' => $title !== '' ? $title : 'Untitled event', 'message' => $error->getMessage()];
+        }
+    }
+    return ['synced' => $synced, 'failed' => $failed];
+}
+
 function google_calendar_delete(PDO $pdo, int $userId, string $eventId): void {
     $eventId = google_calendar_event_id($eventId);
     $access = google_access_token($pdo, $userId);
