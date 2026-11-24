@@ -24,6 +24,8 @@ const SB_KEYS = {
 const SB_SEED_VERSION = 2;
 
 const SB_API_BASE = (window.location.pathname.includes('/student/') || window.location.pathname.includes('/teacher/')) ? '../api/' : 'api/';
+const SB_STATE_CACHE = new Map();
+
 function sbRequest(method, key, value) {
   const xhr = new XMLHttpRequest();
   const url = `${SB_API_BASE}state.php?key=${encodeURIComponent(key)}`;
@@ -36,13 +38,44 @@ function sbRequest(method, key, value) {
   try { return JSON.parse(xhr.responseText); } catch { return null; }
 }
 function sbGet(key, fallback = null) {
+  if (SB_STATE_CACHE.has(key)) return SB_STATE_CACHE.get(key) ?? fallback;
   const result = sbRequest('GET', key);
-  return result && result.ok && result.value !== null ? result.value : fallback;
+  if (result && result.ok) {
+    SB_STATE_CACHE.set(key, result.value);
+    return result.value ?? fallback;
+  }
+  return fallback;
 }
-function sbSet(key, value) { sbRequest('POST', key, value); }
+async function sbPrefetchState(keys) {
+  const missingKeys = keys.filter((key) => !SB_STATE_CACHE.has(key));
+  if (!missingKeys.length) return;
+  const params = new URLSearchParams({ keys: missingKeys.join(',') });
+  const response = await fetch(`${SB_API_BASE}state.php?${params}`, {
+    credentials: 'same-origin',
+    cache: 'no-store',
+  });
+  if (response.status === 401) {
+    window.location.href = window.location.pathname.includes('/student/') || window.location.pathname.includes('/teacher/') ? '../index.php' : 'index.php';
+    return;
+  }
+  if (!response.ok) throw new Error(`Could not load schedule data: HTTP ${response.status}`);
+  const result = await response.json();
+  if (!result.ok) throw new Error(result.message || 'Could not load schedule data.');
+  missingKeys.forEach((key) => {
+    if (!Object.prototype.hasOwnProperty.call(result.values, key)) {
+      throw new Error(`Schedule data response was missing ${key}.`);
+    }
+    SB_STATE_CACHE.set(key, result.values[key]);
+  });
+}
+function sbSet(key, value) {
+  const result = sbRequest('POST', key, value);
+  if (result && result.ok) SB_STATE_CACHE.set(key, value);
+}
 function sbRemove(key) {
   const xhr = new XMLHttpRequest(); xhr.open('DELETE', `${SB_API_BASE}state.php?key=${encodeURIComponent(key)}`, false);
   xhr.setRequestHeader('X-CSRF-Token', document.querySelector('meta[name="csrf-token"]')?.content || ''); xhr.send();
+  if (xhr.status >= 200 && xhr.status < 300) SB_STATE_CACHE.delete(key);
 }
 
 function uid(prefix = 'id') {

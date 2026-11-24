@@ -89,29 +89,40 @@ function persistCollectionRows(PDO $pdo, int $userId, string $key, array $value,
 
 try {
     if ($method === 'GET') {
-        $key = (string)($_GET['key'] ?? '');
-        if (!in_array($key, $allowed, true)) json_response(['ok'=>false,'message'=>'Invalid data key for this account role.'], 403);
-        if (isset($collections[$key])) {
-            $table = $collections[$key]['table'];
-            $stmt = $pdo->prepare("SELECT payload_json FROM {$table} WHERE user_id = ? ORDER BY sort_order ASC, id ASC");
-            $stmt->execute([(int)$user['id']]);
-            $rows = $stmt->fetchAll(PDO::FETCH_COLUMN);
-            if ($rows) {
-                $value = array_map(static fn($json) => json_decode((string)$json, true) ?? [], $rows);
-                json_response(['ok'=>true,'value'=>$value]);
+        $isBatch = isset($_GET['keys']);
+        $keysParam = $isBatch ? $_GET['keys'] : ($_GET['key'] ?? '');
+        if (!is_string($keysParam)) json_response(['ok'=>false,'message'=>'Invalid data key.'], 400);
+        $keys = $isBatch ? array_values(array_unique(explode(',', $keysParam))) : [$keysParam];
+        if (!$keys || in_array('', $keys, true) || array_diff($keys, $allowed)) {
+            json_response(['ok'=>false,'message'=>'Invalid data key for this account role.'], 403);
+        }
+
+        $values = [];
+        foreach ($keys as $key) {
+            if (isset($collections[$key])) {
+                $table = $collections[$key]['table'];
+                $stmt = $pdo->prepare("SELECT payload_json FROM {$table} WHERE user_id = ? ORDER BY sort_order ASC, id ASC");
+                $stmt->execute([(int)$user['id']]);
+                $rows = $stmt->fetchAll(PDO::FETCH_COLUMN);
+                if ($rows) {
+                    $values[$key] = array_map(static fn($json) => json_decode((string)$json, true) ?? [], $rows);
+                    continue;
+                }
             }
+
+            $stmt = $pdo->prepare('SELECT state_value FROM app_state WHERE user_id=? AND state_key=?');
+            $stmt->execute([(int)$user['id'], $key]);
+            $row = $stmt->fetch();
+            $legacyValue = $row ? json_decode($row['state_value'], true) : null;
+            // Lazy migration: older versions stored whole collections only in app_state.
+            if (isset($collections[$key]) && is_array($legacyValue)) {
+                $pdo->beginTransaction();
+                persistCollectionRows($pdo, (int)$user['id'], $key, $legacyValue, $collections);
+                $pdo->commit();
+            }
+            $values[$key] = $legacyValue;
         }
-        $stmt = $pdo->prepare('SELECT state_value FROM app_state WHERE user_id=? AND state_key=?');
-        $stmt->execute([(int)$user['id'], $key]);
-        $row = $stmt->fetch();
-        $legacyValue = $row ? json_decode($row['state_value'], true) : null;
-        // Lazy migration: older versions stored whole collections only in app_state.
-        if (isset($collections[$key]) && is_array($legacyValue)) {
-            $pdo->beginTransaction();
-            persistCollectionRows($pdo, (int)$user['id'], $key, $legacyValue, $collections);
-            $pdo->commit();
-        }
-        json_response(['ok'=>true,'value'=>$legacyValue]);
+        json_response($isBatch ? ['ok'=>true,'values'=>$values] : ['ok'=>true,'value'=>$values[$keys[0]]]);
     }
 
     if ($method === 'POST') {

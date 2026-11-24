@@ -1,10 +1,20 @@
 /**
  * StudyBuddy — Schedule / Calendar (student + teacher)
  */
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const isTeacher = document.body.dataset.role === 'teacher';
   const session = initShell(isTeacher ? 'teacher' : 'student');
   if (!session) return;
+  try {
+    await sbPrefetchState([
+      SB_KEYS.ASSIGNMENTS,
+      SB_KEYS.SCHEDULE,
+      SB_KEYS.CLASSES,
+      ...(!isTeacher ? [SB_KEYS.SUBJECTS] : []),
+    ]);
+  } catch (error) {
+    console.error('Could not preload schedule data:', error);
+  }
   wireModalClosers();
 
   const pageParams = new URLSearchParams(window.location.search);
@@ -52,6 +62,10 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
   }
 
+  function scheduleSubjects() {
+    return isTeacher ? [] : getSubjects();
+  }
+
   function findPersonalEvent(id) {
     return personalEvents().find((entry) => entry.id === id);
   }
@@ -96,7 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const classes = new Set([
       ...Array.from(select.options).slice(1).map((option) => option.value),
       ...getClasses().map((item) => item.name),
-      ...getSubjects().map((item) => item.name),
+      ...scheduleSubjects().map((item) => item.name),
       ...getSchedule().map((item) => item.subject),
       ...getAssignments().map((item) => item.subject),
     ].filter(Boolean).map(String));
@@ -316,7 +330,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function openScheduleForm(event = null, date = '', returnToDayDetails = false) {
     editingScheduleId = event?.id || null;
     reopenDayAfterScheduleForm = returnToDayDetails;
-    const subject = getSubjects().find((item) => item.id === event?.subjectId || item.name === event?.subject);
+    const subject = scheduleSubjects().find((item) => item.id === event?.subjectId || item.name === event?.subject);
     document.getElementById('schTitle').value = event?.title || '';
     document.getElementById('schSubject').value = subject?.id || '';
     document.getElementById('schDate').value = event?.date || date || localDateStr();
@@ -481,7 +495,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const subjSelect = document.getElementById('schSubject');
   if (subjSelect) {
-    const subjects = getSubjects();
+    const subjects = scheduleSubjects();
     const selected = subjects.some((subject) => subject.id === subjSelect.value) ? subjSelect.value : '';
     subjSelect.innerHTML = '<option value="">General / no subject</option>' + subjects.map((subject) =>
       `<option value="${escapeHtml(subject.id)}">${escapeHtml(subject.name)}</option>`
@@ -494,7 +508,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const title = document.getElementById('schTitle')?.value.trim();
     const subjectId = document.getElementById('schSubject')?.value;
     const existing = editingScheduleId ? findPersonalEvent(editingScheduleId) : null;
-    const subject = getSubjects().find((s) => s.id === subjectId)?.name || existing?.subject || title;
+    const subject = scheduleSubjects().find((s) => s.id === subjectId)?.name || existing?.subject || title;
     const date = document.getElementById('schDate')?.value;
     const startTime = document.getElementById('schStartTime')?.value || '09:00';
     const endTime = document.getElementById('schEndTime')?.value || '10:00';
