@@ -174,25 +174,12 @@
             <label for="composeTo">To</label>
             <select class="form-control" id="composeTo" required>
               <option value="">Select student</option>
-              <option value="stu_1">Maria Santos</option>
-              <option value="stu_2">Juan Dela Cruz</option>
-              <option value="stu_3">Ana Reyes</option>
-              <option value="stu_4">Pedro Garcia</option>
-              <option value="stu_5">Lisa Mendoza</option>
-              <option value="stu_6">Carlos Lopez</option>
-              <option value="stu_7">Sofia Cruz</option>
-              <option value="stu_8">Miguel Torres</option>
             </select>
           </div>
           <div class="form-group">
             <label for="composeClass">Class (optional)</label>
             <select class="form-control" id="composeClass">
               <option value="">Select class</option>
-              <option value="Math 101">Math 101</option>
-              <option value="Science 205">Science 205</option>
-              <option value="English 101">English 101</option>
-              <option value="CS 308">CS 308</option>
-              <option value="Filipino 101">Filipino 101</option>
             </select>
           </div>
           <div class="form-group">

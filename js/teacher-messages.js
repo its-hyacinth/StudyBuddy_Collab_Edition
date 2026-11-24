@@ -76,16 +76,55 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof lucide !== 'undefined') lucide.createIcons();
   }
 
-  document.getElementById('composeBtn')?.addEventListener('click', () => openModal('composeModal'));
+  function fillSelect(select, placeholder, items) {
+    if (!select) return;
+    const previous = select.value;
+    select.replaceChildren();
+    const blank = document.createElement('option');
+    blank.value = '';
+    blank.textContent = placeholder;
+    select.appendChild(blank);
+    items.forEach((item) => {
+      const option = document.createElement('option');
+      option.value = item.value;
+      option.textContent = item.label;
+      select.appendChild(option);
+    });
+    select.value = items.some((item) => item.value === previous) ? previous : '';
+  }
+
+  function syncComposeOptions() {
+    const classSelect = document.getElementById('composeClass');
+    const classes = getClasses();
+    fillSelect(classSelect, 'Select class', classes.map((cls) => ({
+      value: String(cls.id),
+      label: classDisplayName(cls) || cls.name || 'Untitled class',
+    })));
+    const selected = classes.find((cls) => String(cls.id) === classSelect?.value);
+    const students = (selected ? classRoster(selected, getStudents(), true) : getStudents())
+      .slice()
+      .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+    fillSelect(document.getElementById('composeTo'), 'Select student', students.map((student) => ({
+      value: String(student.id),
+      label: student.name || student.email || 'Student',
+    })));
+  }
+
+  document.getElementById('composeClass')?.addEventListener('change', syncComposeOptions);
+  document.getElementById('composeBtn')?.addEventListener('click', () => {
+    syncComposeOptions();
+    openModal('composeModal');
+  });
   document.getElementById('composeForm')?.addEventListener('submit', (e) => {
     e.preventDefault();
-    const to = document.getElementById('msgTo')?.value.trim();
-    const body = document.getElementById('msgBody')?.value.trim();
-    const cls = document.getElementById('msgClass')?.value || 'General';
+    const student = getStudents().find((item) => String(item.id) === document.getElementById('composeTo')?.value);
+    const cls = getClasses().find((item) => String(item.id) === document.getElementById('composeClass')?.value);
+    const body = document.getElementById('composeBody')?.value.trim();
+    const to = student?.name || '';
     if (!to || !body) { showToast('Recipient and message required', 'error'); return; }
     const list = getMessages();
     list.unshift({
-      id: uid('msg'), from: to, preview: body, time: 'Just now', unread: false, class: cls,
+      id: uid('msg'), from: to, preview: body, time: 'Just now', unread: false, class: cls ? classDisplayName(cls) : 'General',
     });
     sbSet(SB_KEYS.MESSAGES, list);
     closeModal('composeModal');
@@ -96,6 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   renderList();
   renderThread();
-  sbWhenReady(() => { renderList(); renderThread(); });
+  syncComposeOptions();
+  sbWhenReady(() => { renderList(); renderThread(); syncComposeOptions(); });
   if (typeof lucide !== 'undefined') lucide.createIcons();
 });
