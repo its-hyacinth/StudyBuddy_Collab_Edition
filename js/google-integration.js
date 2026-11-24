@@ -176,6 +176,13 @@ function beginGoogleConnect(nextPath) {
   window.location.href = `${SB_API_BASE}google.php?action=start&next=${encodeURIComponent(next)}`;
 }
 
+function googleCalendarSyncReady(status) {
+  const scopes = String(status?.scopes || '');
+  return !!status?.connected
+    && scopes.includes('/auth/calendar.events')
+    && scopes.includes('/auth/calendar.calendarlist.readonly');
+}
+
 function applyGoogleConnection(status) {
   window.SB_GOOGLE = status;
   if (!status || !status.configured || typeof getSettings !== 'function') return;
@@ -185,7 +192,7 @@ function applyGoogleConnection(status) {
       ...settings.connected,
       googleClassroom: !!status.connected,
       googleDrive: !!status.connected,
-      googleCalendar: !!status.connected && String(status.scopes || '').includes('/auth/calendar'),
+      googleCalendar: googleCalendarSyncReady(status),
     },
     googleEmail: status.email || '',
   });
@@ -421,20 +428,21 @@ async function syncGoogleCalendar(buttonEl) {
       showToast('Add the Google client ID and secret in config/google.php, then connect Calendar.', 'warning');
       return { ok: false };
     }
-    if (!status.connected || !String(status.scopes || '').includes('/auth/calendar')) {
-      if (isTodaySync) {
-        beginGoogleConnect();
-      } else {
-        const next = new URL(window.location.href);
-        next.searchParams.set('syncScheduleAfterConnect', '1');
-        beginGoogleConnect(`${next.pathname}${next.search}${next.hash}`);
-      }
+    if (!googleCalendarSyncReady(status)) {
+      const next = new URL(window.location.href);
+      next.searchParams.set('syncCalendarAfterConnect', '1');
+      beginGoogleConnect(`${next.pathname}${next.search}${next.hash}`);
       return { ok: false, pending: true };
     }
     applyGoogleConnection(status);
-    if (typeof window.refreshGoogleCalendar === 'function') await window.refreshGoogleCalendar();
-    showToast(status.email ? `Synced Google Calendar for ${status.email}` : 'Synced Google Calendar', 'success');
-    return { ok: true };
+    if (typeof window.refreshGoogleCalendar !== 'function') {
+      showToast('Google Calendar is connected. Open Schedule to import events and holidays.', 'success');
+      return { ok: true, imported: false };
+    }
+    const events = await window.refreshGoogleCalendar();
+    const holidayCount = events.filter((event) => event.calendarSource === 'google-holiday').length;
+    showToast(`Synced ${events.length} Google Calendar events, including ${holidayCount} holidays.`, 'success');
+    return { ok: true, imported: true, eventCount: events.length, holidayCount };
   } catch (err) {
     showToast(err.message || 'Calendar sync failed.', 'error');
     return { ok: false, error: err };
@@ -560,7 +568,9 @@ document.addEventListener('DOMContentLoaded', () => {
   if (flag) {
     if (flag === 'connected') {
       showToast('Google Classroom, Calendar, and Drive are connected.', 'success');
-      if (params.get('syncScheduleAfterConnect') === '1') {
+      if (params.get('syncCalendarAfterConnect') === '1') {
+        window.SB_PENDING_CALENDAR_IMPORT = true;
+      } else if (params.get('syncScheduleAfterConnect') === '1') {
         window.SB_PENDING_SCHEDULE_SYNC = true;
       } else {
         syncGoogleClassroom();
@@ -570,6 +580,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     params.delete('google');
     params.delete('message');
+    params.delete('syncCalendarAfterConnect');
     params.delete('syncScheduleAfterConnect');
     const query = params.toString();
     window.history.replaceState({}, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`);

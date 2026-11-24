@@ -454,6 +454,16 @@ function google_calendar_when(?array $point): array {
     return ['date' => $when->format('Y-m-d'), 'time' => $when->format('H:i')];
 }
 
+function google_calendar_is_holiday_calendar(array $calendar): bool {
+    $calendarId = strtolower(trim((string)($calendar['id'] ?? '')));
+    $calendarName = strtolower(trim(implode(' ', array_filter([
+        (string)($calendar['summary'] ?? ''),
+        (string)($calendar['summaryOverride'] ?? ''),
+    ]))));
+    return str_contains($calendarId, '#holiday@group.v.calendar.google.com')
+        || str_contains($calendarName, 'holiday');
+}
+
 function google_calendar_events(PDO $pdo, int $userId, string $startDate, string $endDate, string $zone): array {
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $startDate) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $endDate)) {
         throw new RuntimeException('Choose a valid date range.');
@@ -463,7 +473,20 @@ function google_calendar_events(PDO $pdo, int $userId, string $startDate, string
     $start = new DateTime($startDate . ' 00:00:00', $tz);
     $end = new DateTime($endDate . ' 23:59:59', $tz);
     $access = google_access_token($pdo, $userId);
-    $url = 'https://www.googleapis.com/calendar/v3/calendars/primary/events?' . http_build_query([
+    $calendarList = google_api_pages(
+        'https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=250',
+        $access,
+        'items',
+        10
+    );
+    $calendars = array_values(array_filter($calendarList, static function (array $calendar): bool {
+        $isPrimary = !empty($calendar['primary']);
+        $isVisible = empty($calendar['hidden']) && (($calendar['selected'] ?? true) !== false);
+        return $isPrimary || ($isVisible && google_calendar_is_holiday_calendar($calendar));
+    }));
+    if (!$calendars) throw new RuntimeException('No Google Calendar or holiday calendars are available to sync.');
+
+    $query = http_build_query([
         'timeMin' => $start->format(DateTime::RFC3339),
         'timeMax' => $end->format(DateTime::RFC3339),
         'singleEvents' => 'true',
@@ -471,28 +494,46 @@ function google_calendar_events(PDO $pdo, int $userId, string $startDate, string
         'maxResults' => 250,
         'timeZone' => $zone,
     ]);
-    $items = google_api_pages($url, $access, 'items', 3);
     $events = [];
-    foreach ($items as $item) {
-        if (($item['status'] ?? '') === 'cancelled') continue;
-        $startPoint = google_calendar_when($item['start'] ?? null);
-        $endPoint = google_calendar_when($item['end'] ?? null);
-        if ($startPoint['date'] === '') continue;
-        $events[] = [
-            'id' => 'gcal_' . (string)($item['id'] ?? ''),
-            'googleEventId' => (string)($item['id'] ?? ''),
-            'title' => (string)($item['summary'] ?? 'Untitled event'),
-            'subject' => 'Google Calendar',
-            'date' => $startPoint['date'],
-            'startTime' => $startPoint['time'],
-            'endTime' => $endPoint['date'] === $startPoint['date'] ? $endPoint['time'] : '',
-            'room' => (string)($item['location'] ?? ''),
-            'type' => 'event',
-            'source' => 'google-calendar',
-            'calendarSource' => 'google',
-            'studyBuddyScheduleId' => (string)($item['extendedProperties']['private']['studybuddyScheduleId'] ?? ''),
-            'url' => (string)($item['htmlLink'] ?? ''),
-        ];
+    foreach ($calendars as $calendar) {
+        $calendarId = trim((string)($calendar['id'] ?? ''));
+        if ($calendarId === '') continue;
+        $isHoliday = empty($calendar['primary']);
+        $calendarName = (string)($calendar['summaryOverride'] ?? $calendar['summary'] ?? '');
+        $items = google_api_pages(
+            'https://www.googleapis.com/calendar/v3/calendars/' . rawurlencode($calendarId) . '/events?' . $query,
+            $access,
+            'items',
+            3
+        );
+        foreach ($items as $item) {
+            if (($item['status'] ?? '') === 'cancelled') continue;
+            $startPoint = google_calendar_when($item['start'] ?? null);
+            $endPoint = google_calendar_when($item['end'] ?? null);
+            if ($startPoint['date'] === '') continue;
+            $eventId = (string)($item['id'] ?? '');
+            $events[] = [
+                'id' => $isHoliday
+                    ? 'gcal_holiday_' . substr(hash('sha256', $calendarId . ':' . $eventId), 0, 24)
+                    : 'gcal_' . $eventId,
+                'googleEventId' => $eventId,
+                'googleCalendarId' => $calendarId,
+                'calendarName' => $calendarName,
+                'title' => (string)($item['summary'] ?? 'Untitled event'),
+                'subject' => $isHoliday ? 'Google Holidays' : 'Google Calendar',
+                'date' => $startPoint['date'],
+                'startTime' => $startPoint['time'],
+                'endTime' => $endPoint['date'] === $startPoint['date'] ? $endPoint['time'] : '',
+                'allDay' => $startPoint['time'] === '',
+                'room' => (string)($item['location'] ?? ''),
+                'type' => 'event',
+                'source' => 'google-calendar',
+                'calendarSource' => $isHoliday ? 'google-holiday' : 'google',
+                'readOnly' => $isHoliday,
+                'studyBuddyScheduleId' => (string)($item['extendedProperties']['private']['studybuddyScheduleId'] ?? ''),
+                'url' => (string)($item['htmlLink'] ?? ''),
+            ];
+        }
     }
     return $events;
 }

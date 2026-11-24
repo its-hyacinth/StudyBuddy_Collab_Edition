@@ -145,6 +145,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function scheduleActions(entry, context, reopenDay) {
+    if (entry.readOnly) return '';
     const id = escapeHtml(entry.id);
     const menuId = `schedule-menu-${context}-${String(entry.id).replace(/[^A-Za-z0-9_-]/g, '')}`;
     return `
@@ -295,7 +296,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             <h4>${escapeHtml(entry.title)}</h4>
             <span class="badge badge-info">${escapeHtml(entry.type || 'event')}</span>
           </div>
-          <div class="day-schedule-meta">${escapeHtml(entry.subject || 'General')} · ${entry.startTime ? escapeHtml(formatTime(entry.startTime)) : 'Time not set'}${entry.endTime ? ` – ${escapeHtml(formatTime(entry.endTime))}` : ''}</div>
+          <div class="day-schedule-meta">${escapeHtml(entry.subject || 'General')} · ${entry.startTime ? escapeHtml(formatTime(entry.startTime)) : entry.allDay ? 'All day' : 'Time not set'}${entry.endTime ? ` – ${escapeHtml(formatTime(entry.endTime))}` : ''}</div>
           ${entry.room ? `<div class="day-schedule-location">${escapeHtml(entry.room)}</div>` : ''}
         </div>
         ${scheduleActions(entry, 'day', true)}
@@ -358,7 +359,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         <div class="item-meta">
           <button type="button" class="schedule-day-link" data-schedule-date="${escapeHtml(s.date)}">
             <span class="item-title">${escapeHtml(s.title)}</span>
-            <span class="item-sub">${escapeHtml(formatDate(s.date))}${s.startTime ? ` · ${escapeHtml(formatTime(s.startTime))}${s.endTime ? ` – ${escapeHtml(formatTime(s.endTime))}` : ''}` : ' · Due date'}${s.room ? ` · ${escapeHtml(s.room)}` : ''}</span>
+            <span class="item-sub">${escapeHtml(formatDate(s.date))}${s.startTime ? ` · ${escapeHtml(formatTime(s.startTime))}${s.endTime ? ` – ${escapeHtml(formatTime(s.endTime))}` : ''}` : s.allDay ? ' · All day' : ' · Due date'}${s.room ? ` · ${escapeHtml(s.room)}` : ''}</span>
           </button>
         </div>
         <span class="badge ${escapeHtml(statusClass(s.calendarSource === 'assignment' && s.date < localDateStr() ? 'overdue' : s.type || 'event'))}">${escapeHtml(statusLabel(s.calendarSource === 'assignment' && s.date < localDateStr() ? 'overdue' : s.type || 'event'))}</span>
@@ -394,7 +395,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         <div class="item-meta">
           <button type="button" class="schedule-day-link" data-schedule-date="${escapeHtml(s.date)}">
             <span class="item-title">${escapeHtml(s.title)}</span>
-            <span class="item-sub">${escapeHtml(formatDate(s.date))}${s.startTime ? ` · ${escapeHtml(formatTime(s.startTime))}` : ' · Due date'}</span>
+            <span class="item-sub">${escapeHtml(formatDate(s.date))}${s.startTime ? ` · ${escapeHtml(formatTime(s.startTime))}` : s.allDay ? ' · All day' : ' · Due date'}</span>
           </button>
         </div>
         ${s.calendarSource === 'assignment' ? '<a class="view-all" href="assignments.php">Assignments</a>' : scheduleActions(s, 'upcoming', false)}
@@ -412,7 +413,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       .sort((a, b) => String(a.startTime || '').localeCompare(String(b.startTime || '')));
     el.innerHTML = items.length ? items.map((entry) => `
       <div class="schedule-item" ${scheduleDayAttributes(entry.date)}>
-        <span class="time">${entry.startTime ? escapeHtml(formatTime(entry.startTime)) : 'Time not set'}${entry.endTime ? ` – ${escapeHtml(formatTime(entry.endTime))}` : ''}</span>
+        <span class="time">${entry.startTime ? escapeHtml(formatTime(entry.startTime)) : entry.allDay ? 'All day' : 'Time not set'}${entry.endTime ? ` – ${escapeHtml(formatTime(entry.endTime))}` : ''}</span>
         <div class="info">
           <div class="subj">${escapeHtml(entry.title || entry.subject || 'Schedule event')}</div>
           <div class="room">${escapeHtml(entry.room || entry.subject || 'No location set')}</div>
@@ -580,31 +581,44 @@ document.addEventListener('DOMContentLoaded', async () => {
       syncScheduleToGoogleCalendar(scheduleEvents, e.currentTarget);
     });
   });
+  document.getElementById('importGoogleCalBtn')?.addEventListener('click', (event) => {
+    syncGoogleCalendar(event.currentTarget);
+  });
+  let googleCalendarRefreshRequest = null;
   window.refreshGoogleCalendar = async () => {
-    const status = window.SB_GOOGLE;
-    if (!status?.connected || !String(status.scopes || '').includes('/auth/calendar')) {
-      window.SB_GOOGLE_EVENTS = [];
+    if (googleCalendarRefreshRequest) return googleCalendarRefreshRequest;
+    googleCalendarRefreshRequest = (async () => {
+      const status = window.SB_GOOGLE;
+      if (!googleCalendarSyncReady(status)) {
+        window.SB_GOOGLE_EVENTS = [];
+        render();
+        return [];
+      }
+      const monthStart = new Date(calY, calM, 1);
+      const monthEnd = new Date(calY, calM + 1, 0);
+      const horizon = new Date();
+      horizon.setDate(horizon.getDate() + 45);
+      const rangeEnd = monthEnd > horizon ? monthEnd : horizon;
+      const start = `${monthStart.getFullYear()}-${String(monthStart.getMonth() + 1).padStart(2, '0')}-01`;
+      const end = `${rangeEnd.getFullYear()}-${String(rangeEnd.getMonth() + 1).padStart(2, '0')}-${String(rangeEnd.getDate()).padStart(2, '0')}`;
+      const params = new URLSearchParams({
+        action: 'calendar',
+        start,
+        end,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Manila',
+      });
+      const response = await fetch(`${SB_API_BASE}google.php?${params}`, { credentials: 'same-origin' });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.ok) throw new Error(result.message || 'Could not load Google Calendar.');
+      window.SB_GOOGLE_EVENTS = result.events || [];
       render();
-      return;
+      return window.SB_GOOGLE_EVENTS;
+    })();
+    try {
+      return await googleCalendarRefreshRequest;
+    } finally {
+      googleCalendarRefreshRequest = null;
     }
-    const monthStart = new Date(calY, calM, 1);
-    const monthEnd = new Date(calY, calM + 1, 0);
-    const horizon = new Date();
-    horizon.setDate(horizon.getDate() + 45);
-    const rangeEnd = monthEnd > horizon ? monthEnd : horizon;
-    const start = `${monthStart.getFullYear()}-${String(monthStart.getMonth() + 1).padStart(2, '0')}-01`;
-    const end = `${rangeEnd.getFullYear()}-${String(rangeEnd.getMonth() + 1).padStart(2, '0')}-${String(rangeEnd.getDate()).padStart(2, '0')}`;
-    const params = new URLSearchParams({
-      action: 'calendar',
-      start,
-      end,
-      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Manila',
-    });
-    const response = await fetch(`${SB_API_BASE}google.php?${params}`, { credentials: 'same-origin' });
-    const result = await response.json().catch(() => ({}));
-    if (!response.ok || !result.ok) throw new Error(result.message || 'Could not load Google Calendar.');
-    window.SB_GOOGLE_EVENTS = result.events || [];
-    render();
   };
   document.querySelectorAll('#openCalendarBtn, #openGoogleCalendarBtn').forEach((btn) => {
     btn.addEventListener('click', (e) => {
@@ -627,5 +641,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       entry.source !== 'google-calendar' && entry.source !== 'classroom'
     );
     syncScheduleToGoogleCalendar(scheduleEvents, document.getElementById('syncGoogleCalBtn'));
+  } else if (window.SB_PENDING_CALENDAR_IMPORT) {
+    window.SB_PENDING_CALENDAR_IMPORT = false;
+    syncGoogleCalendar(document.getElementById('importGoogleCalBtn'));
+  } else if (googleCalendarSyncReady(window.SB_GOOGLE)) {
+    window.refreshGoogleCalendar().catch((error) => showToast(error.message || 'Could not load Google Calendar.', 'error'));
   }
 });

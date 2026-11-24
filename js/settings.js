@@ -343,8 +343,8 @@ document.addEventListener('DOMContentLoaded', () => {
           : 'Not connected · Import BSIT 4 classes from Classroom');
     }
     if (calStatus) calStatus.textContent = calOn
-      ? 'Connected · Events come from your Google Calendar'
-      : 'Not connected · Show events from Google Calendar';
+      ? 'Connected · Events and holidays sync into your schedule'
+      : 'Not connected · Sync events and holidays from Google Calendar';
     if (driveStatus) driveStatus.textContent = driveOn
       ? 'Connected · Files come from your Google Drive'
       : 'Not connected · Access your Google Drive files';
@@ -354,8 +354,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!googleStatus.configured) {
         setupNote.textContent = `Classroom, Calendar, and Drive use one Google login. Put the OAuth client ID and secret in config/google.php. Redirect URI: ${googleStatus.redirectUri}`;
       } else if (googleStatus.connected) {
-        const calendarReady = String(googleStatus.scopes || '').includes('/auth/calendar');
-        setupNote.textContent = `Connected as ${googleStatus.email}. ${calendarReady ? 'Classroom, Calendar, and Drive use this account.' : 'Reconnect Google to allow Calendar.'}`;
+        const calendarReady = googleCalendarSyncReady(googleStatus);
+        setupNote.textContent = `Connected as ${googleStatus.email}. ${calendarReady ? 'Classroom, Calendar, and Drive use this account.' : 'Reconnect Google to sync Calendar events and holidays.'}`;
       } else {
         setupNote.textContent = 'Google credentials are saved. Connect Classroom, Calendar, or Drive to sign in.';
       }
@@ -378,7 +378,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (service !== 'classroom' && service !== 'drive' && service !== 'calendar') return;
     try {
       const status = await googleConnectionStatus(true);
-      const calendarReady = String(status.scopes || '').includes('/auth/calendar');
+      const calendarReady = googleCalendarSyncReady(status);
       if (!status.configured) {
         showToast('Add the Google client ID and secret in config/google.php. The redirect URI is listed under Connected Accounts.', 'warning');
         refreshConnected();
