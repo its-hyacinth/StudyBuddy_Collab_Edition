@@ -30,105 +30,10 @@
 
       <div class="page-layout">
         <div class="page-main">
-          <div class="filter-tabs" id="todoTabs" role="tablist">
-            <button type="button" class="filter-tab active" data-filter="all">All <span class="count">8</span></button>
-            <button type="button" class="filter-tab" data-filter="today">Today <span class="count">3</span></button>
-            <button type="button" class="filter-tab" data-filter="upcoming">Upcoming <span class="count">3</span></button>
-            <button type="button" class="filter-tab" data-filter="completed">Completed <span class="count">2</span></button>
-          </div>
+          <div class="filter-tabs" id="todoTabs" role="tablist"></div>
 
           <div class="card">
-            <div id="todoList">
-              <div class="todo-item" data-id="task_1" data-status="pending" data-today="true">
-                <label class="custom-check">
-                  <input type="checkbox" aria-label="Mark complete" />
-                  <span class="box"></span>
-                </label>
-                <div class="todo-body">
-                  <div class="todo-title">Review Algebra notes</div>
-                  <div class="todo-meta">
-                    <span class="subject-tag math">Mathematics</span>
-                    <span class="todo-due"><i data-lucide="clock"></i> Today · 10:00 AM</span>
-                  </div>
-                </div>
-                <span class="badge badge-pending">Pending</span>
-                <div class="action-menu-wrap">
-                  <button type="button" class="action-menu-btn" aria-label="Actions"><i data-lucide="more-horizontal"></i></button>
-                </div>
-              </div>
-
-              <div class="todo-item" data-id="task_2" data-status="pending" data-today="true">
-                <label class="custom-check">
-                  <input type="checkbox" aria-label="Mark complete" />
-                  <span class="box"></span>
-                </label>
-                <div class="todo-body">
-                  <div class="todo-title">Finish lab report draft</div>
-                  <div class="todo-meta">
-                    <span class="subject-tag science">Science</span>
-                    <span class="todo-due"><i data-lucide="clock"></i> Today · 2:00 PM</span>
-                  </div>
-                </div>
-                <span class="badge badge-pending">Pending</span>
-                <div class="action-menu-wrap">
-                  <button type="button" class="action-menu-btn" aria-label="Actions"><i data-lucide="more-horizontal"></i></button>
-                </div>
-              </div>
-
-              <div class="todo-item" data-id="task_4" data-status="pending" data-today="true">
-                <label class="custom-check">
-                  <input type="checkbox" aria-label="Mark complete" />
-                  <span class="box"></span>
-                </label>
-                <div class="todo-body">
-                  <div class="todo-title">Debug Python project</div>
-                  <div class="todo-meta">
-                    <span class="subject-tag cs">Computer Science</span>
-                    <span class="todo-due"><i data-lucide="clock"></i> Today · 4:00 PM</span>
-                  </div>
-                </div>
-                <span class="badge badge-pending">Pending</span>
-                <div class="action-menu-wrap">
-                  <button type="button" class="action-menu-btn" aria-label="Actions"><i data-lucide="more-horizontal"></i></button>
-                </div>
-              </div>
-
-              <div class="todo-item" data-id="task_3" data-status="upcoming" data-today="false">
-                <label class="custom-check">
-                  <input type="checkbox" aria-label="Mark complete" />
-                  <span class="box"></span>
-                </label>
-                <div class="todo-body">
-                  <div class="todo-title">Read Chapter 5</div>
-                  <div class="todo-meta">
-                    <span class="subject-tag english">English</span>
-                    <span class="todo-due"><i data-lucide="calendar"></i> Sep 13 · 6:00 PM</span>
-                  </div>
-                </div>
-                <span class="badge badge-upcoming">Upcoming</span>
-                <div class="action-menu-wrap">
-                  <button type="button" class="action-menu-btn" aria-label="Actions"><i data-lucide="more-horizontal"></i></button>
-                </div>
-              </div>
-
-              <div class="todo-item done" data-id="task_5" data-status="completed" data-today="false">
-                <label class="custom-check">
-                  <input type="checkbox" checked aria-label="Mark complete" />
-                  <span class="box"></span>
-                </label>
-                <div class="todo-body">
-                  <div class="todo-title">Memorize vocabulary list</div>
-                  <div class="todo-meta">
-                    <span class="subject-tag english">English</span>
-                    <span class="todo-due"><i data-lucide="check"></i> Completed Sep 11</span>
-                  </div>
-                </div>
-                <span class="badge badge-completed">Completed</span>
-                <div class="action-menu-wrap">
-                  <button type="button" class="action-menu-btn" aria-label="Actions"><i data-lucide="more-horizontal"></i></button>
-                </div>
-              </div>
-            </div>
+            <div id="todoList"></div>
           </div>
         </div>
 
@@ -141,29 +46,7 @@
               </div>
               <span class="badge badge-pending" id="todayTasksCount">0 left</span>
             </div>
-            <div id="todayTasksList">
-              <div class="list-item">
-                <span class="dot math"></span>
-                <div class="item-meta">
-                  <div class="item-title">Review Algebra notes</div>
-                  <div class="item-sub">10:00 AM</div>
-                </div>
-              </div>
-              <div class="list-item">
-                <span class="dot science"></span>
-                <div class="item-meta">
-                  <div class="item-title">Finish lab report draft</div>
-                  <div class="item-sub">2:00 PM</div>
-                </div>
-              </div>
-              <div class="list-item">
-                <span class="dot cs"></span>
-                <div class="item-meta">
-                  <div class="item-title">Debug Python project</div>
-                  <div class="item-sub">4:00 PM</div>
-                </div>
-              </div>
-            </div>
+            <div id="todayTasksList"></div>
           </div>
 
           <div class="card" id="quickAddAside">
@@ -180,10 +63,6 @@
               <div class="form-row" style="margin-bottom:10px">
                 <select class="form-control" id="quickTaskSubject" style="height:38px">
                   <option value="">Subject (optional)</option>
-                  <option value="subj_math">Mathematics</option>
-                  <option value="subj_sci">Science</option>
-                  <option value="subj_eng">English</option>
-                  <option value="subj_cs">Computer Science</option>
                 </select>
                 <input type="date" class="form-control" id="quickTaskDate" style="height:38px" />
               </div>
@@ -193,13 +72,6 @@
             </form>
           </div>
 
-          <div class="tip-card" id="studyReminderTip">
-            <div class="tip-icon"><i data-lucide="lightbulb"></i></div>
-            <p>"Break large tasks into smaller chunks. Completing one small step builds momentum for the rest."</p>
-            <div class="tip-footer">
-              <i data-lucide="bell"></i> Study Reminder · Updated daily
-            </div>
-          </div>
         </aside>
       </div>
     </div>
@@ -223,12 +95,6 @@
             <label for="taskSubject">Subject</label>
             <select class="form-control" id="taskSubject" name="subjectId">
               <option value="">Select subject (optional)</option>
-              <option value="subj_math">Mathematics</option>
-              <option value="subj_sci">Science</option>
-              <option value="subj_eng">English</option>
-              <option value="subj_cs">Computer Science</option>
-              <option value="subj_fil">Filipino</option>
-              <option value="subj_hist">History</option>
             </select>
           </div>
           <div class="form-row">

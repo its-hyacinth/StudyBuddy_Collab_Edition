@@ -10,9 +10,8 @@
  * include this site. Scopes: classroom.courses.readonly,
  * classroom.coursework.me.readonly, classroom.rosters.readonly.
  *
- * Without a client ID, sync uses the COR-based Classroom catalog
- * (BSIT 4, 1st Sem SY 2026-2027). Teachers stay TBA until Classroom
- * returns instructor names.
+ * Without Google Classroom data, the student sections remain empty until
+ * the account is connected and synced.
  */
 
 const CLASSROOM_SCOPES = [
@@ -20,10 +19,6 @@ const CLASSROOM_SCOPES = [
   'https://www.googleapis.com/auth/classroom.coursework.me.readonly',
   'https://www.googleapis.com/auth/classroom.rosters.readonly',
 ].join(' ');
-
-function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 function getGoogleClientId() {
   return String(window.SB_GOOGLE_CLIENT_ID || localStorage.getItem('studybuddy_google_client_id') || '').trim();
@@ -51,51 +46,25 @@ function withButtonLoading(buttonEl, label = 'Syncing...') {
   };
 }
 
-function classroomCourseworkMock() {
-  return CLASSROOM_COURSES.flatMap((course) =>
-    (course.coursework || []).map((work) => ({
-      ...work,
-      classroomId: course.id,
-      subjectId: course.subjectId,
-      subject: course.name,
-      source: 'classroom',
-    }))
-  );
-}
-
 function mapLiveCourseToSubject(course, teacherName) {
-  const catalog = CLASSROOM_COURSES.find((c) => {
-    const hay = `${course.name || ''} ${course.section || ''} ${course.descriptionHeading || ''}`.toUpperCase();
-    return hay.includes(c.code.replace(/\s/g, '')) || hay.includes(c.code) || hay.includes(c.shortName.toUpperCase());
-  });
-  const base = catalog || {
-    subjectId: `subj_${course.id}`,
-    short: subjectShort(course.name || 'Class'),
-    color: '#2563EB',
-    icon: 'book-open',
-    units: 3,
-    meetings: [],
+  const courseId = String(course.id || '').trim();
+  const courseName = String(course.name || '').trim();
+  if (!courseId || !courseName) throw new Error('Google Classroom returned a course without an ID or name.');
+  return {
+    id: `subj_gc_${courseId}`,
+    classroomId: courseId,
+    name: courseName,
+    shortName: courseName,
+    short: subjectShort(courseName),
     code: course.section || '',
     sectionCode: '',
-    shortName: course.name,
-  };
-  return {
-    id: base.subjectId,
-    classroomId: course.id,
-    name: course.name || base.name,
-    shortName: base.shortName || course.name,
-    short: base.short,
-    code: base.code,
-    sectionCode: base.sectionCode,
-    section: course.section || CLASSROOM_META.section,
-    units: base.units,
-    color: base.color,
-    icon: base.icon,
-    room: course.room || 'TBA',
-    professor: teacherName || 'TBA',
-    description: course.descriptionHeading || course.description || base.description || '',
-    meetings: base.meetings,
-    progress: base.progress || 0,
+    section: course.section || '',
+    color: '#2563EB',
+    icon: 'book-open',
+    room: course.room || '',
+    professor: teacherName || '',
+    description: course.descriptionHeading || course.description || '',
+    progress: null,
     assignments: 0,
     completed: 0,
     pending: 0,
@@ -104,22 +73,22 @@ function mapLiveCourseToSubject(course, teacherName) {
 }
 
 function mapLiveCoursework(work, subject) {
-  const due = work.dueDate
+  const dueDate = work.dueDate
     ? `${work.dueDate.year}-${String(work.dueDate.month).padStart(2, '0')}-${String(work.dueDate.day).padStart(2, '0')}`
-    : localDateStr(new Date(Date.now() + 7 * 86400000));
+    : '';
   const today = localDateStr();
   let status = 'upcoming';
-  if (due < today) status = 'overdue';
+  if (dueDate && dueDate < today) status = 'overdue';
   return {
     id: `asg_gc_${work.id}`,
     classroomWorkId: work.id,
     title: work.title || 'Untitled coursework',
     subjectId: subject.id,
     subject: subject.name,
-    dueDate: due,
+    dueDate,
     status,
     description: work.description || '',
-    points: work.maxPoints || 50,
+    points: work.maxPoints ?? null,
     source: 'classroom',
   };
 }
@@ -245,42 +214,35 @@ async function fetchLiveClassroomPayload() {
   const subjects = [];
   const assignments = [];
   for (const course of courses) {
-    let teacherName = 'TBA';
+    let teacherName = '';
     try {
       const teachers = await classroomApi(`courses/${course.id}/teachers?pageSize=5`, token);
       const named = (teachers.teachers || []).find((t) => t.profile?.name?.fullName);
       if (named) teacherName = named.profile.name.fullName;
-    } catch {
-      teacherName = 'TBA';
+    } catch (error) {
+      console.warn('Could not load course teacher information from Google Classroom.', error);
     }
     const subject = mapLiveCourseToSubject(course, teacherName);
     subjects.push(subject);
     try {
       const work = await classroomApi(`courses/${course.id}/courseWork?pageSize=50`, token);
       (work.courseWork || []).forEach((item) => assignments.push(mapLiveCoursework(item, subject)));
-    } catch {
-      /* coursework scope may be denied */
+    } catch (error) {
+      console.warn('Could not load coursework from Google Classroom for this course.', error);
     }
   }
   return { courses: subjects, assignments, live: true };
 }
 
 function applyClassroomPayload(payload) {
-  const isLivePayload = !!payload.live;
-  const courses = isLivePayload
-    ? (payload.courses || [])
-    : payload.courses && payload.courses.length
-      ? payload.courses
-      : CLASSROOM_COURSES.map(catalogCourseToSubject);
-
+  const courses = Array.isArray(payload.courses) ? payload.courses : [];
+  const classroomAsg = Array.isArray(payload.assignments) ? payload.assignments : [];
+  const localSubjects = getSubjects().filter((subject) => subject.source !== 'classroom');
   const existingAsg = getAssignments().filter((a) =>
     a.source !== 'classroom' && !a.classroomId && !a.classroomWorkId
   );
-  const classroomAsg = isLivePayload
-    ? (payload.assignments || [])
-    : payload.assignments && payload.assignments.length
-      ? payload.assignments
-      : classroomCourseworkMock();
+  const localSchedule = getSchedule().filter((entry) => entry.source !== 'classroom');
+  const localClasses = getClasses().filter((item) => item.source !== 'classroom');
 
   const withCounts = courses.map((s) => {
     const asgs = classroomAsg.filter((a) => a.subjectId === s.id);
@@ -289,10 +251,10 @@ function applyClassroomPayload(payload) {
     return { ...s, assignments: asgs.length, completed, pending, source: 'classroom' };
   });
 
-  sbSet(SB_KEYS.SUBJECTS, withCounts);
+  sbSet(SB_KEYS.SUBJECTS, [...withCounts, ...localSubjects]);
   sbSet(SB_KEYS.ASSIGNMENTS, [...classroomAsg, ...existingAsg]);
-  sbSet(SB_KEYS.SCHEDULE, buildScheduleFromSubjects(withCounts));
-  sbSet(SB_KEYS.CLASSES, withCounts.map(subjectToClass));
+  sbSet(SB_KEYS.SCHEDULE, localSchedule);
+  sbSet(SB_KEYS.CLASSES, [...withCounts.map(subjectToClass), ...localClasses]);
 
   const settings = getSettings();
   updateSettings({
@@ -303,13 +265,12 @@ function applyClassroomPayload(payload) {
   return {
     courseCount: withCounts.length,
     assignmentCount: classroomAsg.length,
-    live: !!payload.live,
+    live: true,
   };
 }
 
 /**
  * Sync classes + coursework from Google Classroom.
- * Live Classroom API when a client ID is set; otherwise COR catalog.
  */
 async function syncGoogleClassroom(buttonEl) {
   const done = withButtonLoading(buttonEl, 'Syncing Classroom...');
@@ -326,21 +287,12 @@ async function syncGoogleClassroom(buttonEl) {
       showToast(`Synced ${result.courseCount} classes and ${result.assignmentCount} coursework items from Google Classroom${who}`, 'success');
       return { ok: true, ...result };
     }
-    let payload = { courses: [], assignments: [] };
     const clientId = getGoogleClientId();
-    if (clientId) {
-      try {
-        payload = await fetchLiveClassroomPayload();
-      } catch (err) {
-        showToast(err.message || 'Classroom sign-in failed. Using enrolled courses.', 'warning');
-        payload = { courses: [], assignments: [] };
-      }
-    } else {
-      await delay(900);
-    }
-    const result = applyClassroomPayload(payload || {});
-    const source = result.live ? 'Google Classroom' : 'your enrolled Classroom courses';
-    showToast(`Synced ${result.courseCount} classes from ${source}`, 'success');
+    if (!clientId) throw new Error('Google Classroom is not configured. Connect Google in Settings before syncing.');
+    const payload = await fetchLiveClassroomPayload();
+    if (!payload) throw new Error('Google Classroom did not return any course data.');
+    const result = applyClassroomPayload(payload);
+    showToast(`Synced ${result.courseCount} classes and ${result.assignmentCount} coursework items from Google Classroom.`, 'success');
     return { ok: true, ...result };
   } catch (err) {
     showToast(err.message || 'Classroom sync failed. Try again.', 'error');

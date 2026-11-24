@@ -62,56 +62,7 @@
                 <h2 class="card-title">All Events</h2>
               </div>
             </div>
-            <div id="scheduleList">
-              <div class="schedule-item" data-id="sch_1">
-                <div class="time">Sep 12 · 8:00 – 9:30 AM</div>
-                <div class="info">
-                  <div class="subj">Mathematics</div>
-                  <div class="room">Room 302 · Class</div>
-                </div>
-                <span class="badge badge-info">Class</span>
-              </div>
-              <div class="schedule-item" data-id="sch_2">
-                <div class="time">Sep 12 · 10:00 – 11:30 AM</div>
-                <div class="info">
-                  <div class="subj">Science</div>
-                  <div class="room">Lab 105 · Class</div>
-                </div>
-                <span class="badge badge-info">Class</span>
-              </div>
-              <div class="schedule-item" data-id="sch_3">
-                <div class="time">Sep 12 · 1:00 – 2:30 PM</div>
-                <div class="info">
-                  <div class="subj">English</div>
-                  <div class="room">Room 210 · Class</div>
-                </div>
-                <span class="badge badge-info">Class</span>
-              </div>
-              <div class="schedule-item" data-id="sch_7">
-                <div class="time">Sep 12 · 11:59 PM</div>
-                <div class="info">
-                  <div class="subj">Math Quiz Due</div>
-                  <div class="room">Deadline</div>
-                </div>
-                <span class="badge badge-overdue">Deadline</span>
-              </div>
-              <div class="schedule-item" data-id="sch_8">
-                <div class="time">Sep 18 · 3:00 – 5:00 PM</div>
-                <div class="info">
-                  <div class="subj">Group Study Session</div>
-                  <div class="room">Library · Event</div>
-                </div>
-                <span class="badge badge-upcoming">Event</span>
-              </div>
-              <div class="schedule-item" data-id="sch_10">
-                <div class="time">Sep 22 · 1:00 – 2:00 PM</div>
-                <div class="info">
-                  <div class="subj">English Presentation</div>
-                  <div class="room">Room 210 · Event</div>
-                </div>
-                <span class="badge badge-upcoming">Event</span>
-              </div>
-            </div>
+            <div id="scheduleList"></div>
           </div>
         </div>
 
@@ -123,29 +74,7 @@
                 <h2 class="card-title">Upcoming Events</h2>
               </div>
             </div>
-            <div id="scheduleEventsList">
-              <div class="list-item">
-                <span class="dot math"></span>
-                <div class="item-meta">
-                  <div class="item-title">Mathematics</div>
-                  <div class="item-sub">Today · 8:00 AM</div>
-                </div>
-              </div>
-              <div class="list-item">
-                <span class="dot science"></span>
-                <div class="item-meta">
-                  <div class="item-title">Science</div>
-                  <div class="item-sub">Today · 10:00 AM</div>
-                </div>
-              </div>
-              <div class="list-item">
-                <span class="dot cs"></span>
-                <div class="item-meta">
-                  <div class="item-title">Group Study Session</div>
-                  <div class="item-sub">Sep 18 · 3:00 PM</div>
-                </div>
-              </div>
-            </div>
+            <div id="scheduleEventsList"></div>
           </div>
 
           <div class="card">
@@ -155,7 +84,7 @@
                 <h2 class="card-title">Google Classroom</h2>
               </div>
             </div>
-            <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px">Class meeting times come from your COR (rooms TBA). Sync Classroom to refresh courses and teachers when they are assigned.</p>
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px">Sync to load courses and assignments from Google Classroom. Classroom may not include meeting times; add those events here.</p>
             <button type="button" class="btn btn-primary btn-block" id="syncClassroomBtn">
               <i data-lucide="refresh-cw"></i> Sync with Google Classroom
             </button>
@@ -186,12 +115,6 @@
             <label for="schSubject">Subject</label>
             <select class="form-control" id="schSubject" name="subjectId">
               <option value="">Select subject (optional)</option>
-              <option value="subj_math">Mathematics</option>
-              <option value="subj_sci">Science</option>
-              <option value="subj_eng">English</option>
-              <option value="subj_cs">Computer Science</option>
-              <option value="subj_fil">Filipino</option>
-              <option value="subj_hist">History</option>
             </select>
           </div>
           <div class="form-row">
@@ -220,7 +143,7 @@
           </div>
           <div class="form-group">
             <label for="schRoom">Room / Location</label>
-            <input type="text" class="form-control" id="schRoom" name="room" placeholder="e.g. Room 302" />
+            <input type="text" class="form-control" id="schRoom" name="room" placeholder="Room" />
           </div>
         </div>
         <div class="modal-footer">
