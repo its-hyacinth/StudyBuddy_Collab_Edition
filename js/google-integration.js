@@ -183,6 +183,34 @@ function googleCalendarSyncReady(status) {
     && scopes.includes('/auth/calendar.calendarlist.readonly');
 }
 
+function googleCalendarMonthRange(year, month) {
+  const monthStart = new Date(year, month, 1);
+  const monthEnd = new Date(year, month + 1, 0);
+  const horizon = new Date();
+  horizon.setDate(horizon.getDate() + 45);
+  const rangeEnd = monthEnd > horizon ? monthEnd : horizon;
+  return { start: localDateStr(monthStart), end: localDateStr(rangeEnd) };
+}
+
+async function fetchGoogleCalendarEvents(start, end) {
+  if (!googleCalendarSyncReady(window.SB_GOOGLE)) {
+    window.SB_GOOGLE_EVENTS = [];
+    return [];
+  }
+  const params = new URLSearchParams({
+    action: 'calendar',
+    start,
+    end,
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Manila',
+  });
+  const response = await fetch(`${SB_API_BASE}google.php?${params}`, { credentials: 'same-origin' });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || !result.ok) throw new Error(result.message || 'Could not load Google Calendar.');
+  if (!Array.isArray(result.events)) throw new Error('Google Calendar returned invalid event data.');
+  window.SB_GOOGLE_EVENTS = result.events;
+  return result.events;
+}
+
 function applyGoogleConnection(status) {
   window.SB_GOOGLE = status;
   if (!status || !status.configured || typeof getSettings !== 'function') return;

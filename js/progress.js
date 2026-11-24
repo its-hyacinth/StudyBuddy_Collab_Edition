@@ -316,7 +316,16 @@ document.addEventListener('DOMContentLoaded', () => {
       day: 'numeric',
       year: 'numeric',
     });
-    const schedule = getSchedule()
+    const scheduleEntries = getSchedule().filter((entry) =>
+      entry.source !== 'google-calendar' && entry.source !== 'classroom'
+    );
+    const scheduleIds = new Set(scheduleEntries.map((entry) => String(entry.id)));
+    const schedule = [
+      ...scheduleEntries,
+      ...(window.SB_GOOGLE_EVENTS || []).filter((entry) =>
+        !scheduleIds.has(String(entry.studyBuddyScheduleId || ''))
+      ),
+    ]
       .filter((entry) => entry.date === date)
       .sort((a, b) => String(a.startTime || '').localeCompare(String(b.startTime || '')));
     const assignments = getAssignments().filter((assignment) =>
@@ -330,7 +339,7 @@ document.addEventListener('DOMContentLoaded', () => {
         title: 'Schedule',
         items: schedule.map((entry) => ({
           title: entry.title || 'Untitled event',
-          detail: `${entry.subject || 'General'} · ${entry.startTime ? formatTime(entry.startTime) : 'Time not set'}`,
+          detail: `${entry.subject || 'General'} · ${entry.startTime ? formatTime(entry.startTime) : entry.allDay ? 'All day' : 'Time not set'}${entry.endTime ? ` – ${formatTime(entry.endTime)}` : ''}${entry.room ? ` · ${entry.room}` : ''}`,
         })),
         href: 'schedule.php',
         link: 'Open Schedule',
@@ -414,7 +423,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const mini = document.getElementById('progressMiniCalendar');
     if (!mini) return;
     const eventDates = [
-      ...getSchedule().map((entry) => entry.date),
+      ...getSchedule()
+        .filter((entry) => entry.source !== 'google-calendar' && entry.source !== 'classroom')
+        .map((entry) => entry.date),
+      ...(window.SB_GOOGLE_EVENTS || []).map((entry) => entry.date),
       ...getAssignments().filter((assignment) => assignment.status !== 'completed').map((assignment) => assignment.dueDate),
       ...getTasks().filter((task) => task.status !== 'completed').map((task) => task.dueDate),
     ].filter(Boolean);
@@ -428,6 +440,7 @@ document.addEventListener('DOMContentLoaded', () => {
         calY = selectedMonth.getFullYear();
         calM = selectedMonth.getMonth();
         renderMiniCalendarView();
+        window.refreshGoogleCalendar?.().catch((error) => showToast(error.message || 'Could not load Google Calendar.', 'error'));
       },
       openCalendarDate
     );
@@ -467,6 +480,13 @@ document.addEventListener('DOMContentLoaded', () => {
     renderDeadlines();
     if (typeof lucide !== 'undefined') lucide.createIcons();
   }
+
+  window.refreshGoogleCalendar = async () => {
+    const { start, end } = googleCalendarMonthRange(calY, calM);
+    const events = await fetchGoogleCalendarEvents(start, end);
+    renderMiniCalendarView();
+    return events;
+  };
 
   document.querySelectorAll('#progressChartTabs [data-range]').forEach((btn) => {
     btn.addEventListener('click', () => {

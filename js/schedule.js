@@ -670,25 +670,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         render();
         return [];
       }
-      const monthStart = new Date(calY, calM, 1);
-      const monthEnd = new Date(calY, calM + 1, 0);
-      const horizon = new Date();
-      horizon.setDate(horizon.getDate() + 45);
-      const rangeEnd = monthEnd > horizon ? monthEnd : horizon;
-      const start = `${monthStart.getFullYear()}-${String(monthStart.getMonth() + 1).padStart(2, '0')}-01`;
-      const end = `${rangeEnd.getFullYear()}-${String(rangeEnd.getMonth() + 1).padStart(2, '0')}-${String(rangeEnd.getDate()).padStart(2, '0')}`;
-      const params = new URLSearchParams({
-        action: 'calendar',
-        start,
-        end,
-        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Manila',
-      });
-      const response = await fetch(`${SB_API_BASE}google.php?${params}`, { credentials: 'same-origin' });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok || !result.ok) throw new Error(result.message || 'Could not load Google Calendar.');
-      window.SB_GOOGLE_EVENTS = result.events || [];
+      const { start, end } = googleCalendarMonthRange(calY, calM);
+      const events = await fetchGoogleCalendarEvents(start, end);
       render();
-      return window.SB_GOOGLE_EVENTS;
+      return events;
     })();
     try {
       return await googleCalendarRefreshRequest;
