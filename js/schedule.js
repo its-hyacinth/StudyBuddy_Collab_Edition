@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       SB_KEYS.ASSIGNMENTS,
       SB_KEYS.SCHEDULE,
       SB_KEYS.CLASSES,
-      ...(!isTeacher ? [SB_KEYS.SUBJECTS] : []),
+      ...(!isTeacher ? [SB_KEYS.SUBJECTS, SB_KEYS.TASKS] : []),
     ]);
   } catch (error) {
     console.error('Could not preload schedule data:', error);
@@ -91,7 +91,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         type: 'deadline',
         calendarSource: 'assignment',
       })));
+    if (!isTeacher) {
+      entries.push(...getTasks()
+        .filter((task) => task.dueDate && task.status !== 'completed')
+        .map((task) => ({
+          ...task,
+          date: task.dueDate,
+          startTime: task.dueTime || '',
+          endTime: '',
+          type: 'deadline',
+          calendarSource: 'task',
+        })));
+    }
     return entries;
+  }
+
+  function taskDeadlineStatus(task) {
+    if (task.status === 'overdue' || task.dueDate < localDateStr()) return 'overdue';
+    const now = new Date();
+    const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    if (task.dueDate === localDateStr(now) && task.dueTime && task.dueTime < currentTime) return 'overdue';
+    return task.status || 'pending';
+  }
+
+  function calendarEntryStatus(entry) {
+    if (entry.calendarSource === 'task') return taskDeadlineStatus(entry);
+    if (entry.calendarSource === 'assignment' && (entry.status === 'overdue' || entry.date < localDateStr())) return 'overdue';
+    return entry.type || 'event';
   }
 
   function filteredCalendarEntries() {
@@ -117,6 +143,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       ...scheduleSubjects().map((item) => item.name),
       ...getSchedule().map((item) => item.subject),
       ...getAssignments().map((item) => item.subject),
+      ...(!isTeacher ? getTasks().map((item) => item.subject) : []),
     ].filter(Boolean).map(String));
     select.innerHTML = `<option value="">All Classes</option>${[...classes].sort((a, b) => a.localeCompare(b))
       .map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('')}`;
@@ -321,11 +348,28 @@ document.addEventListener('DOMContentLoaded', async () => {
           </div>
         </article>`;
     }).join('');
+    const tasks = isTeacher ? [] : getTasks()
+      .filter((task) => task.dueDate === date && task.status !== 'completed')
+      .sort((a, b) => `${a.dueTime || ''}${a.title || ''}`.localeCompare(`${b.dueTime || ''}${b.title || ''}`));
+    const taskItems = tasks.map((task) => {
+      const status = taskDeadlineStatus(task);
+      return `
+        <article class="day-schedule-item">
+          <div class="day-schedule-copy">
+            <div class="day-schedule-heading">
+              <h4><a href="todo.php">${escapeHtml(task.title || 'Untitled task')}</a></h4>
+              <span class="badge ${escapeHtml(statusClass(status))}">${escapeHtml(statusLabel(status))}</span>
+            </div>
+            <div class="day-schedule-meta">${escapeHtml(task.subject || 'General')} · Due ${escapeHtml(formatDate(task.dueDate))}${task.dueTime ? ` · ${escapeHtml(formatTime(task.dueTime))}` : ''}</div>
+          </div>
+        </article>`;
+    }).join('');
     const eventList = document.getElementById('dayScheduleEvents');
     eventList.innerHTML = [
       scheduleItems ? `<section class="calendar-day-section"><h4>Schedule</h4>${scheduleItems}</section>` : '',
       assignmentItems ? `<section class="calendar-day-section"><h4>Assignment deadlines</h4>${assignmentItems}${isTeacher ? '<a class="view-all" href="assignments.php">Manage assignments</a>' : ''}</section>` : '',
-    ].join('') || (isTeacher ? '<p class="empty-state">Nothing is scheduled for this day.</p>' : '<p class="empty-state">No events or assignments scheduled for this day.</p>');
+      taskItems ? `<section class="calendar-day-section"><h4>Task deadlines</h4>${taskItems}<a class="view-all" href="todo.php">View tasks</a></section>` : '',
+    ].join('') || (isTeacher ? '<p class="empty-state">Nothing is scheduled for this day.</p>' : '<p class="empty-state">No events, tasks, or assignments scheduled for this day.</p>');
 
     wireScheduleActions(eventList);
     if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -362,8 +406,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             <span class="item-sub">${escapeHtml(formatDate(s.date))}${s.startTime ? ` · ${escapeHtml(formatTime(s.startTime))}${s.endTime ? ` – ${escapeHtml(formatTime(s.endTime))}` : ''}` : s.allDay ? ' · All day' : ' · Due date'}${s.room ? ` · ${escapeHtml(s.room)}` : ''}</span>
           </button>
         </div>
-        <span class="badge ${escapeHtml(statusClass(s.calendarSource === 'assignment' && s.date < localDateStr() ? 'overdue' : s.type || 'event'))}">${escapeHtml(statusLabel(s.calendarSource === 'assignment' && s.date < localDateStr() ? 'overdue' : s.type || 'event'))}</span>
-        ${s.calendarSource === 'assignment' ? '<a class="view-all" href="assignments.php">Assignments</a>' : scheduleActions(s, 'list', false)}
+        <span class="badge ${escapeHtml(statusClass(calendarEntryStatus(s)))}">${escapeHtml(statusLabel(calendarEntryStatus(s)))}</span>
+        ${s.calendarSource === 'assignment' ? '<a class="view-all" href="assignments.php">Assignments</a>' : s.calendarSource === 'task' ? '<a class="view-all" href="todo.php">Tasks</a>' : scheduleActions(s, 'list', false)}
       </div>`).join('') : '<p class="empty-state">No calendar items match these filters.</p>';
     wireDayScheduleLinks(el);
     wireScheduleActions(el);
@@ -398,7 +442,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             <span class="item-sub">${escapeHtml(formatDate(s.date))}${s.startTime ? ` · ${escapeHtml(formatTime(s.startTime))}` : s.allDay ? ' · All day' : ' · Due date'}</span>
           </button>
         </div>
-        ${s.calendarSource === 'assignment' ? '<a class="view-all" href="assignments.php">Assignments</a>' : scheduleActions(s, 'upcoming', false)}
+        ${s.calendarSource === 'assignment' ? '<a class="view-all" href="assignments.php">Assignments</a>' : s.calendarSource === 'task' ? '<a class="view-all" href="todo.php">Tasks</a>' : scheduleActions(s, 'upcoming', false)}
       </div>`).join('') : '<p class="empty-state">No upcoming events.</p>';
     wireDayScheduleLinks(el);
     wireScheduleActions(el);
