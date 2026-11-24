@@ -459,7 +459,7 @@ async function syncScheduleEventsToGoogleCalendar(events, date, buttonEl) {
     const scheduleEvents = (Array.isArray(events) ? events : [])
       .filter((entry) => entry && (!date || entry.date === date));
     if (!scheduleEvents.length) {
-      showToast(isTodaySync ? 'There are no schedule entries for today to sync.' : 'There are no schedule entries to sync.', 'info');
+      showToast(isTodaySync ? 'There are no schedule items for today to sync.' : 'There are no schedule items to sync.', 'info');
       return { ok: false };
     }
 
@@ -512,7 +512,7 @@ async function syncScheduleEventsToGoogleCalendar(events, date, buttonEl) {
         'warning'
       );
     } else {
-      showToast(`Synced ${synced} schedule events to Google Calendar.`, 'success');
+      showToast(`Synced ${synced} schedule items to Google Calendar.`, 'success');
     }
     return { ok: true, synced, failed };
   } catch (error) {

@@ -106,6 +106,37 @@ document.addEventListener('DOMContentLoaded', async () => {
     return entries;
   }
 
+  function googleCalendarSyncEntries() {
+    const entries = getSchedule().filter((entry) =>
+      entry.source !== 'google-calendar' && entry.source !== 'classroom'
+    );
+    if (isTeacher) return entries;
+
+    entries.push(...getAssignments()
+      .filter((assignment) => assignment.dueDate && assignment.status !== 'completed')
+      .map((assignment) => ({
+        id: assignment.id,
+        title: assignment.title || 'Untitled assignment',
+        subject: assignment.subject || '',
+        date: assignment.dueDate,
+        startTime: '',
+        endTime: '',
+        room: '',
+      })));
+    entries.push(...getTasks()
+      .filter((task) => task.dueDate && task.status !== 'completed')
+      .map((task) => ({
+        id: task.id,
+        title: task.title || 'Untitled task',
+        subject: task.subject || '',
+        date: task.dueDate,
+        startTime: '',
+        endTime: '',
+        room: '',
+      })));
+    return entries;
+  }
+
   function taskDeadlineStatus(task) {
     if (task.status === 'overdue' || task.dueDate < localDateStr()) return 'overdue';
     const now = new Date();
@@ -619,10 +650,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   document.querySelectorAll('#syncCalendarBtn, #syncGoogleCalendarBtn, #syncGoogleCalBtn, #connectGoogleCalBtn').forEach((btn) => {
     btn.addEventListener('click', (e) => {
-      const scheduleEvents = getSchedule().filter((entry) =>
-        entry.source !== 'google-calendar' && entry.source !== 'classroom'
-      );
-      syncScheduleToGoogleCalendar(scheduleEvents, e.currentTarget);
+      syncScheduleToGoogleCalendar(googleCalendarSyncEntries(), e.currentTarget);
     });
   });
   document.getElementById('importGoogleCalBtn')?.addEventListener('click', (event) => {
@@ -681,10 +709,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (validRequestedDate) openDaySchedule(requestedDate);
   if (window.SB_PENDING_SCHEDULE_SYNC) {
     window.SB_PENDING_SCHEDULE_SYNC = false;
-    const scheduleEvents = getSchedule().filter((entry) =>
-      entry.source !== 'google-calendar' && entry.source !== 'classroom'
-    );
-    syncScheduleToGoogleCalendar(scheduleEvents, document.getElementById('syncGoogleCalBtn'));
+    syncScheduleToGoogleCalendar(googleCalendarSyncEntries(), document.getElementById('syncGoogleCalBtn'));
   } else if (window.SB_PENDING_CALENDAR_IMPORT) {
     window.SB_PENDING_CALENDAR_IMPORT = false;
     syncGoogleCalendar(document.getElementById('importGoogleCalBtn'));
