@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function personalEvents() {
     return [
-      ...getSchedule().filter((entry) => entry.source !== 'google-calendar'),
+      ...getSchedule().filter((entry) => entry.source !== 'google-calendar' && entry.source !== 'classroom'),
       ...(window.SB_GOOGLE_EVENTS || []),
     ];
   }
