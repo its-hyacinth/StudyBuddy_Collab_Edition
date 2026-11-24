@@ -296,57 +296,11 @@ async function fetchLiveClassroomPayload() {
 
 function applyClassroomPayload(payload) {
   const courses = Array.isArray(payload.courses) ? payload.courses : [];
-  const previousClassroomAssignments = new Map(getAssignments()
-    .filter((assignment) => assignment.source === 'classroom' || assignment.classroomWorkId)
-    .map((assignment) => [
-      String(assignment.classroomWorkId || String(assignment.id || '').replace(/^asg_gc_/, '')),
-      assignment,
-    ]));
-  const classroomAsg = (Array.isArray(payload.assignments) ? payload.assignments : []).map((assignment) => {
-    if (!assignment.submissionStatusUnavailable) return assignment;
-    const workId = String(assignment.classroomWorkId || String(assignment.id || '').replace(/^asg_gc_/, ''));
-    const previous = previousClassroomAssignments.get(workId);
-    if (!previous) return assignment;
-    return {
-      ...assignment,
-      status: previous.status || assignment.status,
-      submissionState: previous.submissionState || assignment.submissionState,
-      submissionUpdatedAt: previous.submissionUpdatedAt || assignment.submissionUpdatedAt,
-      submissionGrade: previous.submissionGrade ?? assignment.submissionGrade,
-      submissionAttachments: previous.submissionAttachments || assignment.submissionAttachments,
-    };
-  });
+  const classroomAsg = Array.isArray(payload.assignments) ? payload.assignments : [];
   const localSubjects = getSubjects().filter((subject) => subject.source !== 'classroom');
   const existingAsg = getAssignments().filter((a) =>
     a.source !== 'classroom' && !a.classroomId && !a.classroomWorkId
   );
-  const previousClassroomTasks = new Map(getTasks()
-    .filter((task) => task.source === 'classroom' || task.classroomWorkId)
-    .map((task) => [String(task.classroomWorkId || ''), task]));
-  const classroomTasks = classroomAsg.map((assignment) => {
-    const classroomWorkId = String(assignment.classroomWorkId || String(assignment.id || '').replace(/^asg_gc_/, ''));
-    const previous = previousClassroomTasks.get(classroomWorkId);
-    return {
-      id: previous?.id || `task_gc_${classroomWorkId || assignment.id}`,
-      assignmentId: assignment.id,
-      classroomWorkId,
-      title: assignment.title,
-      subjectId: assignment.subjectId,
-      subject: assignment.subject,
-      dueDate: assignment.dueDate || '',
-      dueTime: assignment.dueTime || '',
-      notes: assignment.description || '',
-      status: assignment.status || 'upcoming',
-      today: !!assignment.dueDate && assignment.dueDate === localDateStr(),
-      submissionState: assignment.submissionState || '',
-      submissionUpdatedAt: assignment.submissionUpdatedAt || '',
-      submissionGrade: assignment.submissionGrade ?? null,
-      submissionAttachments: assignment.submissionAttachments || [],
-      submissionStatusUnavailable: !!assignment.submissionStatusUnavailable,
-      source: 'classroom',
-    };
-  });
-  const localTasks = getTasks().filter((task) => task.source !== 'classroom' && !task.classroomWorkId);
   const localSchedule = getSchedule().filter((entry) => entry.source !== 'classroom');
   const localClasses = getClasses().filter((item) => item.source !== 'classroom');
 
@@ -359,7 +313,6 @@ function applyClassroomPayload(payload) {
 
   sbSet(SB_KEYS.SUBJECTS, [...withCounts, ...localSubjects]);
   sbSet(SB_KEYS.ASSIGNMENTS, [...classroomAsg, ...existingAsg]);
-  sbSet(SB_KEYS.TASKS, [...classroomTasks, ...localTasks]);
   sbSet(SB_KEYS.SCHEDULE, localSchedule);
   sbSet(SB_KEYS.CLASSES, [...withCounts.map(subjectToClass), ...localClasses]);
 
@@ -372,8 +325,6 @@ function applyClassroomPayload(payload) {
   return {
     courseCount: withCounts.length,
     assignmentCount: classroomAsg.length,
-    taskCount: classroomTasks.length,
-    completedCount: classroomAsg.filter((assignment) => assignment.status === 'completed').length,
     live: true,
   };
 }
@@ -394,7 +345,10 @@ async function syncGoogleClassroom(buttonEl) {
       const result = applyClassroomPayload(payload);
       const who = payload.email ? ` (${payload.email})` : '';
       const submissionErrorCount = Array.isArray(payload.submissionErrors) ? payload.submissionErrors.length : 0;
-      const message = `Synced ${result.courseCount} classes, ${result.assignmentCount} coursework items, and ${result.taskCount} tasks from Google Classroom${who}; ${result.completedCount} completed`;
+      const completedCount = Array.isArray(payload.assignments)
+        ? payload.assignments.filter((assignment) => assignment.status === 'completed').length
+        : 0;
+      const message = `Synced ${result.courseCount} classes and ${result.assignmentCount} coursework items from Google Classroom${who}; ${completedCount} submitted`;
       showToast(
         submissionErrorCount ? `${message}. Could not load submissions for ${submissionErrorCount} courses.` : message,
         submissionErrorCount ? 'warning' : 'success'
@@ -407,7 +361,10 @@ async function syncGoogleClassroom(buttonEl) {
     if (!payload) throw new Error('Google Classroom did not return any course data.');
     const result = applyClassroomPayload(payload);
     const submissionErrorCount = Array.isArray(payload.submissionErrors) ? payload.submissionErrors.length : 0;
-    const message = `Synced ${result.courseCount} classes, ${result.assignmentCount} coursework items, and ${result.taskCount} tasks; ${result.completedCount} completed.`;
+    const completedCount = Array.isArray(payload.assignments)
+      ? payload.assignments.filter((assignment) => assignment.status === 'completed').length
+      : 0;
+    const message = `Synced ${result.courseCount} classes and ${result.assignmentCount} coursework items; ${completedCount} submitted.`;
     showToast(
       submissionErrorCount ? `${message} Could not load submissions for ${submissionErrorCount} courses.` : message,
       submissionErrorCount ? 'warning' : 'success'

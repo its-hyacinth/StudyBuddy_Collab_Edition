@@ -21,16 +21,11 @@
             <span class="title-icon"><i data-lucide="check-square"></i></span>
             To-Do List
           </h1>
-          <p class="page-subtitle">Stay on top of your daily tasks and Google Classroom coursework.</p>
+          <p class="page-subtitle">Stay on top of your daily tasks and study goals.</p>
         </div>
-        <div class="page-header-actions">
-          <button type="button" class="btn btn-outline" id="syncClassroomBtn">
-            <i data-lucide="refresh-cw"></i> Sync Classroom
-          </button>
-          <button type="button" class="btn btn-primary" id="addTaskBtn">
-            <i data-lucide="plus"></i> Add Task
-          </button>
-        </div>
+        <button type="button" class="btn btn-primary" id="addTaskBtn">
+          <i data-lucide="plus"></i> Add Task
+        </button>
       </div>
 
       <div class="page-layout">

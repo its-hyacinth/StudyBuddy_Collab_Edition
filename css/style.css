@@ -406,14 +406,6 @@ h1, h2, h3, h4 { color: var(--text-heading); font-weight: 700; line-height: 1.25
   margin-bottom: 24px;
 }
 
-.page-header-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
 .page-title {
   display: flex;
   align-items: center;
