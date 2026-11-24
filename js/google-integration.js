@@ -72,13 +72,31 @@ function mapLiveCourseToSubject(course, teacherName) {
   };
 }
 
+function mapSubmittedFiles(submission) {
+  const attachments = submission?.assignmentSubmission?.attachments;
+  if (!Array.isArray(attachments)) return [];
+  return attachments.flatMap((attachment) => {
+    const file = attachment?.driveFile;
+    const id = String(file?.id || '').trim();
+    if (!id) return [];
+    return [{
+      id,
+      title: String(file.title || 'Submitted file'),
+      url: String(file.alternateLink || `https://drive.google.com/open?id=${encodeURIComponent(id)}`),
+    }];
+  });
+}
+
 function mapLiveCoursework(work, subject) {
   const dueDate = work.dueDate
     ? `${work.dueDate.year}-${String(work.dueDate.month).padStart(2, '0')}-${String(work.dueDate.day).padStart(2, '0')}`
     : '';
+  const submission = work.studentSubmission || null;
+  const submissionState = String(submission?.state || (work.workType === 'MATERIAL' ? 'NOT_APPLICABLE' : '')).toUpperCase();
+  const submitted = ['TURNED_IN', 'RETURNED'].includes(submissionState);
   const today = localDateStr();
-  let status = 'upcoming';
-  if (dueDate && dueDate < today) status = 'overdue';
+  let status = submitted ? 'completed' : 'upcoming';
+  if (!submitted && dueDate && dueDate < today) status = 'overdue';
   return {
     id: `asg_gc_${work.id}`,
     classroomWorkId: work.id,
@@ -89,6 +107,11 @@ function mapLiveCoursework(work, subject) {
     status,
     description: work.description || '',
     points: work.maxPoints ?? null,
+    submissionState,
+    submissionStatusUnavailable: !!work.studentSubmissionError,
+    submissionUpdatedAt: submitted ? submission?.updateTime || submission?.creationTime || '' : '',
+    submissionGrade: submission?.assignedGrade ?? null,
+    submissionAttachments: submitted ? mapSubmittedFiles(submission) : [],
     source: 'classroom',
   };
 }
@@ -179,12 +202,13 @@ async function fetchServerClassroom() {
   if (!response.ok || !data.ok) throw new Error(data.message || 'Classroom sync failed.');
   const subjects = [];
   const assignments = [];
+  const submissionErrors = Array.isArray(data.submissionErrors) ? data.submissionErrors : [];
   (data.courses || []).forEach((course) => {
     const subject = mapLiveCourseToSubject(course, course.teacherName || 'TBA');
     subjects.push(subject);
     (course.courseWork || []).forEach((work) => assignments.push(mapLiveCoursework(work, subject)));
   });
-  return { courses: subjects, assignments, live: true, email: data.email || '' };
+  return { courses: subjects, assignments, live: true, email: data.email || '', submissionErrors };
 }
 
 function loadScript(src) {
@@ -213,6 +237,7 @@ async function fetchLiveClassroomPayload() {
 
   const subjects = [];
   const assignments = [];
+  const submissionErrors = [];
   for (const course of courses) {
     let teacherName = '';
     try {
@@ -226,12 +251,29 @@ async function fetchLiveClassroomPayload() {
     subjects.push(subject);
     try {
       const work = await classroomApi(`courses/${course.id}/courseWork?pageSize=50`, token);
-      (work.courseWork || []).forEach((item) => assignments.push(mapLiveCoursework(item, subject)));
+      const courseWork = work.courseWork || [];
+      for (let index = 0; index < courseWork.length; index += 5) {
+        const batch = courseWork.slice(index, index + 5);
+        const withSubmissions = await Promise.all(batch.map(async (item) => {
+          if (!item.id || item.workType === 'MATERIAL') return item;
+          try {
+            const result = await classroomApi(
+              `courses/${encodeURIComponent(course.id)}/courseWork/${encodeURIComponent(item.id)}/studentSubmissions?userId=me&pageSize=10`,
+              token
+            );
+            return { ...item, studentSubmission: result.studentSubmissions?.[0] || null };
+          } catch (error) {
+            submissionErrors.push({ courseWorkId: item.id, message: error.message || 'Could not load this submission.' });
+            return { ...item, studentSubmissionError: true };
+          }
+        }));
+        assignments.push(...withSubmissions.map((item) => mapLiveCoursework(item, subject)));
+      }
     } catch (error) {
       console.warn('Could not load coursework from Google Classroom for this course.', error);
     }
   }
-  return { courses: subjects, assignments, live: true };
+  return { courses: subjects, assignments, submissionErrors, live: true };
 }
 
 function applyClassroomPayload(payload) {
@@ -284,7 +326,12 @@ async function syncGoogleClassroom(buttonEl) {
       const payload = await fetchServerClassroom();
       const result = applyClassroomPayload(payload);
       const who = payload.email ? ` (${payload.email})` : '';
-      showToast(`Synced ${result.courseCount} classes and ${result.assignmentCount} coursework items from Google Classroom${who}`, 'success');
+      const submissionErrorCount = Array.isArray(payload.submissionErrors) ? payload.submissionErrors.length : 0;
+      const message = `Synced ${result.courseCount} classes and ${result.assignmentCount} coursework items from Google Classroom${who}`;
+      showToast(
+        submissionErrorCount ? `${message}. Could not load submissions for ${submissionErrorCount} items.` : message,
+        submissionErrorCount ? 'warning' : 'success'
+      );
       return { ok: true, ...result };
     }
     const clientId = getGoogleClientId();
@@ -292,7 +339,12 @@ async function syncGoogleClassroom(buttonEl) {
     const payload = await fetchLiveClassroomPayload();
     if (!payload) throw new Error('Google Classroom did not return any course data.');
     const result = applyClassroomPayload(payload);
-    showToast(`Synced ${result.courseCount} classes and ${result.assignmentCount} coursework items from Google Classroom.`, 'success');
+    const submissionErrorCount = Array.isArray(payload.submissionErrors) ? payload.submissionErrors.length : 0;
+    const message = `Synced ${result.courseCount} classes and ${result.assignmentCount} coursework items from Google Classroom.`;
+    showToast(
+      submissionErrorCount ? `${message} Could not load submissions for ${submissionErrorCount} items.` : message,
+      submissionErrorCount ? 'warning' : 'success'
+    );
     return { ok: true, ...result };
   } catch (err) {
     showToast(err.message || 'Classroom sync failed. Try again.', 'error');

@@ -181,6 +181,14 @@
         </div>
         <div class="form-group"><span class="row-label">Status</span><div><span class="badge" id="assignmentDetailsStatus"></span></div></div>
         <div class="form-group"><span class="row-label">Description</span><p id="assignmentDetailsDescription">—</p></div>
+        <div class="form-group" id="assignmentDetailsSubmissionGroup" hidden>
+          <span class="row-label">Google Classroom submission</span>
+          <p id="assignmentDetailsSubmission"></p>
+        </div>
+        <div class="form-group" id="assignmentDetailsFilesGroup" hidden>
+          <span class="row-label">Submitted files</span>
+          <div id="assignmentDetailsFiles"></div>
+        </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-primary" data-close-modal="assignmentDetailsModal">Close</button>

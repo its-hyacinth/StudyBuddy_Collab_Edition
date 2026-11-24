@@ -205,6 +205,7 @@ function google_classroom_payload(PDO $pdo, int $userId): array {
         'courses'
     );
     $out = [];
+    $submissionErrors = [];
     foreach ($courses as $course) {
         $courseId = (string)($course['id'] ?? '');
         if ($courseId === '') continue;
@@ -235,12 +236,31 @@ function google_classroom_payload(PDO $pdo, int $userId): array {
         } catch (Throwable $error) {
             $courseWork = [];
         }
+        foreach ($courseWork as &$work) {
+            $workId = (string)($work['id'] ?? '');
+            $work['studentSubmission'] = null;
+            if ($workId === '' || ($work['workType'] ?? '') === 'MATERIAL') continue;
+            try {
+                $submissions = google_api_pages(
+                    'https://classroom.googleapis.com/v1/courses/' . rawurlencode($courseId)
+                        . '/courseWork/' . rawurlencode($workId) . '/studentSubmissions?userId=me&pageSize=10',
+                    $access,
+                    'studentSubmissions',
+                    1
+                );
+                $work['studentSubmission'] = $submissions[0] ?? null;
+            } catch (Throwable $error) {
+                $work['studentSubmissionError'] = true;
+                $submissionErrors[] = ['courseWorkId' => $workId, 'message' => $error->getMessage()];
+            }
+        }
+        unset($work);
         $course['teacherName'] = $teacherName;
         $course['courseWork'] = $courseWork;
         $out[] = $course;
     }
     $row = google_connection_row($pdo, $userId);
-    return ['courses' => $out, 'email' => $row['google_email'] ?? ''];
+    return ['courses' => $out, 'email' => $row['google_email'] ?? '', 'submissionErrors' => $submissionErrors];
 }
 
 function google_drive_id_ok(string $id): bool {
