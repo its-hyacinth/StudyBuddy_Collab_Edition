@@ -87,7 +87,7 @@ if (is_array($savedStudentProfile)) $studentProfile = array_merge($studentProfil
   <link rel="stylesheet" href="../css/components.css" />
   <link rel="stylesheet" href="../css/pages.css" />
   <link rel="stylesheet" href="../css/student.css" />
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <script defer src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body class="student-app">
   <div class="app-shell" id="appShell">

@@ -25,6 +25,27 @@ const SB_SEED_VERSION = 2;
 
 const SB_API_BASE = (window.location.pathname.includes('/student/') || window.location.pathname.includes('/teacher/')) ? '../api/' : 'api/';
 const SB_STATE_CACHE = new Map();
+const SB_ROLE_STATE_KEYS = window.location.pathname.includes('/teacher/')
+  ? [
+      SB_KEYS.ASSIGNMENTS,
+      SB_KEYS.SCHEDULE,
+      SB_KEYS.CLASSES,
+      SB_KEYS.STUDENTS,
+      SB_KEYS.GRADES,
+      SB_KEYS.MESSAGES,
+      SB_KEYS.RESOURCES,
+      SB_KEYS.SETTINGS,
+    ]
+  : [
+      SB_KEYS.SUBJECTS,
+      SB_KEYS.ASSIGNMENTS,
+      SB_KEYS.TASKS,
+      SB_KEYS.SCHEDULE,
+      SB_KEYS.CLASSES,
+      SB_KEYS.PROGRESS,
+      SB_KEYS.SETTINGS,
+      SB_KEYS.DRIVE,
+    ];
 
 function sbRequest(method, key, value) {
   const xhr = new XMLHttpRequest();
@@ -39,6 +60,36 @@ function sbRequest(method, key, value) {
 }
 function sbGet(key, fallback = null) {
   if (SB_STATE_CACHE.has(key)) return SB_STATE_CACHE.get(key) ?? fallback;
+  const missingKeys = SB_ROLE_STATE_KEYS.filter((stateKey) => !SB_STATE_CACHE.has(stateKey));
+  if (missingKeys.includes(key)) {
+    const xhr = new XMLHttpRequest();
+    const params = new URLSearchParams({ keys: missingKeys.join(',') });
+    xhr.open('GET', `${SB_API_BASE}state.php?${params}`, false);
+    xhr.setRequestHeader('Cache-Control', 'no-store');
+    xhr.send();
+    if (xhr.status === 401) {
+      window.location.href = window.location.pathname.includes('/student/') || window.location.pathname.includes('/teacher/') ? '../index.php' : 'index.php';
+      return fallback;
+    }
+    if (xhr.status < 200 || xhr.status >= 300) {
+      console.error('StudyBuddy server request failed:', xhr.responseText);
+      return fallback;
+    }
+    try {
+      const result = JSON.parse(xhr.responseText);
+      if (!result.ok || !result.values || missingKeys.some((stateKey) =>
+        !Object.prototype.hasOwnProperty.call(result.values, stateKey)
+      )) {
+        console.error('StudyBuddy server returned incomplete state data:', result);
+        return fallback;
+      }
+      missingKeys.forEach((stateKey) => SB_STATE_CACHE.set(stateKey, result.values[stateKey]));
+      return SB_STATE_CACHE.get(key) ?? fallback;
+    } catch (error) {
+      console.error('StudyBuddy server returned invalid state data:', error);
+      return fallback;
+    }
+  }
   const result = sbRequest('GET', key);
   if (result && result.ok) {
     SB_STATE_CACHE.set(key, result.value);
