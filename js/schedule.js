@@ -56,9 +56,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function personalEvents() {
+    const scheduleEntries = getSchedule().filter((entry) =>
+      entry.source !== 'google-calendar' && entry.source !== 'classroom'
+    );
+    const scheduleIds = new Set(scheduleEntries.map((entry) => String(entry.id)));
     return [
-      ...getSchedule().filter((entry) => entry.source !== 'google-calendar' && entry.source !== 'classroom'),
-      ...(window.SB_GOOGLE_EVENTS || []),
+      ...scheduleEntries,
+      ...(window.SB_GOOGLE_EVENTS || []).filter((entry) =>
+        !scheduleIds.has(String(entry.studyBuddyScheduleId || ''))
+      ),
     ];
   }
 
@@ -517,8 +523,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!title || !date) { showToast('Title and date required', 'error'); return; }
     if (endTime <= startTime) { showToast('End time must be later than start time.', 'error'); return; }
     const schedule = { title, subjectId, subject, date, startTime, endTime, room, type };
-    const calendarReady = !!(window.SB_GOOGLE?.connected && String(window.SB_GOOGLE.scopes || '').includes('/auth/calendar'));
-    const saveOnGoogle = calendarReady && (!existing || existing.source === 'google-calendar');
+    const saveOnGoogle = !!existing && existing.source === 'google-calendar';
     try {
       if (saveOnGoogle) {
         const body = new URLSearchParams({
@@ -570,7 +575,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     btn.addEventListener('click', (e) => runClassroomSync(e.currentTarget));
   });
   document.querySelectorAll('#syncCalendarBtn, #syncGoogleCalendarBtn, #syncGoogleCalBtn, #connectGoogleCalBtn').forEach((btn) => {
-    btn.addEventListener('click', (e) => syncGoogleCalendar(e.currentTarget));
+    btn.addEventListener('click', (e) => {
+      const scheduleEvents = getSchedule().filter((entry) =>
+        entry.source !== 'google-calendar' && entry.source !== 'classroom'
+      );
+      syncScheduleToGoogleCalendar(scheduleEvents, e.currentTarget);
+    });
   });
   window.refreshGoogleCalendar = async () => {
     const status = window.SB_GOOGLE;
@@ -613,4 +623,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   render();
   if (validRequestedDate) openDaySchedule(requestedDate);
+  if (window.SB_PENDING_SCHEDULE_SYNC) {
+    window.SB_PENDING_SCHEDULE_SYNC = false;
+    const scheduleEvents = getSchedule().filter((entry) =>
+      entry.source !== 'google-calendar' && entry.source !== 'classroom'
+    );
+    syncScheduleToGoogleCalendar(scheduleEvents, document.getElementById('syncGoogleCalBtn'));
+  }
 });

@@ -133,8 +133,8 @@ async function googleConnectionStatus(force = false) {
   return data;
 }
 
-function beginGoogleConnect() {
-  const next = `${window.location.pathname}${window.location.search}`;
+function beginGoogleConnect(nextPath) {
+  const next = nextPath || `${window.location.pathname}${window.location.search}`;
   window.location.href = `${SB_API_BASE}google.php?action=start&next=${encodeURIComponent(next)}`;
 }
 
@@ -346,7 +346,13 @@ async function syncGoogleCalendar(buttonEl) {
       return { ok: false };
     }
     if (!status.connected || !String(status.scopes || '').includes('/auth/calendar')) {
-      beginGoogleConnect();
+      if (isTodaySync) {
+        beginGoogleConnect();
+      } else {
+        const next = new URL(window.location.href);
+        next.searchParams.set('syncScheduleAfterConnect', '1');
+        beginGoogleConnect(`${next.pathname}${next.search}${next.hash}`);
+      }
       return { ok: false, pending: true };
     }
     applyGoogleConnection(status);
@@ -361,12 +367,15 @@ async function syncGoogleCalendar(buttonEl) {
   }
 }
 
-async function syncTodayScheduleToGoogleCalendar(events, date, buttonEl) {
-  const done = withButtonLoading(buttonEl, 'Syncing today...');
+async function syncScheduleEventsToGoogleCalendar(events, date, buttonEl) {
+  const isTodaySync = Boolean(date);
+  const done = withButtonLoading(buttonEl, isTodaySync ? 'Syncing today...' : 'Syncing schedule...');
+  let synced = 0;
   try {
-    const todayEvents = (Array.isArray(events) ? events : []).filter((entry) => entry.date === date);
-    if (!todayEvents.length) {
-      showToast('There are no schedule entries for today to sync.', 'info');
+    const scheduleEvents = (Array.isArray(events) ? events : [])
+      .filter((entry) => entry && (!date || entry.date === date));
+    if (!scheduleEvents.length) {
+      showToast(isTodaySync ? 'There are no schedule entries for today to sync.' : 'There are no schedule entries to sync.', 'info');
       return { ok: false };
     }
 
@@ -381,47 +390,64 @@ async function syncTodayScheduleToGoogleCalendar(events, date, buttonEl) {
     }
     applyGoogleConnection(status);
 
-    const body = new URLSearchParams({
-      date,
-      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Manila',
-      events: JSON.stringify(todayEvents.map((entry) => ({
-        id: entry.id,
-        title: entry.title,
-        subject: entry.subject || '',
-        date: entry.date,
-        startTime: entry.startTime || '',
-        endTime: entry.endTime || '',
-        room: entry.room || '',
-      }))),
-    });
-    const response = await fetch(`${SB_API_BASE}google.php?action=calendar-sync-schedule`, {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || '',
-      },
-      body,
-    });
-    const result = await response.json().catch(() => ({}));
-    if (!response.ok || !result.ok) throw new Error(result.message || 'Could not sync today’s schedule.');
+    const failed = [];
+    for (let index = 0; index < scheduleEvents.length; index += 100) {
+      const batch = scheduleEvents.slice(index, index + 100);
+      const body = new URLSearchParams({
+        date,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Manila',
+        events: JSON.stringify(batch.map((entry) => ({
+          id: entry.id,
+          title: entry.title,
+          subject: entry.subject || '',
+          date: entry.date,
+          startTime: entry.startTime || '',
+          endTime: entry.endTime || '',
+          room: entry.room || '',
+        }))),
+      });
+      const response = await fetch(`${SB_API_BASE}google.php?action=calendar-sync-schedule`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || '',
+        },
+        body,
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.ok) throw new Error(result.message || 'Could not sync the schedule.');
+      synced += Number(result.synced) || 0;
+      if (Array.isArray(result.failed)) failed.push(...result.failed);
+    }
 
-    if (result.failed?.length) {
-      const firstFailure = result.failed[0];
+    if (failed.length) {
+      const firstFailure = failed[0];
       showToast(
-        `Synced ${result.synced} of ${todayEvents.length}. ${firstFailure.title}: ${String(firstFailure.message || 'Could not sync event.').slice(0, 120)}`,
+        `Synced ${synced} of ${scheduleEvents.length}. ${firstFailure.title}: ${String(firstFailure.message || 'Could not sync event.').slice(0, 120)}`,
         'warning'
       );
     } else {
-      showToast(`Synced ${result.synced} schedule events to Google Calendar.`, 'success');
+      showToast(`Synced ${synced} schedule events to Google Calendar.`, 'success');
     }
-    return { ok: true, ...result };
+    return { ok: true, synced, failed };
   } catch (error) {
-    showToast(error.message || 'Could not sync today’s schedule.', 'error');
+    const message = synced
+      ? `Synced ${synced} events, but could not finish: ${error.message || 'Google Calendar sync failed.'}`
+      : error.message || 'Google Calendar sync failed.';
+    showToast(message, 'error');
     return { ok: false, error };
   } finally {
     done();
   }
+}
+
+async function syncTodayScheduleToGoogleCalendar(events, date, buttonEl) {
+  return syncScheduleEventsToGoogleCalendar(events, date, buttonEl);
+}
+
+async function syncScheduleToGoogleCalendar(events, buttonEl) {
+  return syncScheduleEventsToGoogleCalendar(events, '', buttonEl);
 }
 
 async function mockGoogleCalendarSync(buttonEl) {
@@ -458,12 +484,17 @@ document.addEventListener('DOMContentLoaded', () => {
   if (flag) {
     if (flag === 'connected') {
       showToast('Google Classroom, Calendar, and Drive are connected.', 'success');
-      syncGoogleClassroom();
+      if (params.get('syncScheduleAfterConnect') === '1') {
+        window.SB_PENDING_SCHEDULE_SYNC = true;
+      } else {
+        syncGoogleClassroom();
+      }
     } else if (flag === 'error') {
       showToast(params.get('message') || 'Google connection failed.', 'error');
     }
     params.delete('google');
     params.delete('message');
+    params.delete('syncScheduleAfterConnect');
     const query = params.toString();
     window.history.replaceState({}, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`);
   }

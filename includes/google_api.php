@@ -463,6 +463,7 @@ function google_calendar_events(PDO $pdo, int $userId, string $startDate, string
             'type' => 'event',
             'source' => 'google-calendar',
             'calendarSource' => 'google',
+            'studyBuddyScheduleId' => (string)($item['extendedProperties']['private']['studybuddyScheduleId'] ?? ''),
             'url' => (string)($item['htmlLink'] ?? ''),
         ];
     }
@@ -542,7 +543,8 @@ function google_calendar_save(PDO $pdo, int $userId, array $input): array {
 }
 
 function google_calendar_sync_schedule(PDO $pdo, int $userId, array $events, string $date, string $zone): array {
-    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+    if ($date !== '' && (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)
+        || !checkdate((int)substr($date, 5, 2), (int)substr($date, 8, 2), (int)substr($date, 0, 4)))) {
         throw new RuntimeException('Choose a valid date to sync.');
     }
     if (count($events) > 100) {
@@ -550,7 +552,7 @@ function google_calendar_sync_schedule(PDO $pdo, int $userId, array $events, str
     }
     $zone = google_calendar_zone($zone);
     $today = (new DateTimeImmutable('now', new DateTimeZone($zone)))->format('Y-m-d');
-    if ($date !== $today) {
+    if ($date !== '' && $date !== $today) {
         throw new RuntimeException('Only today’s schedule can be synced from the dashboard.');
     }
 
@@ -563,7 +565,12 @@ function google_calendar_sync_schedule(PDO $pdo, int $userId, array $events, str
             if (!is_array($entry)) throw new RuntimeException('Invalid schedule event.');
             $entryId = trim((string)($entry['id'] ?? ''));
             if ($entryId === '' || strlen($entryId) > 180) throw new RuntimeException('This event has no valid schedule ID.');
-            if ((string)($entry['date'] ?? '') !== $date) throw new RuntimeException('This event is not scheduled for today.');
+            $eventDate = trim((string)($entry['date'] ?? ''));
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $eventDate)
+                || !checkdate((int)substr($eventDate, 5, 2), (int)substr($eventDate, 8, 2), (int)substr($eventDate, 0, 4))) {
+                throw new RuntimeException('Enter a valid schedule date.');
+            }
+            if ($date !== '' && $eventDate !== $date) throw new RuntimeException('This event is not scheduled for today.');
             if ($title === '' || strlen($title) > 200) throw new RuntimeException('Enter an event title.');
 
             $startTime = trim((string)($entry['startTime'] ?? ''));
@@ -579,13 +586,14 @@ function google_calendar_sync_schedule(PDO $pdo, int $userId, array $events, str
                 'summary' => $title,
                 'location' => substr($room, 0, 200),
                 'description' => trim((string)($entry['subject'] ?? '')),
+                'extendedProperties' => ['private' => ['studybuddyScheduleId' => $entryId]],
             ];
             if ($startTime === '') {
-                $body['start'] = ['date' => $date];
-                $body['end'] = ['date' => (new DateTimeImmutable($date, new DateTimeZone($zone)))->modify('+1 day')->format('Y-m-d')];
+                $body['start'] = ['date' => $eventDate];
+                $body['end'] = ['date' => (new DateTimeImmutable($eventDate, new DateTimeZone($zone)))->modify('+1 day')->format('Y-m-d')];
             } else {
-                $body['start'] = ['dateTime' => $date . 'T' . $startTime . ':00', 'timeZone' => $zone];
-                $body['end'] = ['dateTime' => $date . 'T' . $endTime . ':00', 'timeZone' => $zone];
+                $body['start'] = ['dateTime' => $eventDate . 'T' . $startTime . ':00', 'timeZone' => $zone];
+                $body['end'] = ['dateTime' => $eventDate . 'T' . $endTime . ':00', 'timeZone' => $zone];
             }
 
             $eventId = substr(hash('sha256', 'studybuddy:' . $userId . ':' . $entryId), 0, 40);
