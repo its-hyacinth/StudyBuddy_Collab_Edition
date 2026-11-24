@@ -58,9 +58,15 @@ function role_redirect(string $role): string {
 function establish_session(PDO $pdo, array $row): array {
     $user = user_from_row($row);
     $_SESSION['user'] = $user;
-    session_regenerate_id(true);
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        try { session_regenerate_id(true); } catch (Throwable $error) { error_log($error->getMessage()); }
+    }
     $_SESSION['user'] = $user;
-    $pdo->prepare('UPDATE users SET last_login_at = NOW() WHERE id = ?')->execute([(int)$row['id']]);
+    try {
+        $pdo->prepare('UPDATE users SET last_login_at = NOW() WHERE id = ?')->execute([(int)$row['id']]);
+    } catch (Throwable $error) {
+        error_log('Could not record last login: ' . $error->getMessage());
+    }
     return $user;
 }
 
@@ -192,6 +198,59 @@ function fetch_user_by_id(PDO $pdo, int $id): ?array {
     return $row ?: null;
 }
 
+function fetch_user_by_email(PDO $pdo, string $email): ?array {
+    $email = strtolower(trim($email));
+    if ($email === '') return null;
+    $stmt = $pdo->prepare('SELECT id, full_name, email, password_hash, role, google_sub, avatar_url, email_verified, totp_secret, totp_pending_secret, totp_enabled, totp_last_step FROM users WHERE LOWER(email) = ? LIMIT 1');
+    $stmt->execute([$email]);
+    $row = $stmt->fetch();
+    return $row ?: null;
+}
+
+function fetch_user_by_google_sub(PDO $pdo, string $sub): ?array {
+    $sub = trim($sub);
+    if ($sub === '') return null;
+    $stmt = $pdo->prepare('SELECT id, full_name, email, password_hash, role, google_sub, avatar_url, email_verified, totp_secret, totp_pending_secret, totp_enabled, totp_last_step FROM users WHERE google_sub = ? LIMIT 1');
+    $stmt->execute([$sub]);
+    $row = $stmt->fetch();
+    return $row ?: null;
+}
+
+function attach_google_account(PDO $pdo, array $row, array $identity): array {
+    $id = (int)$row['id'];
+    $current = trim((string)($row['google_sub'] ?? ''));
+    $sub = trim((string)($identity['sub'] ?? ''));
+    if ($sub === '') throw new RuntimeException('Google account identifier is missing.');
+    if ($current !== '' && $current !== $sub) {
+        throw new RuntimeException('This email is already linked to a different Google account.');
+    }
+    if ($current === $sub) return fetch_user_by_id($pdo, $id) ?: $row;
+    $picture = trim((string)($identity['picture'] ?? ''));
+    try {
+        $pdo->prepare('UPDATE users SET google_sub = ?, email_verified = 1, avatar_url = COALESCE(NULLIF(?, \'\'), avatar_url) WHERE id = ? AND (google_sub IS NULL OR google_sub = \'\')')
+            ->execute([$sub, $picture, $id]);
+    } catch (PDOException $error) {
+        if (function_exists('sb_is_duplicate') && sb_is_duplicate($error)) {
+            throw new RuntimeException('That Google account is already used by another StudyBuddy account.', 0, $error);
+        }
+        throw $error;
+    }
+    $fresh = fetch_user_by_id($pdo, $id);
+    if (!$fresh || trim((string)($fresh['google_sub'] ?? '')) !== $sub) {
+        throw new RuntimeException('This email is already linked to a different Google account.');
+    }
+    return $fresh;
+}
+
+function resolve_google_account(PDO $pdo, array $identity): array {
+    $row = fetch_user_by_google_sub($pdo, (string)($identity['sub'] ?? ''));
+    if (!$row) {
+        $existing = fetch_user_by_email($pdo, (string)($identity['email'] ?? ''));
+        if ($existing) $row = attach_google_account($pdo, $existing, $identity);
+    }
+    return $row ? ['row' => $row] : ['row' => null];
+}
+
 function complete_google_oauth_login(PDO $pdo, array $identity, bool $remember): never {
     $home = app_cookie_path() . 'index.php';
     $go = static function (string $url): never {
@@ -199,25 +258,13 @@ function complete_google_oauth_login(PDO $pdo, array $identity, bool $remember):
         header('Location: ' . $url);
         exit;
     };
-    $bySub = $pdo->prepare('SELECT id, full_name, email, password_hash, role, google_sub, avatar_url, totp_secret, totp_enabled, totp_last_step FROM users WHERE google_sub = ? LIMIT 1');
-    $bySub->execute([$identity['sub']]);
-    $row = $bySub->fetch() ?: null;
+    try {
+        $resolved = resolve_google_account($pdo, $identity);
+    } catch (RuntimeException $error) {
+        $go($home . '?' . http_build_query(['google' => 'error', 'message' => $error->getMessage()]));
+    }
+    $row = $resolved['row'];
     if (!$row) {
-        $byEmail = $pdo->prepare('SELECT id, google_sub FROM users WHERE email = ? LIMIT 1');
-        $byEmail->execute([$identity['email']]);
-        $existing = $byEmail->fetch();
-        if ($existing && empty($existing['google_sub'])) {
-            $go($home . '?' . http_build_query([
-                'google' => 'error',
-                'message' => 'An account with this email already exists. Sign in with your password.',
-            ]));
-        }
-        if ($existing) {
-            $go($home . '?' . http_build_query([
-                'google' => 'error',
-                'message' => 'This email is already linked to a different Google account.',
-            ]));
-        }
         $_SESSION['google_signup'] = $identity + ['expires' => time() + 600];
         $go($home);
     }

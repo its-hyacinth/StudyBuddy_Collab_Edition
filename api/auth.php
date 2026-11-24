@@ -105,13 +105,15 @@ try {
         if (too_many_login_attempts($pdo, $email)) {
             json_response(['ok' => false, 'message' => 'Too many failed sign-in attempts. Wait 15 minutes and try again.'], 429);
         }
-        $stmt = $pdo->prepare('SELECT id, full_name, email, password_hash, role, google_sub, avatar_url, totp_secret, totp_enabled, totp_last_step FROM users WHERE email = ? LIMIT 1');
-        $stmt->execute([$email]);
-        $row = $stmt->fetch() ?: null;
+        $row = fetch_user_by_email($pdo, $email);
         $dummy = '$2y$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy';
         $hash = (string)($row['password_hash'] ?? $dummy);
         $passwordOk = $hash !== '' && password_verify($password, $hash);
-        if (!$row || empty($row['password_hash']) || !$passwordOk) {
+        if ($row && trim((string)($row['password_hash'] ?? '')) === '') {
+            record_login_attempt($pdo, $email, false);
+            json_response(['ok' => false, 'message' => 'This account has no password yet. Use Continue with Google with the same email and StudyBuddy will connect it.'], 401);
+        }
+        if (!$row || !$passwordOk) {
             record_login_attempt($pdo, $email, false);
             json_response(['ok' => false, 'message' => 'Invalid email or password.'], 401);
         }
@@ -158,19 +160,13 @@ try {
             json_response(['ok' => false, 'message' => $error->getMessage()], 401);
         }
         $remember = ($_POST['remember'] ?? '') === '1';
-        $bySub = $pdo->prepare('SELECT id, full_name, email, password_hash, role, google_sub, avatar_url, totp_secret, totp_enabled, totp_last_step FROM users WHERE google_sub = ? LIMIT 1');
-        $bySub->execute([$identity['sub']]);
-        $row = $bySub->fetch() ?: null;
+        try {
+            $resolved = resolve_google_account($pdo, $identity);
+        } catch (RuntimeException $error) {
+            json_response(['ok' => false, 'message' => $error->getMessage()], 409);
+        }
+        $row = $resolved['row'];
         if (!$row) {
-            $byEmail = $pdo->prepare('SELECT id, google_sub FROM users WHERE email = ? LIMIT 1');
-            $byEmail->execute([$identity['email']]);
-            $existing = $byEmail->fetch();
-            if ($existing && empty($existing['google_sub'])) {
-                json_response(['ok' => false, 'message' => 'An account with this email already exists. Sign in with your password, then connect Google from Settings.'], 409);
-            }
-            if ($existing) {
-                json_response(['ok' => false, 'message' => 'This email is already linked to a different Google account.'], 409);
-            }
             $_SESSION['google_signup'] = $identity + ['expires' => time() + 600];
             json_response(['ok' => true, 'needsRole' => true, 'email' => $identity['email'], 'name' => $identity['name']]);
         }

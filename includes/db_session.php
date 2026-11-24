@@ -5,7 +5,7 @@ declare(strict_types=1);
  * Sessions live in the database so sign-in still works when each request
  * is handled by a different server, as on the hosted site.
  */
-class StudyBuddySessionHandler implements SessionHandlerInterface {
+class StudyBuddySessionHandler implements SessionHandlerInterface, SessionUpdateTimestampHandlerInterface {
     private ?PDO $pdo = null;
     private bool $ready = false;
 
@@ -51,6 +51,20 @@ class StudyBuddySessionHandler implements SessionHandlerInterface {
         if (!$this->validId($id) || !$this->pdo) return true;
         $this->pdo->prepare('DELETE FROM php_sessions WHERE id = ?')->execute([$id]);
         return true;
+    }
+
+    public function validateId(string $id): bool {
+        if (!$this->validId($id) || !$this->pdo) return false;
+        $stmt = $this->pdo->prepare('SELECT 1 FROM php_sessions WHERE id = ? AND expires_at > ?');
+        $stmt->execute([$id, time()]);
+        return (bool)$stmt->fetchColumn();
+    }
+
+    public function updateTimestamp(string $id, string $data): bool {
+        if (!$this->validId($id) || !$this->pdo) return false;
+        $stmt = $this->pdo->prepare('UPDATE php_sessions SET expires_at = ? WHERE id = ?');
+        $stmt->execute([time() + sb_session_lifetime(), $id]);
+        return $stmt->rowCount() >= 0;
     }
 
     public function gc(int $max_lifetime): int|false {
