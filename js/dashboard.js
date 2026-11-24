@@ -186,11 +186,6 @@ document.addEventListener('DOMContentLoaded', () => {
     e.preventDefault();
     openInGoogleClassroom();
   });
-  document.getElementById('openClassroomBtn')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    openInGoogleClassroom();
-  });
-
   document.querySelectorAll('[data-action]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const action = btn.getAttribute('data-action');

@@ -207,9 +207,9 @@
               <button type="button" class="btn btn-outline btn-sm btn-block" id="syncClassroomBtn">
                 <i data-lucide="refresh-cw"></i> Sync Classroom
               </button>
-              <button type="button" class="btn btn-primary btn-sm btn-block" id="openClassroomBtn">
+              <a href="schedule.php" class="btn btn-primary btn-sm btn-block">
                 <i data-lucide="external-link"></i> Open
-              </button>
+              </a>
             </div>
           </div>
 
