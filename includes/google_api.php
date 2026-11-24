@@ -443,6 +443,18 @@ function google_calendar_zone(string $zone): string {
     return in_array($zone, timezone_identifiers_list(), true) ? $zone : 'Asia/Manila';
 }
 
+function google_calendar_primary_zone(string $accessToken): string {
+    $calendar = google_api_get(
+        'https://www.googleapis.com/calendar/v3/users/me/calendarList/primary',
+        $accessToken
+    );
+    $zone = trim((string)($calendar['timeZone'] ?? ''));
+    if ($zone === '' || !in_array($zone, timezone_identifiers_list(), true)) {
+        throw new RuntimeException('Google Calendar did not provide a valid primary calendar timezone.');
+    }
+    return $zone;
+}
+
 function google_calendar_when(?array $point): array {
     if (!$point) return ['date' => '', 'time' => ''];
     if (!empty($point['date'])) return ['date' => substr((string)$point['date'], 0, 10), 'time' => ''];
@@ -468,11 +480,11 @@ function google_calendar_events(PDO $pdo, int $userId, string $startDate, string
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $startDate) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $endDate)) {
         throw new RuntimeException('Choose a valid date range.');
     }
-    $zone = google_calendar_zone($zone);
+    $access = google_access_token($pdo, $userId);
+    $zone = google_calendar_primary_zone($access);
     $tz = new DateTimeZone($zone);
     $start = new DateTime($startDate . ' 00:00:00', $tz);
     $end = new DateTime($endDate . ' 23:59:59', $tz);
-    $access = google_access_token($pdo, $userId);
     $calendarList = google_api_pages(
         'https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=250',
         $access,
@@ -558,7 +570,8 @@ function google_calendar_save(PDO $pdo, int $userId, array $input): array {
         throw new RuntimeException('End time must be later than start time.');
     }
     if (strlen($room) > 200) $room = substr($room, 0, 200);
-    $zone = google_calendar_zone((string)($input['timeZone'] ?? ''));
+    $access = google_access_token($pdo, $userId);
+    $zone = google_calendar_primary_zone($access);
     $body = [
         'summary' => $title,
         'location' => $room,
@@ -566,7 +579,6 @@ function google_calendar_save(PDO $pdo, int $userId, array $input): array {
         'start' => ['dateTime' => $date . 'T' . $startTime . ':00', 'timeZone' => $zone],
         'end' => ['dateTime' => $date . 'T' . $endTime . ':00', 'timeZone' => $zone],
     ];
-    $access = google_access_token($pdo, $userId);
     $eventId = trim((string)($input['googleEventId'] ?? ''));
     if ($eventId !== '') {
         $eventId = google_calendar_event_id($eventId);
@@ -625,6 +637,7 @@ function google_calendar_sync_schedule(PDO $pdo, int $userId, array $events, str
     }
 
     $access = google_access_token($pdo, $userId);
+    $calendarZone = google_calendar_primary_zone($access);
     $synced = 0;
     $failed = [];
     foreach ($events as $entry) {
@@ -658,10 +671,10 @@ function google_calendar_sync_schedule(PDO $pdo, int $userId, array $events, str
             ];
             if ($startTime === '') {
                 $body['start'] = ['date' => $eventDate];
-                $body['end'] = ['date' => (new DateTimeImmutable($eventDate, new DateTimeZone($zone)))->modify('+1 day')->format('Y-m-d')];
+                $body['end'] = ['date' => (new DateTimeImmutable($eventDate, new DateTimeZone($calendarZone)))->modify('+1 day')->format('Y-m-d')];
             } else {
-                $body['start'] = ['dateTime' => $eventDate . 'T' . $startTime . ':00', 'timeZone' => $zone];
-                $body['end'] = ['dateTime' => $eventDate . 'T' . $endTime . ':00', 'timeZone' => $zone];
+                $body['start'] = ['dateTime' => $eventDate . 'T' . $startTime . ':00', 'timeZone' => $calendarZone];
+                $body['end'] = ['dateTime' => $eventDate . 'T' . $endTime . ':00', 'timeZone' => $calendarZone];
             }
 
             $eventId = substr(hash('sha256', 'studybuddy:' . $userId . ':' . $entryId), 0, 40);
