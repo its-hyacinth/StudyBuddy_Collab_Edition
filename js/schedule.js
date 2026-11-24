@@ -78,7 +78,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function calendarDeadlineEntries() {
     const entries = getAssignments()
-      .filter((assignment) => assignment.dueDate && assignment.status !== 'completed')
+      .filter((assignment) => assignment.dueDate
+        && (assignment.source === 'classroom' || assignment.status !== 'completed'))
       .map((assignment) => ({
         ...assignment,
         date: assignment.dueDate,
@@ -118,15 +119,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     );
     if (isTeacher) return entries;
 
-    entries.push(...calendarDeadlineEntries().map((entry) => ({
-      id: entry.id,
-      title: entry.title,
-      subject: entry.subject || '',
-      date: entry.date,
-      startTime: '',
-      endTime: '',
-      room: '',
-    })));
+    entries.push(...calendarDeadlineEntries()
+      .filter((entry) => entry.status !== 'completed')
+      .map((entry) => ({
+        id: entry.id,
+        title: entry.title,
+        subject: entry.subject || '',
+        date: entry.date,
+        startTime: '',
+        endTime: '',
+        room: '',
+      })));
     return entries;
   }
 
@@ -140,6 +143,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function calendarEntryStatus(entry) {
     if (entry.calendarSource === 'task') return taskDeadlineStatus(entry);
+    if (entry.calendarSource === 'assignment' && entry.status === 'completed') return 'completed';
     if (entry.calendarSource === 'assignment' && (entry.status === 'overdue' || entry.date < localDateStr())) return 'overdue';
     return entry.type || 'event';
   }
@@ -318,9 +322,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       const otherEvents = dayEntries
         .filter((entry) => entry.calendarSource !== 'assignment' && entry.calendarSource !== 'task')
         .sort((a, b) => String(a.startTime || '').localeCompare(String(b.startTime || '')));
+      const otherEventLimit = Math.max(3 - deadlines.length, otherEvents.length ? 1 : 0);
       const events = [
         ...deadlines,
-        ...otherEvents.slice(0, Math.max(0, 3 - deadlines.length)),
+        ...otherEvents.slice(0, otherEventLimit),
       ];
       const dayButtonAttributes = scheduleDayAttributes(dateKey);
       html += `<div class="cal-day${isToday ? ' today' : ''}" ${dayButtonAttributes}>
@@ -328,7 +333,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         ${events.map((ev) => `
           <div class="cal-event-chip ${escapeHtml(subjectShort(ev.subject))} ${ev.type === 'deadline' ? 'task' : ''}" title="${escapeHtml(`${ev.calendarSource === 'assignment' ? 'Assignment' : ev.calendarSource === 'task' ? 'Task' : 'Event'} due: ${ev.title || ''}`)}">
             <span class="dot ${escapeHtml(subjectShort(ev.subject))}" style="width:6px;height:6px"></span>
-            <span class="cal-event-label">${ev.calendarSource === 'assignment' ? 'Asg: ' : ev.calendarSource === 'task' ? 'Task: ' : ''}${escapeHtml(ev.title)} ${ev.startTime ? escapeHtml(formatTime(ev.startTime)) : ''}</span>
+            <span class="cal-event-label">${ev.calendarSource === 'assignment' ? (ev.source === 'classroom' ? 'GC: ' : 'Asg: ') : ev.calendarSource === 'task' ? 'Task: ' : ''}${escapeHtml(ev.title)} ${ev.startTime ? escapeHtml(formatTime(ev.startTime)) : ''}</span>
           </div>`).join('')}
         ${deadlines.length + otherEvents.length > events.length ? `<div style="font-size:10px;color:var(--text-muted)">+${deadlines.length + otherEvents.length - events.length} more</div>` : ''}
       </div>`;
@@ -364,10 +369,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         ${scheduleActions(entry, 'day', true)}
       </article>`).join('');
     const assignments = getAssignments()
-      .filter((assignment) => assignment.dueDate === date && assignment.status !== 'completed')
+      .filter((assignment) => assignment.dueDate === date
+        && (assignment.source === 'classroom' || assignment.status !== 'completed'))
       .sort((a, b) => String(a.title || '').localeCompare(String(b.title || '')));
     const assignmentItems = assignments.map((assignment) => {
-      const status = assignment.status === 'overdue' || assignment.dueDate < localDateStr()
+      const status = assignment.status === 'completed' ? 'completed'
+        : assignment.status === 'overdue' || assignment.dueDate < localDateStr()
         ? 'overdue'
         : assignment.status === 'pending' ? 'pending' : 'upcoming';
       return `
@@ -376,7 +383,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             <div class="day-schedule-heading">
               <h4>${isTeacher
                 ? escapeHtml(assignment.title || 'Untitled assignment')
-                : `<a href="assignments.php?assignment=${encodeURIComponent(assignment.id)}">${escapeHtml(assignment.title || 'Untitled assignment')}</a>`}</h4>
+                : `<a href="assignments.php?assignment=${encodeURIComponent(assignment.id)}">${assignment.source === 'classroom' ? 'Classroom: ' : ''}${escapeHtml(assignment.title || 'Untitled assignment')}</a>`}</h4>
               <span class="badge ${escapeHtml(statusClass(status))}">${escapeHtml(statusLabel(status))}</span>
             </div>
             <div class="day-schedule-meta">${escapeHtml(assignment.subject || 'General')} · Due ${escapeHtml(formatDate(assignment.dueDate))}</div>
@@ -465,7 +472,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const el = document.getElementById('scheduleEventsList') || document.getElementById('upcomingEvents');
     if (!el) return;
     const upcoming = calendarEntries()
-      .filter((s) => s.date >= localDateStr())
+      .filter((s) => s.date >= localDateStr()
+        && !(s.calendarSource === 'assignment' && s.status === 'completed'))
       .sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime))
       .slice(0, 5);
     el.innerHTML = upcoming.length ? upcoming.map((s) => `

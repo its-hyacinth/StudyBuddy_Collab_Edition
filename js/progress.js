@@ -329,7 +329,8 @@ document.addEventListener('DOMContentLoaded', () => {
       .filter((entry) => entry.date === date)
       .sort((a, b) => String(a.startTime || '').localeCompare(String(b.startTime || '')));
     const assignments = getAssignments().filter((assignment) =>
-      assignment.dueDate === date && assignment.status !== 'completed'
+      assignment.dueDate === date
+      && (assignment.source === 'classroom' || assignment.status !== 'completed')
     );
     const tasks = getTasks().filter((task) =>
       task.dueDate === date && task.status !== 'completed'
@@ -427,7 +428,9 @@ document.addEventListener('DOMContentLoaded', () => {
         .filter((entry) => entry.source !== 'google-calendar' && entry.source !== 'classroom')
         .map((entry) => entry.date),
       ...(window.SB_GOOGLE_EVENTS || []).map((entry) => entry.date),
-      ...getAssignments().filter((assignment) => assignment.status !== 'completed').map((assignment) => assignment.dueDate),
+      ...getAssignments()
+        .filter((assignment) => assignment.source === 'classroom' || assignment.status !== 'completed')
+        .map((assignment) => assignment.dueDate),
       ...getTasks().filter((task) => task.status !== 'completed').map((task) => task.dueDate),
     ].filter(Boolean);
     renderMiniCalendar(
