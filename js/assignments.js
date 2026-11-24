@@ -176,9 +176,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const color = getSubjects().find((s) => s.id === a.subjectId)?.color || '#2563EB';
     const status = a.displayStatus || displayStatus(a);
     const completed = status === 'completed';
+    const isClassroomAssignment = a.source === 'classroom' || !!a.classroomWorkId;
     return `
       <tr data-id="${escapeHtml(a.id)}" data-status="${escapeHtml(a.status)}" class="${completed ? 'assignment-completed' : ''}">
-        <td><label class="custom-check"><input type="checkbox" class="row-check" aria-label="Mark ${escapeHtml(a.title)} as ${completed ? 'incomplete' : 'complete'}" ${completed ? 'checked' : ''} /><span class="box"></span></label></td>
+        <td><label class="custom-check"><input type="checkbox" class="row-check" aria-label="${isClassroomAssignment ? 'Completion synced from Google Classroom' : `Mark ${escapeHtml(a.title)} as ${completed ? 'incomplete' : 'complete'}`}" ${isClassroomAssignment ? 'disabled' : ''} ${completed ? 'checked' : ''} /><span class="box"></span></label></td>
         <td>
           <div class="cell-title">
             <div class="cell-icon" style="background:${color}22;color:${color}"><i data-lucide="file-text"></i></div>
@@ -289,6 +290,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function actionMenu(a) {
+    if (!isTeacher && (a.source === 'classroom' || a.classroomWorkId)) return '';
     return `
       <div class="action-menu-wrap">
         <button type="button" class="action-menu-btn" data-menu="${escapeHtml(a.id)}" aria-label="Actions"><i data-lucide="more-vertical"></i></button>
@@ -303,7 +305,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function setAssignmentCompletion(id, completed) {
     const assignment = getAssignments().find((a) => a.id === id);
-    if (!assignment) return;
+    if (!assignment || assignment.source === 'classroom' || assignment.classroomWorkId) return;
 
     if (completed) {
       if (assignment.status !== 'completed') {
@@ -390,12 +392,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const selectAll = document.getElementById('selectAll');
     if (selectAll && !isTeacher) {
-      const completedCount = slice.filter((assignment) => assignment.status === 'completed').length;
-      selectAll.disabled = slice.length === 0;
-      selectAll.checked = slice.length > 0 && completedCount === slice.length;
-      selectAll.indeterminate = completedCount > 0 && completedCount < slice.length;
+      const editableSlice = slice.filter((assignment) => assignment.source !== 'classroom' && !assignment.classroomWorkId);
+      const completedCount = editableSlice.filter((assignment) => assignment.status === 'completed').length;
+      selectAll.disabled = editableSlice.length === 0;
+      selectAll.checked = editableSlice.length > 0 && completedCount === editableSlice.length;
+      selectAll.indeterminate = completedCount > 0 && completedCount < editableSlice.length;
       selectAll.onchange = () => {
-        slice.forEach((assignment) => setAssignmentCompletion(assignment.id, selectAll.checked));
+        editableSlice.forEach((assignment) => setAssignmentCompletion(assignment.id, selectAll.checked));
         showToast(selectAll.checked ? 'All assignments on this page marked as completed' : 'Assignments on this page marked as incomplete');
         render();
       };

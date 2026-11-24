@@ -73,26 +73,28 @@ document.addEventListener('DOMContentLoaded', () => {
       const subjectClass = escapeHtml(subjectShort(subject));
       const safeId = escapeHtml(t.id);
       const taskStatus = displayStatus(t);
+      const isClassroomTask = t.source === 'classroom' || !!t.classroomWorkId;
       return `
       <div class="todo-item ${taskStatus === 'completed' ? 'done' : ''}" data-id="${safeId}">
         <label class="custom-check">
-          <input type="checkbox" class="todo-check" data-id="${safeId}" ${taskStatus === 'completed' ? 'checked' : ''} />
+          <input type="checkbox" class="todo-check" data-id="${safeId}" aria-label="${isClassroomTask ? 'Completion synced from Google Classroom' : 'Mark task as complete'}" ${isClassroomTask ? 'disabled' : ''} ${taskStatus === 'completed' ? 'checked' : ''} />
           <span class="box"></span>
         </label>
         <button type="button" class="todo-body" data-details="${safeId}" aria-haspopup="dialog">
           <span class="todo-title">${escapeHtml(t.title)}</span>
           <span class="todo-meta">
             <span class="subject-tag ${subjectClass}">${escapeHtml(subject)}</span>
+            ${isClassroomTask ? '<span class="badge badge-info">Google Classroom</span>' : ''}
             <span class="todo-due"><i data-lucide="clock" style="width:12px;height:12px;display:inline"></i> ${escapeHtml(t.dueDate ? formatDate(t.dueDate) : 'No due date')} ${t.dueTime ? escapeHtml(formatTime(t.dueTime)) : ''}</span>
           </span>
         </button>
         <span class="badge ${statusClass(taskStatus)}">${escapeHtml(statusLabel(taskStatus))}</span>
-        <div class="action-menu-wrap">
+        ${isClassroomTask ? '' : `<div class="action-menu-wrap">
           <button type="button" class="action-menu-btn" data-menu="${safeId}"><i data-lucide="more-vertical"></i></button>
           <div class="action-dropdown" id="tmenu-${safeId}">
             <button type="button" data-delete="${safeId}" class="danger"><i data-lucide="trash-2"></i> Delete</button>
           </div>
-        </div>
+        </div>`}
       </div>`;
     }).join('') : '<p class="empty-state">No tasks in this view.</p>';
 
@@ -205,6 +207,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   document.getElementById('addTaskBtn')?.addEventListener('click', () => openModal('addTaskModal'));
+  document.getElementById('syncClassroomBtn')?.addEventListener('click', async (event) => {
+    const result = await syncGoogleClassroom(event.currentTarget);
+    if (result?.ok) render();
+  });
   document.getElementById('todoSort')?.addEventListener('change', (e) => { sortBy = e.target.value; render(); });
 
   const taskSubjects = getSubjects();
