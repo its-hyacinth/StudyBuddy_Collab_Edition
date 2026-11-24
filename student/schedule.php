@@ -32,9 +32,6 @@
               <i data-lucide="list"></i> List
             </button>
           </div>
-          <button type="button" class="btn btn-outline" id="syncGoogleCalBtn">
-            <i data-lucide="calendar"></i> Sync Google Calendar
-          </button>
           <button type="button" class="btn btn-primary" id="addScheduleBtn">
             <i data-lucide="plus"></i> Add Event
           </button>
