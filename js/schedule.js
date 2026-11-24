@@ -76,12 +76,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     return personalEvents().find((entry) => entry.id === id);
   }
 
-  function calendarEntries() {
-    const entries = personalEvents().map((entry) => ({
-      ...entry,
-      calendarSource: entry.calendarSource || (entry.source === 'google-calendar' ? 'google' : 'schedule'),
-    }));
-    entries.push(...getAssignments()
+  function calendarDeadlineEntries() {
+    const entries = getAssignments()
       .filter((assignment) => assignment.dueDate && assignment.status !== 'completed')
       .map((assignment) => ({
         ...assignment,
@@ -90,7 +86,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         endTime: '',
         type: 'deadline',
         calendarSource: 'assignment',
-      })));
+      }));
     if (!isTeacher) {
       entries.push(...getTasks()
         .filter((task) => task.dueDate && task.status !== 'completed')
@@ -106,34 +102,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     return entries;
   }
 
+  function calendarEntries() {
+    return [
+      ...personalEvents().map((entry) => ({
+        ...entry,
+        calendarSource: entry.calendarSource || (entry.source === 'google-calendar' ? 'google' : 'schedule'),
+      })),
+      ...calendarDeadlineEntries(),
+    ];
+  }
+
   function googleCalendarSyncEntries() {
     const entries = getSchedule().filter((entry) =>
       entry.source !== 'google-calendar' && entry.source !== 'classroom'
     );
     if (isTeacher) return entries;
 
-    entries.push(...getAssignments()
-      .filter((assignment) => assignment.dueDate && assignment.status !== 'completed')
-      .map((assignment) => ({
-        id: assignment.id,
-        title: assignment.title || 'Untitled assignment',
-        subject: assignment.subject || '',
-        date: assignment.dueDate,
-        startTime: '',
-        endTime: '',
-        room: '',
-      })));
-    entries.push(...getTasks()
-      .filter((task) => task.dueDate && task.status !== 'completed')
-      .map((task) => ({
-        id: task.id,
-        title: task.title || 'Untitled task',
-        subject: task.subject || '',
-        date: task.dueDate,
-        startTime: '',
-        endTime: '',
-        room: '',
-      })));
+    entries.push(...calendarDeadlineEntries().map((entry) => ({
+      id: entry.id,
+      title: entry.title,
+      subject: entry.subject || '',
+      date: entry.date,
+      startTime: '',
+      endTime: '',
+      room: '',
+    })));
     return entries;
   }
 
@@ -302,6 +295,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (monthLabel) monthLabel.textContent = label;
 
     const entries = filteredCalendarEntries();
+    const calendarDeadlines = calendarDeadlineEntries();
     let html = `${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d) => `<div class="cal-dow">${d}</div>`).join('')}`;
 
     for (let i = 0; i < totalCells; i++) {
@@ -317,19 +311,26 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       const isToday = today.getFullYear() === calY && today.getMonth() === calM && today.getDate() === day;
       const dateKey = `${calY}-${String(calM + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      const events = eventsForDay(calY, calM, day, entries).sort((a, b) =>
-        Number(b.type === 'deadline') - Number(a.type === 'deadline')
-        || String(a.startTime || '').localeCompare(String(b.startTime || ''))
-      );
+      const dayEntries = eventsForDay(calY, calM, day, entries);
+      const deadlines = isTeacher
+        ? dayEntries.filter((entry) => entry.calendarSource === 'assignment')
+        : calendarDeadlines.filter((entry) => entry.date === dateKey);
+      const otherEvents = dayEntries
+        .filter((entry) => entry.calendarSource !== 'assignment' && entry.calendarSource !== 'task')
+        .sort((a, b) => String(a.startTime || '').localeCompare(String(b.startTime || '')));
+      const events = [
+        ...deadlines,
+        ...otherEvents.slice(0, Math.max(0, 3 - deadlines.length)),
+      ];
       const dayButtonAttributes = scheduleDayAttributes(dateKey);
       html += `<div class="cal-day${isToday ? ' today' : ''}" ${dayButtonAttributes}>
         <span class="day-num">${day}</span>
-        ${events.slice(0, 3).map((ev) => `
-          <div class="cal-event-chip ${escapeHtml(subjectShort(ev.subject))} ${ev.type === 'deadline' ? 'task' : ''}">
+        ${events.map((ev) => `
+          <div class="cal-event-chip ${escapeHtml(subjectShort(ev.subject))} ${ev.type === 'deadline' ? 'task' : ''}" title="${escapeHtml(`${ev.calendarSource === 'assignment' ? 'Assignment' : ev.calendarSource === 'task' ? 'Task' : 'Event'} due: ${ev.title || ''}`)}">
             <span class="dot ${escapeHtml(subjectShort(ev.subject))}" style="width:6px;height:6px"></span>
-            <span class="cal-event-label">${ev.calendarSource === 'assignment' ? 'Assignment due: ' : ev.calendarSource === 'task' ? 'Task due: ' : ''}${escapeHtml(ev.title)} ${ev.startTime ? escapeHtml(formatTime(ev.startTime)) : ''}</span>
+            <span class="cal-event-label">${ev.calendarSource === 'assignment' ? 'Asg: ' : ev.calendarSource === 'task' ? 'Task: ' : ''}${escapeHtml(ev.title)} ${ev.startTime ? escapeHtml(formatTime(ev.startTime)) : ''}</span>
           </div>`).join('')}
-        ${events.length > 3 ? `<div style="font-size:10px;color:var(--text-muted)">+${events.length - 3} more</div>` : ''}
+        ${deadlines.length + otherEvents.length > events.length ? `<div style="font-size:10px;color:var(--text-muted)">+${deadlines.length + otherEvents.length - events.length} more</div>` : ''}
       </div>`;
     }
     el.innerHTML = html;
