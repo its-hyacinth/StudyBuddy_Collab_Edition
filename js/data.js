@@ -70,7 +70,10 @@ async function sbPrefetchState(keys) {
 }
 function sbSet(key, value) {
   const result = sbRequest('POST', key, value);
-  if (result && result.ok) SB_STATE_CACHE.set(key, value);
+  if (result && result.ok) {
+    SB_STATE_CACHE.set(key, value);
+    window.dispatchEvent(new CustomEvent('studybuddy:state-updated', { detail: { key } }));
+  }
 }
 function sbRemove(key) {
   const xhr = new XMLHttpRequest(); xhr.open('DELETE', `${SB_API_BASE}state.php?key=${encodeURIComponent(key)}`, false);

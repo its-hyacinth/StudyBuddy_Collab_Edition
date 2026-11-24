@@ -86,6 +86,45 @@ function persistCollectionRows(PDO $pdo, int $userId, string $key, array $value,
         $insert->execute($params);
     }
 }
+function existingCollectionIds(PDO $pdo, int $userId, string $key, array $collections): array {
+    $table = $collections[$key]['table'];
+    $stmt = $pdo->prepare("SELECT external_id FROM {$table} WHERE user_id=?");
+    $stmt->execute([$userId]);
+    $ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    if ($ids) return array_fill_keys(array_map('strval', $ids), true);
+
+    $stmt = $pdo->prepare('SELECT state_value FROM app_state WHERE user_id=? AND state_key=?');
+    $stmt->execute([$userId, $key]);
+    $legacy = json_decode((string)($stmt->fetchColumn() ?: 'null'), true);
+    $existing = [];
+    if (is_array($legacy)) {
+        foreach (array_values($legacy) as $index => $item) {
+            if (!is_array($item)) continue;
+            $id = (string)firstValue($item, ['id','externalId','classroomWorkId','classroomId'], 'row_' . $index);
+            $existing[$id] = true;
+        }
+    }
+    return $existing;
+}
+function notifyStudentCollectionAdditions(PDO $pdo, int $userId, string $key, array $items, array $existingIds): void {
+    $seen = $existingIds;
+    $insert = $pdo->prepare('INSERT INTO notifications (user_id,title,body) VALUES (?,?,?)');
+    foreach (array_values($items) as $index => $item) {
+        if (!is_array($item)) continue;
+        $id = (string)firstValue($item, ['id','externalId','classroomWorkId','classroomId'], 'row_' . $index);
+        if (isset($seen[$id])) continue;
+        $seen[$id] = true;
+
+        $itemTitle = trim((string)firstValue($item, ['title','name'], ''));
+        if ($itemTitle === '') $itemTitle = $key === 'studybuddy_tasks' ? 'Untitled task' : 'Untitled activity';
+        $isTask = $key === 'studybuddy_tasks';
+        $isClassroom = !$isTask && (($item['source'] ?? '') === 'classroom' || !empty($item['classroomWorkId']));
+        $title = $isTask ? 'New task added' : ($isClassroom ? 'New Google Classroom activity' : 'New activity added');
+        $subject = trim((string)($item['subject'] ?? ''));
+        $body = $itemTitle . ($subject !== '' ? ' · ' . $subject : '');
+        $insert->execute([$userId, $title, $body]);
+    }
+}
 
 try {
     if ($method === 'GET') {
@@ -136,6 +175,10 @@ try {
         if ($json === false) json_response(['ok'=>false,'message'=>'The submitted data could not be encoded.'], 422);
 
         $pdo->beginTransaction();
+        $notifyKey = ($user['role'] ?? '') === 'student'
+            && in_array($key, ['studybuddy_assignments','studybuddy_tasks'], true)
+            && is_array($value);
+        $existingIds = $notifyKey ? existingCollectionIds($pdo, (int)$user['id'], $key, $collections) : [];
         $stmt = $pdo->prepare('INSERT INTO app_state(user_id,state_key,state_value) VALUES(?,?,?) ON DUPLICATE KEY UPDATE state_value=VALUES(state_value)');
         $stmt->execute([(int)$user['id'], $key, $json]);
 
@@ -146,6 +189,7 @@ try {
             }
             persistCollectionRows($pdo, (int)$user['id'], $key, $value, $collections);
         }
+        if ($notifyKey) notifyStudentCollectionAdditions($pdo, (int)$user['id'], $key, $value, $existingIds);
         $pdo->commit();
         json_response(['ok'=>true]);
     }

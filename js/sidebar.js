@@ -186,10 +186,21 @@ function renderHeader(role, searchPlaceholder) {
         <input type="search" placeholder="${placeholder}" id="globalSearch" />
       </div>
       <div class="header-actions">
-        <button type="button" class="icon-btn" id="notifBtn" aria-label="Notifications">
-          <i data-lucide="bell"></i>
-          <span class="badge-dot"></span>
-        </button>
+        <div class="notification-wrap" id="notificationWrap">
+          <button type="button" class="icon-btn" id="notifBtn" aria-label="Notifications" aria-expanded="false" aria-controls="notificationsPanel">
+            <i data-lucide="bell"></i>
+            <span class="badge-dot" id="notifDot" hidden></span>
+          </button>
+          <section class="notification-panel" id="notificationsPanel" aria-label="Notifications" hidden>
+            <div class="notification-panel-header">
+              <h2>Notifications</h2>
+              <button type="button" id="markAllNotificationsRead" hidden>Mark all read</button>
+            </div>
+            <div class="notification-list" id="notificationList" aria-live="polite">
+              <p class="notification-empty">Loading notifications...</p>
+            </div>
+          </section>
+        </div>
         <div class="header-divider"></div>
         <div class="header-user" id="headerUser">
           <div class="avatar">${session.avatarInitials || 'JD'}</div>
@@ -235,9 +246,124 @@ function initShell(role) {
     document.body.classList.remove('sidebar-open');
   });
 
-  document.getElementById('notifBtn')?.addEventListener('click', () => {
-    showToast('You have 3 new notifications', 'info');
+  const notificationWrap = document.getElementById('notificationWrap');
+  const notificationButton = document.getElementById('notifBtn');
+  const notificationPanel = document.getElementById('notificationsPanel');
+  const notificationList = document.getElementById('notificationList');
+  const notificationDot = document.getElementById('notifDot');
+  const markAllReadButton = document.getElementById('markAllNotificationsRead');
+  let notificationRequest = null;
+  let notificationRefreshTimer = null;
+
+  function escapeNotificationHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    }[char]));
+  }
+
+  function renderNotifications(items, unreadCount) {
+    const unread = Math.max(0, Number(unreadCount) || 0);
+    notificationDot.hidden = unread === 0;
+    notificationButton.setAttribute('aria-label', unread ? `Notifications, ${unread} unread` : 'Notifications');
+    markAllReadButton.hidden = unread === 0;
+    if (!items.length) {
+      notificationList.innerHTML = '<p class="notification-empty">No notifications yet.</p>';
+      return;
+    }
+
+    notificationList.innerHTML = items.map((item) => {
+      const createdAt = new Date(String(item.created_at || '').replace(' ', 'T'));
+      const time = Number.isNaN(createdAt.getTime()) ? '' : createdAt.toLocaleString();
+      const id = Number(item.id);
+      return `
+        <button type="button" class="notification-item ${Number(item.is_read) ? '' : 'unread'}" data-notification-read="${id}">
+          <span class="notification-item-title">${escapeNotificationHtml(item.title || 'Update')}</span>
+          <span class="notification-item-body">${escapeNotificationHtml(item.body || '')}</span>
+          <time>${escapeNotificationHtml(time)}</time>
+        </button>`;
+    }).join('');
+  }
+
+  async function refreshNotifications(showError = false) {
+    if (notificationRequest) return notificationRequest;
+    notificationRequest = (async () => {
+      try {
+        const response = await fetch(`${SB_API_BASE}notifications.php`, {
+          credentials: 'same-origin',
+          cache: 'no-store',
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.ok) throw new Error(result.message || 'Notifications could not be loaded.');
+        renderNotifications(Array.isArray(result.items) ? result.items : [], result.unreadCount);
+      } catch (error) {
+        notificationList.innerHTML = '<p class="notification-empty">Notifications could not be loaded.</p>';
+        if (showError) showToast(error.message || 'Notifications could not be loaded.', 'error');
+        else console.error('Could not refresh notifications.', error);
+      } finally {
+        notificationRequest = null;
+      }
+    })();
+    return notificationRequest;
+  }
+
+  async function setNotificationsRead(action, id) {
+    try {
+      const response = await fetch(`${SB_API_BASE}notifications.php`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || '',
+        },
+        body: JSON.stringify({ action, ...(id ? { id } : {}) }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.ok) throw new Error(result.message || 'Notification could not be updated.');
+      if (notificationRequest) await notificationRequest;
+      await refreshNotifications(true);
+    } catch (error) {
+      showToast(error.message || 'Notification could not be updated.', 'error');
+    }
+  }
+
+  notificationButton?.addEventListener('click', () => {
+    const open = notificationPanel.hidden;
+    notificationPanel.hidden = !open;
+    notificationButton.setAttribute('aria-expanded', String(open));
+    if (open) refreshNotifications(true);
   });
+  notificationPanel?.addEventListener('click', (event) => {
+    if (event.target.closest('#markAllNotificationsRead')) {
+      setNotificationsRead('read-all');
+      return;
+    }
+    const item = event.target.closest('[data-notification-read]');
+    if (item) setNotificationsRead('read', Number(item.dataset.notificationRead));
+  });
+  document.addEventListener('click', (event) => {
+    if (!notificationWrap?.contains(event.target) && notificationPanel && !notificationPanel.hidden) {
+      notificationPanel.hidden = true;
+      notificationButton.setAttribute('aria-expanded', 'false');
+    }
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && notificationPanel && !notificationPanel.hidden) {
+      notificationPanel.hidden = true;
+      notificationButton.setAttribute('aria-expanded', 'false');
+    }
+  });
+  window.addEventListener('focus', () => refreshNotifications());
+  window.addEventListener('studybuddy:state-updated', (event) => {
+    if (!['studybuddy_assignments', 'studybuddy_tasks'].includes(event.detail?.key)) return;
+    window.clearTimeout(notificationRefreshTimer);
+    notificationRefreshTimer = window.setTimeout(() => refreshNotifications(), 150);
+  });
+  window.setInterval(() => refreshNotifications(), 60000);
+  refreshNotifications();
 
   document.getElementById('sidebarUserCard')?.addEventListener('click', () => {
     window.location.href = 'settings.php';
