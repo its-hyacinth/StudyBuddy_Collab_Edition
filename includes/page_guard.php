@@ -9,4 +9,6 @@ $sbUserJson = json_encode(
     $_SESSION['user'],
     JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
 );
-echo '<script>window.SB_SESSION=' . $sbUserJson . ';</script>';
+if (!($_SERVER['REQUEST_METHOD'] === 'POST' && ($_SERVER['HTTP_X_PROFILE_SAVE'] ?? '') === '1')) {
+    echo '<script>window.SB_SESSION=' . $sbUserJson . ';</script>';
+}
