@@ -306,33 +306,7 @@
                 <h2 class="card-title">Grade Distribution</h2>
               </div>
             </div>
-            <div class="bar-chart" id="gradeDistribution" style="height:140px;">
-              <div class="bar-col">
-                <span class="bar-val">5</span>
-                <div class="bar" style="height:25%;background:var(--danger)"></div>
-                <span class="bar-label">F</span>
-              </div>
-              <div class="bar-col">
-                <span class="bar-val">8</span>
-                <div class="bar" style="height:40%;background:var(--warning)"></div>
-                <span class="bar-label">D</span>
-              </div>
-              <div class="bar-col">
-                <span class="bar-val">12</span>
-                <div class="bar" style="height:60%;background:var(--info)"></div>
-                <span class="bar-label">C</span>
-              </div>
-              <div class="bar-col">
-                <span class="bar-val">15</span>
-                <div class="bar" style="height:75%;background:var(--primary)"></div>
-                <span class="bar-label">B</span>
-              </div>
-              <div class="bar-col">
-                <span class="bar-val">8</span>
-                <div class="bar" style="height:40%;background:var(--success)"></div>
-                <span class="bar-label">A</span>
-              </div>
-            </div>
+            <div class="bar-chart" id="gradeDistribution" style="height:140px;" role="img" aria-label="Grade distribution"></div>
           </div>
 
           <div class="tip-card">

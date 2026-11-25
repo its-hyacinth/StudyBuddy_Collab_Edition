@@ -50,6 +50,39 @@ document.addEventListener('DOMContentLoaded', () => {
     const avg = graded.length ? Math.round(graded.reduce((s, g) => s + (g.score / g.max) * 100, 0) / graded.length) : 0;
     if (vals[3]) vals[3].textContent = avg + '%';
 
+    const distributionChart = document.getElementById('gradeDistribution');
+    if (distributionChart) {
+      const distribution = [
+        { label: 'F', minimum: 0, maximum: 60, color: 'danger' },
+        { label: 'D', minimum: 60, maximum: 70, color: 'warning' },
+        { label: 'C', minimum: 70, maximum: 80, color: 'info' },
+        { label: 'B', minimum: 80, maximum: 90, color: 'primary' },
+        { label: 'A', minimum: 90, maximum: null, color: 'success' },
+      ].map((band) => ({
+        ...band,
+        count: all.filter((grade) => {
+          if (grade.status !== 'graded' || grade.score == null || grade.score === '') return false;
+          const score = Number(grade.score);
+          const maximum = Number(grade.max);
+          if (!Number.isFinite(score) || !Number.isFinite(maximum) || maximum <= 0) return false;
+          const percentage = Math.min(100, Math.max(0, (score / maximum) * 100));
+          return percentage >= band.minimum && (band.maximum === null || percentage < band.maximum);
+        }).length,
+      }));
+      const highestCount = Math.max(0, ...distribution.map((band) => band.count));
+      distributionChart.innerHTML = distribution.map((band) => {
+        const height = highestCount ? Math.round((band.count / highestCount) * 100) : 0;
+        const range = band.maximum === null ? `${band.minimum}–100%` : `${band.minimum}–${band.maximum}%`;
+        return `
+          <div class="bar-col">
+            <span class="bar-val">${band.count}</span>
+            <div class="bar" title="${band.label}: ${band.count} graded record${band.count === 1 ? '' : 's'} (${range})" style="height:${height}%;background:var(--${band.color})"></div>
+            <span class="bar-label">${band.label}</span>
+          </div>`;
+      }).join('');
+      distributionChart.setAttribute('aria-label', `Grade distribution: ${distribution.map((band) => `${band.label} ${band.count}`).join(', ')}`);
+    }
+
     const tbody = document.querySelector('#gradesTable tbody') || document.getElementById('gradesTableBody');
     if (tbody) {
       tbody.innerHTML = grades.map((g) => `
@@ -132,5 +165,9 @@ document.addEventListener('DOMContentLoaded', () => {
         .find((row) => row.dataset.id === requestedGradeId)
         ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
+  });
+  window.addEventListener('focus', () => {
+    sbInvalidate(SB_KEYS.GRADES);
+    render();
   });
 });
