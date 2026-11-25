@@ -63,20 +63,45 @@ if ($method !== 'POST') json_response(['ok' => false, 'message' => 'Method not a
 if (($user['role'] ?? '') !== 'student') json_response(['ok' => false, 'message' => 'Only students can submit assignment files.'], 403);
 verify_csrf();
 
+$requestSize = (int)($_SERVER['CONTENT_LENGTH'] ?? 0);
+if ($requestSize > 0 && empty($_POST) && empty($_FILES)) {
+    json_response(['ok' => false, 'message' => 'The upload request is too large or could not be received. Choose a smaller file and try again.'], 413);
+}
 $assignmentId = trim((string)($_POST['assignmentId'] ?? ''));
 if ($assignmentId === '') json_response(['ok' => false, 'message' => 'Choose an assignment to submit.'], 422);
-if (empty($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
+$upload = $_FILES['file'] ?? null;
+if (!is_array($upload)) {
     json_response(['ok' => false, 'message' => 'Choose a file to upload.'], 422);
 }
-
-$file = $_FILES['file'];
-if ((int)$file['size'] < 1 || (int)$file['size'] > 10 * 1024 * 1024) {
-    json_response(['ok' => false, 'message' => 'Choose a file smaller than 10 MB.'], 413);
+if (($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+    $error = (int)$upload['error'];
+    $message = match ($error) {
+        UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'The file exceeds the server upload limit. Choose a smaller file.',
+        UPLOAD_ERR_PARTIAL => 'The file only partially uploaded. Please try again.',
+        UPLOAD_ERR_NO_FILE => 'Choose a file to upload.',
+        UPLOAD_ERR_NO_TMP_DIR, UPLOAD_ERR_CANT_WRITE => 'The server could not receive the file. Please try again later.',
+        UPLOAD_ERR_EXTENSION => 'The server blocked this file upload.',
+        default => 'The file could not be uploaded. Please try again.',
+    };
+    $status = in_array($error, [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)
+        ? 413
+        : (in_array($error, [UPLOAD_ERR_NO_TMP_DIR, UPLOAD_ERR_CANT_WRITE], true) ? 500 : 422);
+    json_response(['ok' => false, 'message' => $message], $status);
 }
-$allowedExtensions = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'txt', 'png', 'jpg', 'jpeg'];
+
+$file = $upload;
+if ((int)$file['size'] < 1) json_response(['ok' => false, 'message' => 'The selected file is empty.'], 422);
+if ((int)$file['size'] > 10 * 1024 * 1024) {
+    json_response(['ok' => false, 'message' => 'Choose a file no larger than 10 MB.'], 413);
+}
 $extension = strtolower(pathinfo((string)$file['name'], PATHINFO_EXTENSION));
-if (!in_array($extension, $allowedExtensions, true)) {
-    json_response(['ok' => false, 'message' => 'This file type is not allowed.'], 422);
+$blockedExtensions = [
+    'php', 'php3', 'php4', 'php5', 'php7', 'phtml', 'phar', 'asp', 'aspx', 'jsp', 'shtml',
+    'html', 'htm', 'xhtml', 'svg', 'js', 'mjs', 'cjs', 'css', 'exe', 'dll', 'com', 'bat',
+    'cmd', 'sh', 'bash', 'cgi', 'pl', 'msi', 'jar', 'war', 'htaccess', 'user.ini',
+];
+if (in_array($extension, $blockedExtensions, true)) {
+    json_response(['ok' => false, 'message' => 'This file type cannot be submitted. Choose a document, archive, image, or coursework file.'], 422);
 }
 
 $studentId = (int)$user['id'];

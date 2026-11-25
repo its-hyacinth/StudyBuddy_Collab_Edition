@@ -853,6 +853,10 @@ document.addEventListener('DOMContentLoaded', () => {
       showToast('Choose a file to submit.', 'error');
       return;
     }
+    if (file.size > 10 * 1024 * 1024) {
+      showToast('Choose a file no larger than 10 MB.', 'error');
+      return;
+    }
     const button = document.getElementById('submitAssignmentButton');
     if (button) button.disabled = true;
     try {
