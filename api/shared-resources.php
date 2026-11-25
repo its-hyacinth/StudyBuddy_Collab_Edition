@@ -67,7 +67,7 @@ try {
         $resourceQuery->execute([$teacherId]);
         foreach ($resourceQuery->fetchAll(PDO::FETCH_COLUMN) as $payload) {
             $resource = json_decode((string)$payload, true);
-            if (!is_array($resource) || empty($resource['shared']) || empty($resource['url'])) continue;
+            if (!is_array($resource) || empty($resource['url'])) continue;
             if (($resource['type'] ?? '') === 'folder') continue;
             if (!sb_uploaded_teacher_resource($resource)) continue;
             if (!sb_shared_resource_matches_classes($resource, $teacherInfo['classes'])) continue;

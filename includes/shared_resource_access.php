@@ -4,8 +4,14 @@ declare(strict_types=1);
 function sb_uploaded_teacher_resource(array $resource): bool {
     if (($resource['source'] ?? '') === 'upload') return true;
     if (($resource['source'] ?? '') === 'google-drive') return false;
-    $path = parse_url((string)($resource['url'] ?? ''), PHP_URL_PATH);
-    return is_string($path) && preg_match('#(?:^|/)uploads/#i', $path) === 1;
+    $url = parse_url((string)($resource['url'] ?? ''));
+    if (!is_array($url)) return false;
+    $path = (string)($url['path'] ?? '');
+    if (preg_match('#(?:^|/)uploads/#i', $path) === 1) return true;
+    $query = [];
+    parse_str((string)($url['query'] ?? ''), $query);
+    return preg_match('#(?:^|/)api/resource-files\.php$#i', $path) === 1
+        && !empty($query['resource']);
 }
 
 function sb_shared_resource_matches_classes(array $resource, array $classes): bool {
@@ -77,7 +83,11 @@ function sb_student_can_access_shared_resource(
     array $resource,
     bool $uploadedOnly = false
 ): bool {
-    if (empty($resource['shared']) || ($uploadedOnly && !sb_uploaded_teacher_resource($resource))) return false;
+    if ($uploadedOnly) {
+        if (!sb_uploaded_teacher_resource($resource)) return false;
+    } elseif (empty($resource['shared'])) {
+        return false;
+    }
     return sb_shared_resource_matches_classes(
         $resource,
         sb_student_teacher_classes($pdo, $teacherId, $studentId)
