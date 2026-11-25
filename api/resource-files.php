@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require_once __DIR__ . '/../includes/bootstrap.php';
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../includes/shared_resource_access.php';
 
 $user = require_user();
 $pdo = db();
@@ -38,26 +39,6 @@ function sb_record_resource_download(PDO $pdo, int $teacherId, string $resourceI
     $pdo->prepare($sql)->execute([$teacherId, $resourceId]);
 }
 
-function sb_resource_student_has_teacher(PDO $pdo, int $teacherId, int $studentId): bool {
-    $query = $pdo->prepare(
-        "SELECT s.payload_json, c.external_id AS class_external_id, c.payload_json AS class_payload_json
-         FROM students s
-         JOIN classes c ON c.user_id = s.user_id
-         JOIN users u ON u.id = ? AND u.role = 'student' AND LOWER(u.email) = LOWER(s.email)
-         WHERE s.user_id = ?"
-    );
-    $query->execute([$studentId, $teacherId]);
-    foreach ($query->fetchAll() as $row) {
-        $student = json_decode((string)$row['payload_json'], true);
-        $class = json_decode((string)$row['class_payload_json'], true);
-        if (!is_array($student) || !is_array($class)) continue;
-        $studentClassId = (string)($student['classId'] ?? '');
-        $classId = (string)($class['id'] ?? $row['class_external_id'] ?? '');
-        if ($studentClassId !== '' && $studentClassId === $classId) return true;
-    }
-    return false;
-}
-
 function sb_resource_file_download(PDO $pdo, array $user): never {
     $resourceId = trim((string)($_GET['resource'] ?? ''));
     if ($resourceId === '' || strlen($resourceId) > 100) {
@@ -80,8 +61,8 @@ function sb_resource_file_download(PDO $pdo, array $user): never {
         $resourceQuery = $pdo->prepare('SELECT payload_json FROM resources WHERE user_id = ? AND external_id = ?');
         $resourceQuery->execute([$teacherId, $resourceId]);
         $resource = json_decode((string)($resourceQuery->fetchColumn() ?: ''), true);
-        if (!is_array($resource) || empty($resource['shared'])
-            || !sb_resource_student_has_teacher($pdo, $teacherId, (int)$user['id'])) {
+        if (!is_array($resource)
+            || !sb_student_can_access_shared_resource($pdo, $teacherId, (int)$user['id'], $resource, true)) {
             json_response(['ok' => false, 'message' => 'Resource file not found.'], 404);
         }
     } else {
@@ -189,8 +170,8 @@ if (str_contains(strtolower((string)($_SERVER['CONTENT_TYPE'] ?? '')), 'applicat
                 && ($resourceUrl['scheme'] ?? '') === 'https'
                 && in_array(strtolower((string)($resourceUrl['host'] ?? '')), ['drive.google.com', 'docs.google.com'], true);
             $candidateTeacherId = (int)$row['user_id'];
-            if (is_array($resource) && !empty($resource['shared']) && $isGoogleDriveUrl
-                && sb_resource_student_has_teacher($pdo, $candidateTeacherId, (int)$user['id'])) {
+            if (is_array($resource) && $isGoogleDriveUrl
+                && sb_student_can_access_shared_resource($pdo, $candidateTeacherId, (int)$user['id'], $resource)) {
                 $teacherId = $candidateTeacherId;
                 break;
             }

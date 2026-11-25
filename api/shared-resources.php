@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require_once __DIR__ . '/../includes/bootstrap.php';
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../includes/shared_resource_access.php';
 
 $user = require_user();
 $pdo = null;
@@ -62,13 +63,15 @@ try {
     $resourceQuery = $pdo->prepare(
         'SELECT payload_json FROM resources WHERE user_id = ? ORDER BY sort_order ASC, id ASC'
     );
-    foreach ($teachers as $teacherId => $teacherName) {
+    foreach ($teachers as $teacherId => $teacherInfo) {
         $resourceQuery->execute([$teacherId]);
         foreach ($resourceQuery->fetchAll(PDO::FETCH_COLUMN) as $payload) {
             $resource = json_decode((string)$payload, true);
             if (!is_array($resource) || empty($resource['shared']) || empty($resource['url'])) continue;
             if (($resource['type'] ?? '') === 'folder') continue;
-            $resource['teacherName'] = $teacherName;
+            if (!sb_uploaded_teacher_resource($resource)) continue;
+            if (!sb_shared_resource_matches_classes($resource, $teacherInfo['classes'])) continue;
+            $resource['teacherName'] = $teacherInfo['name'];
             $resources[] = $resource;
         }
     }
@@ -94,9 +97,10 @@ function linkedStudentsForTeacher(PDO $pdo, int $teacherId): array {
         $student = json_decode((string)$row['payload_json'], true);
         $class = json_decode((string)$row['class_payload_json'], true);
         if (!is_array($student) || !is_array($class)) continue;
-        $studentClassId = (string)($student['classId'] ?? '');
         $classId = (string)($class['id'] ?? $row['class_external_id'] ?? '');
-        if ($studentClassId !== '' && $studentClassId === $classId) {
+        $studentClassIds = array_map('strval', is_array($student['classIds'] ?? null) ? $student['classIds'] : []);
+        if (!empty($student['classId'])) $studentClassIds[] = (string)$student['classId'];
+        if ($classId !== '' && in_array($classId, $studentClassIds, true)) {
             $students[(int)$row['student_user_id']] = true;
         }
     }
@@ -117,11 +121,18 @@ function linkedTeachersForStudent(PDO $pdo, string $email): array {
     foreach ($query->fetchAll() as $row) {
         $student = json_decode((string)$row['payload_json'], true);
         $class = json_decode((string)$row['class_payload_json'], true);
-        if (!is_array($student) || !is_array($class)) continue;
-        $studentClassId = (string)($student['classId'] ?? '');
+        if (!is_array($student) || !is_array($class)
+            || strtolower((string)($student['status'] ?? 'active')) === 'inactive') continue;
         $classId = (string)($class['id'] ?? $row['class_external_id'] ?? '');
-        if ($studentClassId === '' || $studentClassId !== $classId) continue;
-        $teachers[(int)$row['user_id']] = (string)$row['teacher_name'];
+        $studentClassIds = array_map('strval', is_array($student['classIds'] ?? null) ? $student['classIds'] : []);
+        if (!empty($student['classId'])) $studentClassIds[] = (string)$student['classId'];
+        if ($classId === '' || !in_array($classId, $studentClassIds, true)) continue;
+        $teacherId = (int)$row['user_id'];
+        if (!isset($teachers[$teacherId])) {
+            $teachers[$teacherId] = ['name' => (string)$row['teacher_name'], 'classes' => []];
+        }
+        $class['id'] = $classId;
+        $teachers[$teacherId]['classes'][$classId] = $class;
     }
     return $teachers;
 }

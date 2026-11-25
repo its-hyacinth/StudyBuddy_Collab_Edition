@@ -21,7 +21,7 @@
             <span class="title-icon"><i data-lucide="folder-open"></i></span>
             Teacher Resources
           </h1>
-          <p class="page-subtitle">View files and links your teachers shared with your classes.</p>
+          <p class="page-subtitle">View files your teachers shared with your classes and subjects.</p>
         </div>
       </div>
 

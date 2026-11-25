@@ -75,7 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!filtered.length) {
       list.innerHTML = resources.length
         ? '<p class="empty-state">No resources match your search or class filter.</p>'
-        : '<div class="empty-state"><i data-lucide="folder-open"></i><p>No resources have been shared with your classes yet.</p></div>';
+        : '<div class="empty-state"><i data-lucide="folder-open"></i><p>No teacher-uploaded files have been shared with your classes yet.</p></div>';
       if (typeof lucide !== 'undefined') lucide.createIcons();
       return;
     }

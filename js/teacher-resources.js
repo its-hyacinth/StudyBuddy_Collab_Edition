@@ -110,9 +110,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function populateResourceSelects(resources = getResources()) {
     const classes = classNames().map((name) => ({ value: name, label: name }));
+    const teacherClasses = getClasses()
+      .filter((item) => item && item.id)
+      .map((item) => ({
+        value: String(item.id),
+        label: classDisplayName(item) || item.name || item.subject,
+      }));
+    const resourceClasses = teacherClasses.length ? teacherClasses : classes;
     populateSelect(document.getElementById('resourceClassFilter'), classes, 'All Classes');
-    populateSelect(document.getElementById('resourceClass'), classes, 'Select class');
-    populateSelect(document.getElementById('driveResourceClass'), classes, 'Select class');
+    populateSelect(document.getElementById('resourceClass'), resourceClasses, 'Select class');
+    populateSelect(document.getElementById('driveResourceClass'), resourceClasses, 'Select class');
 
     const folders = resources.filter((resource) => resource.type === 'folder');
     const folderOptions = folders.map((folder) => ({
@@ -680,7 +687,11 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('uploadResourceForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const title = document.getElementById('resourceTitle')?.value.trim();
-    const cls = document.getElementById('resourceClass')?.value || '';
+    const selectedClassId = document.getElementById('resourceClass')?.value || '';
+    const selectedClass = getClasses().find((item) => String(item.id) === selectedClassId);
+    const cls = selectedClass
+      ? classDisplayName(selectedClass) || selectedClass.name || selectedClass.subject
+      : selectedClassId;
     const file = document.getElementById('resourceFile')?.files?.[0];
     if (!title) { showToast('Title required', 'error'); return; }
     if (!file) { showToast('Choose a file to upload.', 'error'); return; }
@@ -709,6 +720,7 @@ document.addEventListener('DOMContentLoaded', () => {
         id: result.resourceId,
         title,
         class: cls,
+        classId: selectedClass ? String(selectedClass.id) : null,
         type: resourceType(file),
         size: formatBytes(file.size),
         sizeBytes: file.size,
@@ -758,7 +770,11 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('driveResourceForm')?.addEventListener('submit', (event) => {
     event.preventDefault();
     const title = document.getElementById('driveResourceName')?.value.trim();
-    const className = document.getElementById('driveResourceClass')?.value;
+    const selectedClassId = document.getElementById('driveResourceClass')?.value || '';
+    const selectedClass = getClasses().find((item) => String(item.id) === selectedClassId);
+    const className = selectedClass
+      ? classDisplayName(selectedClass) || selectedClass.name || selectedClass.subject
+      : selectedClassId;
     const url = safeGoogleDriveUrl(document.getElementById('driveResourceUrl')?.value.trim());
     if (!title || !className) {
       showToast('Resource title and class are required.', 'error');
@@ -773,6 +789,7 @@ document.addEventListener('DOMContentLoaded', () => {
       id: uid('res'),
       title,
       class: className,
+      classId: selectedClass ? String(selectedClass.id) : null,
       type: resourceTypeFromName(title),
       size: 'Link',
       uploaded: localDateStr(),
