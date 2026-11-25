@@ -654,7 +654,29 @@ function daysUntil(dateStr) {
 }
 
 function formatDate(dateStr) {
-  const d = new Date(dateStr + 'T00:00:00');
+  let value = '';
+  if (dateStr instanceof Date) {
+    if (Number.isNaN(dateStr.getTime())) return 'Date unavailable';
+    return dateStr.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+  if (dateStr && typeof dateStr === 'object') {
+    const year = Number(dateStr.year);
+    const month = Number(dateStr.month);
+    const day = Number(dateStr.day);
+    if (Number.isInteger(year) && Number.isInteger(month) && Number.isInteger(day)) {
+      value = `${year}-${month}-${day}`;
+    } else return 'Date unavailable';
+  } else {
+    value = String(dateStr ?? '').trim();
+  }
+  if (!value) return 'No due date';
+  const match = value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:$|T)/);
+  if (!match) return 'Date unavailable';
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const d = new Date(year, month - 1, day);
+  if (d.getFullYear() !== year || d.getMonth() !== month - 1 || d.getDate() !== day) return 'Date unavailable';
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
