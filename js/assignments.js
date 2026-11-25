@@ -853,8 +853,8 @@ document.addEventListener('DOMContentLoaded', () => {
       showToast('Choose a file to submit.', 'error');
       return;
     }
-    if (file.size > 10 * 1024 * 1024) {
-      showToast('Choose a file no larger than 10 MB.', 'error');
+    if (file.size > 4 * 1024 * 1024) {
+      showToast('Choose a file no larger than 4 MB for Vercel uploads.', 'error');
       return;
     }
     const button = document.getElementById('submitAssignmentButton');
@@ -869,8 +869,16 @@ document.addEventListener('DOMContentLoaded', () => {
         headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || '' },
         body,
       });
-      const result = await response.json().catch(() => null);
-      if (!response.ok || !result?.ok) throw new Error(result?.message || 'Unable to submit this file.');
+      const responseBody = await response.text();
+      let result = null;
+      try {
+        result = JSON.parse(responseBody);
+      } catch {
+        console.error('Assignment submission endpoint returned a non-JSON response:', response.status, responseBody.slice(0, 1000));
+      }
+      if (!result || !response.ok || !result.ok) {
+        throw new Error(result?.message || `The submission service returned an unexpected response (HTTP ${response.status}).`);
+      }
       updateAssignment(assignmentId, { submission: result.submission });
       closeModal('submitAssignmentModal');
       showAssignmentDetails(assignmentId);

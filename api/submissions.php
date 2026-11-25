@@ -10,15 +10,39 @@ $pdo = db();
 $collections = sb_collections();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
+function sb_ensure_submission_storage(PDO $pdo): void {
+    $blobType = defined('SB_DB_DRIVER') && SB_DB_DRIVER === 'pgsql' ? 'BYTEA' : 'LONGBLOB';
+    $pdo->exec("CREATE TABLE IF NOT EXISTS assignment_submissions (
+        submission_id VARCHAR(100) PRIMARY KEY,
+        teacher_id BIGINT NOT NULL,
+        student_id BIGINT NOT NULL,
+        assignment_id VARCHAR(120) NOT NULL,
+        file_name VARCHAR(255) NOT NULL,
+        file_content {$blobType} NOT NULL,
+        submitted_at VARCHAR(40) NOT NULL
+    )");
+}
+
+try {
+    sb_ensure_submission_storage($pdo);
+} catch (Throwable $error) {
+    error_log('Could not initialize assignment submission storage: ' . $error->getMessage());
+    json_response(['ok' => false, 'message' => 'The submission database is unavailable. Please contact your administrator.'], 500);
+}
+
 function sb_submission_download(PDO $pdo, array $user, array $collections): never {
     $gradeId = trim((string)($_GET['file'] ?? ''));
     if ($gradeId === '') json_response(['ok' => false, 'message' => 'Submission not found.'], 404);
 
     $grade = null;
+    $teacherId = 0;
+    $studentId = 0;
     if (($user['role'] ?? '') === 'teacher') {
         foreach (sb_load_user_collection($pdo, (int)$user['id'], 'studybuddy_grades', $collections) as $item) {
             if (is_array($item) && (string)($item['id'] ?? '') === $gradeId) {
                 $grade = $item;
+                $teacherId = (int)$user['id'];
+                $studentId = (int)($item['studentId'] ?? 0);
                 break;
             }
         }
@@ -32,6 +56,7 @@ function sb_submission_download(PDO $pdo, array $user, array $collections): neve
                 if (is_array($item) && (string)($item['id'] ?? '') === $gradeId
                     && (int)($item['studentId'] ?? 0) === (int)$user['id']) {
                     $grade = $item;
+                    $studentId = (int)$user['id'];
                     break 2;
                 }
             }
@@ -39,22 +64,25 @@ function sb_submission_download(PDO $pdo, array $user, array $collections): neve
         }
     }
 
-    $path = (string)($grade['submission']['storagePath'] ?? '');
-    $uploadsDir = realpath(__DIR__ . '/../uploads');
-    $filePath = $path !== '' ? realpath(__DIR__ . '/../' . $path) : false;
-    if (!$grade || !$uploadsDir || !$filePath
-        || !str_starts_with($filePath, $uploadsDir . DIRECTORY_SEPARATOR)
-        || !is_file($filePath)) {
+    if (!$grade || $teacherId < 1 || $studentId < 1) {
         json_response(['ok' => false, 'message' => 'Submission file not found.'], 404);
     }
+    $stmt = $pdo->prepare('SELECT file_name, file_content FROM assignment_submissions WHERE submission_id=? AND teacher_id=? AND student_id=?');
+    $stmt->execute([$gradeId, $teacherId, $studentId]);
+    $storedFile = $stmt->fetch();
+    if (!$storedFile) json_response(['ok' => false, 'message' => 'Submission file not found.'], 404);
 
-    $name = preg_replace('/[\r\n"\\\\]/', '_', (string)($grade['submission']['fileName'] ?? 'submission')) ?: 'submission';
+    $contents = $storedFile['file_content'];
+    if (is_resource($contents)) $contents = stream_get_contents($contents);
+    if (!is_string($contents)) json_response(['ok' => false, 'message' => 'Submission file could not be read.'], 500);
+
+    $name = preg_replace('/[\r\n"\\\\]/', '_', (string)($storedFile['file_name'] ?? 'submission')) ?: 'submission';
     $fallbackName = preg_replace('/[^A-Za-z0-9._ -]/', '_', $name) ?: 'submission';
     header('Content-Type: application/octet-stream');
     header('X-Content-Type-Options: nosniff');
     header("Content-Disposition: attachment; filename=\"{$fallbackName}\"; filename*=UTF-8''" . rawurlencode($name));
-    header('Content-Length: ' . (string)filesize($filePath));
-    readfile($filePath);
+    header('Content-Length: ' . (string)strlen($contents));
+    echo $contents;
     exit;
 }
 
@@ -91,8 +119,8 @@ if (($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
 
 $file = $upload;
 if ((int)$file['size'] < 1) json_response(['ok' => false, 'message' => 'The selected file is empty.'], 422);
-if ((int)$file['size'] > 10 * 1024 * 1024) {
-    json_response(['ok' => false, 'message' => 'Choose a file no larger than 10 MB.'], 413);
+if ((int)$file['size'] > 4 * 1024 * 1024) {
+    json_response(['ok' => false, 'message' => 'Choose a file no larger than 4 MB for Vercel uploads.'], 413);
 }
 $extension = strtolower(pathinfo((string)$file['name'], PATHINFO_EXTENSION));
 $blockedExtensions = [
@@ -145,24 +173,19 @@ if (!$teacherAssignment || !$isRostered) {
 $originalName = basename(str_replace('\\', '/', (string)$file['name']));
 $originalName = trim(preg_replace('/[\r\n\x00-\x1F]/', '_', $originalName) ?: '');
 if ($originalName === '') $originalName = 'submission.' . $extension;
-$storageDir = __DIR__ . '/../uploads/' . $studentId;
-if (!is_dir($storageDir) && !mkdir($storageDir, 0750, true)) {
-    json_response(['ok' => false, 'message' => 'Could not create upload folder.'], 500);
-}
-$storedName = bin2hex(random_bytes(16)) . '.' . $extension;
-$absolutePath = $storageDir . '/' . $storedName;
-if (!move_uploaded_file((string)$file['tmp_name'], $absolutePath)) {
-    json_response(['ok' => false, 'message' => 'Could not save uploaded file.'], 500);
+$fileContents = file_get_contents((string)$file['tmp_name']);
+if (!is_string($fileContents)) {
+    json_response(['ok' => false, 'message' => 'The server could not read the uploaded file. Please try again.'], 500);
 }
 
 $gradeId = 'submission_' . hash('sha256', $studentId . ':' . $teacherAssignmentId);
+$blobStream = null;
 try {
 $submittedAt = date(DATE_ATOM);
 $grades = sb_load_user_collection($pdo, $teacherId, 'studybuddy_grades', $collections);
 $submission = [
     'gradeId' => $gradeId,
     'fileName' => $originalName,
-    'storagePath' => 'uploads/' . $studentId . '/' . $storedName,
     'submittedAt' => $submittedAt,
 ];
 $grade = [
@@ -180,10 +203,8 @@ $grade = [
     'submission' => $submission,
 ];
 $foundGrade = false;
-$previousStoragePath = null;
 foreach ($grades as $index => $item) {
     if (!is_array($item) || (string)($item['id'] ?? '') !== $gradeId) continue;
-    $previousStoragePath = (string)($item['submission']['storagePath'] ?? '');
     $grades[$index] = $grade;
     $foundGrade = true;
     break;
@@ -208,22 +229,31 @@ $teacherAssignments = array_map(static function ($assignment) use ($teacherAssig
 }, $teacherAssignments);
 
     $pdo->beginTransaction();
+    $pdo->prepare('DELETE FROM assignment_submissions WHERE submission_id=?')->execute([$gradeId]);
+    $blobStream = fopen('php://temp', 'w+b');
+    if (!is_resource($blobStream) || fwrite($blobStream, $fileContents) !== strlen($fileContents) || !rewind($blobStream)) {
+        throw new RuntimeException('Could not prepare uploaded file for database storage.');
+    }
+    $store = $pdo->prepare('INSERT INTO assignment_submissions (submission_id, teacher_id, student_id, assignment_id, file_name, file_content, submitted_at) VALUES (?,?,?,?,?,?,?)');
+    $store->bindValue(1, $gradeId);
+    $store->bindValue(2, $teacherId, PDO::PARAM_INT);
+    $store->bindValue(3, $studentId, PDO::PARAM_INT);
+    $store->bindValue(4, $teacherAssignmentId);
+    $store->bindValue(5, $originalName);
+    $store->bindValue(6, $blobStream, PDO::PARAM_LOB);
+    $store->bindValue(7, $submittedAt);
+    $store->execute();
+    fclose($blobStream);
+    $blobStream = null;
     sb_save_user_collection($pdo, $teacherId, 'studybuddy_grades', $grades, $collections);
     sb_save_user_collection($pdo, $teacherId, 'studybuddy_assignments', $teacherAssignments, $collections);
     sb_save_user_collection($pdo, $studentId, 'studybuddy_assignments', $studentAssignments, $collections);
     $pdo->prepare('INSERT INTO notifications (user_id, title, body) VALUES (?,?,?)')
         ->execute([$teacherId, 'Assignment submitted', $grade['student'] . ' submitted ' . $grade['assignment'] . '.']);
     $pdo->commit();
-    if ($previousStoragePath !== '' && $previousStoragePath !== $submission['storagePath']) {
-        $oldPath = realpath(__DIR__ . '/../' . $previousStoragePath);
-        $uploadsDir = realpath(__DIR__ . '/../uploads');
-        if ($oldPath && $uploadsDir && str_starts_with($oldPath, $uploadsDir . DIRECTORY_SEPARATOR) && is_file($oldPath)) {
-            unlink($oldPath);
-        }
-    }
 } catch (Throwable $error) {
     if ($pdo->inTransaction()) $pdo->rollBack();
-    if (is_file($absolutePath)) unlink($absolutePath);
+    if (is_resource($blobStream)) fclose($blobStream);
     error_log($error->__toString());
     json_response(['ok' => false, 'message' => 'Could not save your submission. Please try again.'], 500);
 }

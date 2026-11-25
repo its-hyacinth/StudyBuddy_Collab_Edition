@@ -175,6 +175,17 @@ CREATE TABLE IF NOT EXISTS grades (
   INDEX idx_grade_owner (user_id,external_id)
 ) ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS assignment_submissions (
+  submission_id VARCHAR(100) PRIMARY KEY,
+  teacher_id BIGINT UNSIGNED NOT NULL,
+  student_id BIGINT UNSIGNED NOT NULL,
+  assignment_id VARCHAR(120) NOT NULL,
+  file_name VARCHAR(255) NOT NULL,
+  file_content LONGBLOB NOT NULL,
+  submitted_at VARCHAR(40) NOT NULL,
+  INDEX idx_submission_teacher_student (teacher_id,student_id)
+) ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS messages (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   user_id BIGINT UNSIGNED NOT NULL,

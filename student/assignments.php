@@ -214,7 +214,7 @@
           <input type="hidden" id="submitAssignmentId" name="assignmentId" />
           <p id="submitAssignmentName" class="form-group"></p>
           <div class="form-group">
-            <label for="submissionFile">Choose your coursework file (up to 10 MB; executable and active web files are blocked)</label>
+            <label for="submissionFile">Choose your coursework file (up to 4 MB; executable and active web files are blocked)</label>
             <input type="file" class="form-control" id="submissionFile" name="file" required />
           </div>
           <p id="submissionStatusMessage" class="subtitle" aria-live="polite"></p>
