@@ -195,6 +195,7 @@
         </div>
       </div>
       <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="assignmentDetailsSubmitBtn" hidden>Submit file</button>
         <button type="button" class="btn btn-primary" data-close-modal="assignmentDetailsModal">Close</button>
       </div>
     </div>

@@ -177,8 +177,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const color = getSubjects().find((s) => s.id === a.subjectId)?.color || '#2563EB';
     const status = a.displayStatus || displayStatus(a);
     const completed = status === 'completed';
-    const acceptsSubmission = a.source === 'teacher' && a.teacherAssignmentId && a.teacherId;
-    const hasSubmission = !!a.submission?.gradeId;
     return `
       <tr data-id="${escapeHtml(a.id)}" data-status="${escapeHtml(a.status)}" class="${completed ? 'assignment-completed' : ''}">
         <td><label class="custom-check"><input type="checkbox" class="row-check" aria-label="Mark ${escapeHtml(a.title)} as ${completed ? 'incomplete' : 'complete'}" ${completed ? 'checked' : ''} /><span class="box"></span></label></td>
@@ -194,7 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <td><span class="subject-tag ${subjectShort(a.subject)}">${escapeHtml(a.subject)}</span></td>
         <td>${formatDate(a.dueDate)}</td>
         <td><span class="badge ${statusClass(status)}">${statusLabel(status)}</span></td>
-        <td>${acceptsSubmission ? `<button type="button" class="btn btn-sm ${hasSubmission ? 'btn-outline' : 'btn-primary'}" data-submit="${escapeHtml(a.id)}">${hasSubmission ? 'Resubmit file' : 'Submit file'}</button> ` : ''}${actionMenu(a)}</td>
+        <td>${actionMenu(a)}</td>
       </tr>`;
   }
 
@@ -247,6 +245,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const teacherSubmission = document.getElementById('assignmentDetailsTeacherSubmission');
     const hasTeacherSubmission = assignment.source === 'teacher' && assignment.teacherAssignmentId && assignment.teacherId;
     if (teacherSubmissionGroup) teacherSubmissionGroup.hidden = !hasTeacherSubmission;
+    const submitButton = document.getElementById('assignmentDetailsSubmitBtn');
+    if (submitButton) {
+      submitButton.hidden = !hasTeacherSubmission;
+      submitButton.textContent = assignment.submission?.gradeId ? 'Resubmit file' : 'Submit file';
+      submitButton.dataset.assignmentId = assignment.id;
+    }
     if (teacherSubmission && hasTeacherSubmission) {
       const current = assignment.submission;
       if (current?.gradeId) {
@@ -865,6 +869,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!response.ok || !result?.ok) throw new Error(result?.message || 'Unable to submit this file.');
       updateAssignment(assignmentId, { submission: result.submission });
       closeModal('submitAssignmentModal');
+      showAssignmentDetails(assignmentId);
       showToast('Assignment file submitted');
       render();
     } catch (error) {
@@ -872,6 +877,10 @@ document.addEventListener('DOMContentLoaded', () => {
     } finally {
       if (button) button.disabled = false;
     }
+  });
+
+  document.getElementById('assignmentDetailsSubmitBtn')?.addEventListener('click', (event) => {
+    openSubmissionDialog(event.currentTarget.dataset.assignmentId);
   });
 
   render();
