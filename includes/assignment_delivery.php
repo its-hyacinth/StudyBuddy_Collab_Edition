@@ -356,6 +356,7 @@ function deliver_teacher_assignments(PDO $pdo, int $teacherId, string $teacherNa
                 'points' => $assignment['points'] ?? null,
                 'source' => 'teacher',
                 'submission' => $existing['submission'] ?? null,
+                'attachment' => $assignment['attachment'] ?? null,
             ];
             if ($copy['status'] === '') $copy['status'] = 'upcoming';
             $keep[] = $copy;
@@ -538,6 +539,7 @@ function deliver_joined_class(PDO $pdo, int $teacherId, string $teacherName, arr
             'points' => $assignment['points'] ?? null,
             'source' => 'teacher',
             'submission' => null,
+            'attachment' => $assignment['attachment'] ?? null,
         ];
     }
     sb_save_user_collection($pdo, $studentUserId, 'studybuddy_assignments', $kept, $collections);

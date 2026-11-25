@@ -185,6 +185,10 @@
         </div>
         <div class="form-group"><span class="row-label">Status</span><div><span class="badge" id="assignmentDetailsStatus"></span></div></div>
         <div class="form-group"><span class="row-label">Description</span><p id="assignmentDetailsDescription">—</p></div>
+        <div class="form-group" id="assignmentDetailsTeacherAttachmentGroup" hidden>
+          <span class="row-label">Teacher attachment</span>
+          <div id="assignmentDetailsTeacherAttachment"></div>
+        </div>
         <div class="form-group" id="assignmentDetailsSubmissionGroup" hidden>
           <span class="row-label">Google Classroom submission</span>
           <p id="assignmentDetailsSubmission"></p>

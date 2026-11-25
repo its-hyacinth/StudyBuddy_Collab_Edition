@@ -317,6 +317,12 @@
             <label for="asgDescription">Description</label>
             <textarea class="form-control" id="asgDescription" placeholder="Instructions for students..."></textarea>
           </div>
+          <div class="form-group">
+            <label for="asgAttachment">Attachment for students (optional)</label>
+            <input class="form-control" type="file" id="asgAttachment" />
+            <p class="subtitle" id="asgAttachmentCurrent" hidden style="margin-top:6px"></p>
+            <p class="subtitle" style="margin-top:6px">Maximum file size: 4 MB. Students can open or download this file from assignment details.</p>
+          </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-ghost" data-close-modal="createAsgModal">Cancel</button>
@@ -346,6 +352,10 @@
         <div style="margin-top:18px">
           <div class="stat-label" style="font-weight:700;font-size:15px;color:#0F172A;margin-bottom:2px">Description</div>
           <div class="subtitle" id="tAsgDescription" style="margin-top:4px"></div>
+        </div>
+        <div id="tAsgAttachmentGroup" hidden style="margin-top:18px">
+          <div class="stat-label" style="font-weight:700;font-size:15px;color:#0F172A;margin-bottom:2px">Attachment for students</div>
+          <div class="subtitle" id="tAsgAttachment" style="margin-top:4px"></div>
         </div>
       </div>
       <div class="modal-footer">

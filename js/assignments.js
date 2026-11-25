@@ -310,6 +310,17 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
+    const teacherAttachmentGroup = document.getElementById('assignmentDetailsTeacherAttachmentGroup');
+    const teacherAttachment = document.getElementById('assignmentDetailsTeacherAttachment');
+    const attachment = assignment.source === 'teacher' ? assignment.attachment : null;
+    if (teacherAttachmentGroup) teacherAttachmentGroup.hidden = !attachment;
+    if (teacherAttachment && attachment) {
+      const fileName = String(attachment.fileName || 'Assignment attachment');
+      teacherAttachment.innerHTML = `<a href="../api/assignment-attachments.php?assignment=${encodeURIComponent(assignment.id)}" target="_blank" rel="noopener noreferrer">Open or download ${escapeHtml(fileName)}</a>`;
+    } else if (teacherAttachment) {
+      teacherAttachment.textContent = '';
+    }
+
     const filesGroup = document.getElementById('assignmentDetailsFilesGroup');
     const files = document.getElementById('assignmentDetailsFiles');
     if (filesGroup) filesGroup.hidden = !isClassroomAssignment;
@@ -761,6 +772,11 @@ document.addEventListener('DOMContentLoaded', () => {
   function resetAsgForm() {
     editingAsgId = null;
     document.getElementById('createAsgForm')?.reset();
+    const currentAttachment = document.getElementById('asgAttachmentCurrent');
+    if (currentAttachment) {
+      currentAttachment.hidden = true;
+      currentAttachment.textContent = '';
+    }
     setAsgFormMode(false);
   }
 
@@ -780,6 +796,14 @@ document.addEventListener('DOMContentLoaded', () => {
     setEl('tAsgPoints', a.points ? `${a.points} points` : 'Not set');
     setEl('tAsgSubmissions', `${Number(a.submissions) || 0} / ${enrolled}`);
     setEl('tAsgDescription', a.description || 'No description provided.');
+    const attachmentGroup = document.getElementById('tAsgAttachmentGroup');
+    const attachmentElement = document.getElementById('tAsgAttachment');
+    if (attachmentGroup) attachmentGroup.hidden = !a.attachment;
+    if (attachmentElement) {
+      attachmentElement.innerHTML = a.attachment
+        ? `<a href="../api/assignment-attachments.php?assignment=${encodeURIComponent(a.id)}" target="_blank" rel="noopener noreferrer">${escapeHtml(a.attachment.fileName || 'Open or download attachment')}</a>`
+        : '';
+    }
     const badge = document.getElementById('tAsgStatus');
     if (badge) {
       const st = displayStatus(a);
@@ -794,6 +818,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const a = getAssignments().find((x) => x.id === id);
     if (!a) return;
     editingAsgId = id;
+    document.getElementById('createAsgForm')?.reset();
     fillTeacherClassSelects();
     const set = (field, v) => { const el = document.getElementById(field); if (el) el.value = v ?? ''; };
     set('asgTitle', a.title);
@@ -802,6 +827,13 @@ document.addEventListener('DOMContentLoaded', () => {
     set('asgDueTime', a.dueTime || '23:59');
     set('asgPoints', a.points);
     set('asgDescription', a.description);
+    const currentAttachment = document.getElementById('asgAttachmentCurrent');
+    if (currentAttachment) {
+      currentAttachment.hidden = !a.attachment;
+      currentAttachment.textContent = a.attachment
+        ? `Current attachment: ${a.attachment.fileName || 'file'}. Choose another file to replace it.`
+        : '';
+    }
     const irregularBox = document.getElementById('asgIncludeIrregular');
     if (irregularBox) irregularBox.checked = a.includeIrregular !== false;
     updateAsgAudienceHint();
@@ -867,12 +899,17 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   const form = document.getElementById('addAssignmentForm') || document.getElementById('createAsgForm');
-  form?.addEventListener('submit', (e) => {
+  form?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const title = val('asgTitle')?.trim();
     const dueDate = val('asgDueDate', 'asgDue');
     const description = (val('asgDescription', 'asgDesc') || '').trim();
     if (!title || !dueDate) { showToast('Title and due date are required', 'error'); return; }
+    const attachmentFile = isTeacher ? document.getElementById('asgAttachment')?.files?.[0] : null;
+    if (attachmentFile && attachmentFile.size > 4 * 1024 * 1024) {
+      showToast('Choose an attachment no larger than 4 MB.', 'error');
+      return;
+    }
 
     let data;
     if (isTeacher) {
@@ -906,19 +943,60 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const wasEditing = isTeacher && editingAsgId;
-    if (wasEditing) {
-      // Keep status/submissions; only update the fields the form edits
-      const { status, submissions, ...patch } = data;
-      const existing = getAssignments().find((a) => a.id === editingAsgId);
-      if (existing?.status === 'overdue') patch.status = 'upcoming'; // recalculated from the new date/time
-      updateAssignment(editingAsgId, patch);
-    } else {
-      addAssignment(data);
+    const submitButton = form.querySelector('button[type="submit"]');
+    if (submitButton) submitButton.disabled = true;
+    let savedAssignmentId = wasEditing ? editingAsgId : null;
+    let assignmentSaved = false;
+    let assignmentDelivery = null;
+    try {
+      if (wasEditing) {
+        const { status, submissions, ...patch } = data;
+        const existing = getAssignments().find((a) => a.id === editingAsgId);
+        if (existing?.status === 'overdue') patch.status = 'upcoming';
+        updateAssignment(editingAsgId, patch);
+      } else {
+        savedAssignmentId = addAssignment(data).id;
+      }
+      assignmentSaved = true;
+      assignmentDelivery = window.SB_LAST_DELIVERY;
+
+      if (attachmentFile && savedAssignmentId) {
+        const upload = new FormData();
+        upload.append('assignmentId', savedAssignmentId);
+        upload.append('file', attachmentFile);
+        const response = await fetch(`${SB_API_BASE}assignment-attachments.php`, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || '' },
+          body: upload,
+        });
+        const result = await response.json().catch(() => null);
+        if (!response.ok || !result?.ok || !result.attachment) {
+          throw new Error(result?.message || `Attachment upload failed (HTTP ${response.status}).`);
+        }
+        updateAssignment(savedAssignmentId, { attachment: result.attachment });
+        if (assignmentDelivery) window.SB_LAST_DELIVERY = assignmentDelivery;
+      }
+    } catch (error) {
+      if (!wasEditing && savedAssignmentId) {
+        editingAsgId = savedAssignmentId;
+        setAsgFormMode(true);
+        render();
+      }
+      showToast(
+        attachmentFile && assignmentSaved
+          ? `Assignment saved, but its attachment could not be uploaded: ${error.message}`
+          : `The assignment could not be saved: ${error.message}`,
+        'error'
+      );
+      return;
+    } finally {
+      if (submitButton) submitButton.disabled = false;
     }
     closeModal('addAssignmentModal');
     closeModal('createAsgModal');
-    form.reset();
-    if (isTeacher) { editingAsgId = null; setAsgFormMode(false); }
+    if (isTeacher) resetAsgForm();
+    else form.reset();
     const delivery = window.SB_LAST_DELIVERY;
     window.SB_LAST_DELIVERY = null;
     let message = wasEditing ? 'Assignment updated' : 'Assignment created';
