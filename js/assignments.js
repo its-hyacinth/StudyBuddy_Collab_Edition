@@ -15,11 +15,22 @@ document.addEventListener('DOMContentLoaded', () => {
   let editingAsgId = null;  // teacher: assignment being edited (null = creating)
   let currentAsgId = null;  // teacher: assignment open in the details popup
   const perPage = isTeacher ? 8 : 15;
+  const subjectFilterElement = document.getElementById('asgSubjectFilter');
 
   function escapeHtml(str) {
     return String(str ?? '').replace(/[&<>"']/g, (c) => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
     }[c]));
+  }
+
+  function refreshSubjectFilter() {
+    if (!subjectFilterElement || isTeacher) return;
+    const subjects = getSubjects();
+    if (classFilter && !subjects.some((subject) => String(subject.id) === classFilter)) classFilter = '';
+    subjectFilterElement.innerHTML = '<option value="">All Subjects</option>' + subjects.map((subject) =>
+      `<option value="${escapeHtml(subject.id)}">${escapeHtml(subject.name)}</option>`
+    ).join('');
+    subjectFilterElement.value = classFilter;
   }
 
   // First existing element's value from a list of possible IDs
@@ -553,6 +564,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function render() {
+    refreshSubjectFilter();
     renderStats();
     renderTabs();
     renderTable();
@@ -587,11 +599,7 @@ document.addEventListener('DOMContentLoaded', () => {
     page = 1;
     render();
   });
-  const subjectFilterElement = document.getElementById('asgSubjectFilter');
   if (subjectFilterElement && !isTeacher) {
-    subjectFilterElement.innerHTML = '<option value="">All Subjects</option>' + getSubjects().map((subject) =>
-      `<option value="${escapeHtml(subject.id)}">${escapeHtml(subject.name)}</option>`
-    ).join('');
     subjectFilterElement.addEventListener('change', (event) => {
       classFilter = event.target.value;
       page = 1;
