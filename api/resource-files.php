@@ -90,7 +90,8 @@ function sb_resource_file_download(PDO $pdo, array $user): never {
         $contentType = 'application/octet-stream';
     }
     $inlineTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'text/plain'];
-    $disposition = in_array($contentType, $inlineTypes, true) ? 'inline' : 'attachment';
+    $forceDownload = (string)($_GET['download'] ?? '') === '1';
+    $disposition = !$forceDownload && in_array($contentType, $inlineTypes, true) ? 'inline' : 'attachment';
     header('Content-Type: ' . $contentType);
     header('X-Content-Type-Options: nosniff');
     header('Cache-Control: private, no-store');

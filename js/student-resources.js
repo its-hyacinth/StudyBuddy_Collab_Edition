@@ -44,6 +44,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  function resourceDownloadUrl(resource) {
+    const url = safeResourceUrl(resource);
+    if (!url || url.origin !== window.location.origin) return null;
+    if (/\/api\/resource-files\.php$/i.test(url.pathname) && url.searchParams.has('resource')) {
+      url.searchParams.set('download', '1');
+    }
+    return url;
+  }
+
   function populateClassFilter() {
     const selected = classFilter.value;
     const classes = [...new Set(resources.map((resource) => String(resource.class || '').trim()).filter(Boolean))]
@@ -82,6 +91,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     list.innerHTML = filtered.map((resource) => {
       const type = resourceType(resource);
+      const viewUrl = safeResourceUrl(resource);
+      const downloadUrl = resourceDownloadUrl(resource);
       const metadata = [
         resource.class || 'Class not specified',
         resource.teacherName || 'Your teacher',
@@ -96,18 +107,24 @@ document.addEventListener('DOMContentLoaded', () => {
             ${resource.description ? `<p class="student-resource-description">${escapeHtml(resource.description)}</p>` : ''}
             <span class="badge badge-info">${escapeHtml(type.toUpperCase())}${resource.size ? ` · ${escapeHtml(resource.size)}` : ''}</span>
           </div>
-          <button type="button" class="btn btn-primary student-resource-open" data-open-resource="${escapeHtml(resource.id)}">
-            <i data-lucide="external-link"></i> View resource
-          </button>
+          <div class="student-resource-actions">
+            ${viewUrl
+              ? `<a class="btn btn-primary student-resource-open" href="${escapeHtml(viewUrl.href)}" target="_blank" rel="noopener noreferrer" data-open-resource="${escapeHtml(resource.id)}"><i data-lucide="external-link"></i> View resource</a>`
+              : `<button type="button" class="btn btn-primary student-resource-open" data-open-resource="${escapeHtml(resource.id)}"><i data-lucide="external-link"></i> View resource</button>`}
+            ${downloadUrl
+              ? `<a class="btn btn-outline student-resource-download" href="${escapeHtml(downloadUrl.href)}" download="${escapeHtml(resource.fileName || resource.title || 'resource')}"><i data-lucide="download"></i> Download</a>`
+              : '<button type="button" class="btn btn-outline student-resource-download" disabled><i data-lucide="download"></i> Download</button>'}
+          </div>
         </article>`;
     }).join('');
 
-    list.querySelectorAll('[data-open-resource]').forEach((button) => {
-      button.addEventListener('click', () => {
-        const resource = resources.find((item) => String(item.id) === button.dataset.openResource);
+    list.querySelectorAll('[data-open-resource]').forEach((link) => {
+      link.addEventListener('click', (event) => {
+        const resource = resources.find((item) => String(item.id) === link.dataset.openResource);
         if (!resource) return;
         const url = safeResourceUrl(resource);
         if (!url) {
+          event.preventDefault();
           showToast('This resource link is not supported.', 'error');
           return;
         }
@@ -128,7 +145,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
           }).catch((error) => console.error('Could not record shared resource access:', error));
         }
-        window.open(url.href, '_blank', 'noopener,noreferrer');
       });
     });
     if (typeof lucide !== 'undefined') lucide.createIcons();

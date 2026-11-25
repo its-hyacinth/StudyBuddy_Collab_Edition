@@ -691,7 +691,16 @@
   overflow-wrap: anywhere;
 }
 
-.student-resource-open {
+.student-resource-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.student-resource-open,
+.student-resource-download {
   flex: 0 0 auto;
   white-space: nowrap;
 }
@@ -718,8 +727,13 @@
     height: 40px;
   }
 
-  .student-resource-open {
+  .student-resource-actions {
     grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .student-resource-actions .btn {
     width: 100%;
     justify-content: center;
   }
