@@ -132,8 +132,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // ---- Filtering ----
     let list = all.slice();
     if (statusFilter) list = list.filter((s) => s.status === statusFilter);
-    if (courseFilter) list = list.filter((s) => normalizeCourseCode(s.course) === courseFilter);
-    if (yearFilter) list = list.filter((s) => s.year === yearFilter);
+    if (courseFilter) {
+      list = list.filter((student) => {
+        const academicInfo = studentAcademicInfo(student, studentClasses(student, classes));
+        return normalizeCourseCode(academicInfo.course) === normalizeCourseCode(courseFilter);
+      });
+    }
+    if (yearFilter) {
+      const selectedYear = normalizeYearLevel(yearFilter);
+      list = list.filter((student) => {
+        const academicInfo = studentAcademicInfo(student, studentClasses(student, classes));
+        return normalizeYearLevel(academicInfo.year) === selectedYear;
+      });
+    }
     if (search) {
       const query = search.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       list = list.filter((student) => {
