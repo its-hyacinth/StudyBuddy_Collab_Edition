@@ -592,3 +592,135 @@
   width: max-content;
   max-width: min(320px, calc(100vw - 32px));
 }
+
+.student-resource-library {
+  overflow: hidden;
+}
+
+.student-resource-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.student-resource-toolbar .search-mini {
+  position: relative;
+  flex: 1;
+  min-width: 180px;
+  max-width: 460px;
+}
+
+.student-resource-toolbar .search-mini input {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px 0 38px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card-bg);
+}
+
+.student-resource-toolbar .search-mini svg {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+}
+
+.student-resource-toolbar select {
+  width: min(240px, 100%);
+  min-width: 0;
+}
+
+.student-resource-count {
+  margin: 0;
+  padding: 12px 16px 0;
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+
+.student-resource-list {
+  display: grid;
+  gap: 10px;
+  padding: 12px 16px 16px;
+}
+
+.student-resource-item {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.student-resource-item .file-icon {
+  width: 44px;
+  height: 44px;
+}
+
+.student-resource-details {
+  min-width: 0;
+}
+
+.student-resource-title {
+  margin: 0 0 4px;
+  color: var(--text-heading);
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.student-resource-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 8px;
+  margin: 0 0 8px;
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+
+.student-resource-description {
+  margin: 0 0 8px;
+  color: var(--text-body);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.student-resource-open {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .student-resource-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .student-resource-toolbar .search-mini,
+  .student-resource-toolbar select {
+    width: 100%;
+    max-width: none;
+  }
+
+  .student-resource-item {
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .student-resource-item .file-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .student-resource-open {
+    grid-column: 1 / -1;
+    width: 100%;
+    justify-content: center;
+  }
+}
