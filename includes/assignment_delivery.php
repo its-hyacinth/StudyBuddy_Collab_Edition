@@ -464,7 +464,9 @@ function sb_send_assignment_mail(array $message): bool {
     if (!filter_var($to, FILTER_VALIDATE_EMAIL)) return false;
     $subject = str_replace(["\r", "\n"], ' ', (string)($message['subject'] ?? 'StudyBuddy assignment'));
     $body = (string)($message['body'] ?? '');
-    $host = preg_replace('/:\d+$/', '', (string)($_SERVER['HTTP_HOST'] ?? 'localhost')) ?: 'localhost';
+    $host = strtolower((string)($_SERVER['HTTP_HOST'] ?? 'localhost'));
+    $host = preg_replace('/:\d+$/', '', $host) ?: 'localhost';
+    if (!preg_match('/^[a-z0-9.-]+$/', $host)) $host = 'localhost';
     $from = 'StudyBuddy <noreply@' . $host . '>';
     $headers = "From: {$from}\r\nReply-To: {$from}\r\nContent-Type: text/plain; charset=UTF-8";
     return @mail($to, $subject, $body, $headers);

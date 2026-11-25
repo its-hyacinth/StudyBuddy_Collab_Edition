@@ -121,32 +121,89 @@ document.addEventListener('DOMContentLoaded', () => {
       .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
     fillSelect(document.getElementById('composeTo'), 'Select student', students.map((student) => ({
       value: String(student.id),
-      label: student.name || student.email || 'Student',
+      label: student.email
+        ? `${student.name || 'Student'} — ${student.email}`
+        : `${student.name || 'Student'} (no email on file)`,
     })));
+    updateComposeRecipientEmail();
+  }
+
+  function updateComposeRecipientEmail() {
+    const preview = document.getElementById('composeRecipientEmail');
+    const selectedId = document.getElementById('composeTo')?.value || '';
+    const student = getStudents().find((item) => String(item.id) === selectedId);
+    if (!preview) return;
+    preview.hidden = !student;
+    preview.textContent = student?.email
+      ? `Email will be sent to ${student.email}`
+      : student ? 'This student has no email address on file.' : '';
   }
 
   document.getElementById('composeClass')?.addEventListener('change', syncComposeOptions);
+  document.getElementById('composeTo')?.addEventListener('change', updateComposeRecipientEmail);
   document.getElementById('composeBtn')?.addEventListener('click', () => {
     syncComposeOptions();
     openModal('composeModal');
   });
-  document.getElementById('composeForm')?.addEventListener('submit', (e) => {
+  document.getElementById('composeForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const form = e.currentTarget;
     const student = getStudents().find((item) => String(item.id) === document.getElementById('composeTo')?.value);
     const cls = getClasses().find((item) => String(item.id) === document.getElementById('composeClass')?.value);
-    const body = document.getElementById('composeBody')?.value.trim();
-    const to = student?.name || '';
-    if (!to || !body) { showToast('Recipient and message required', 'error'); return; }
-    const list = getMessages();
-    list.unshift({
-      id: uid('msg'), from: to, preview: body, time: 'Just now', createdAt: new Date().toISOString(),
-      unread: false, class: cls ? classDisplayName(cls) : 'General',
-    });
-    sbSet(SB_KEYS.MESSAGES, list);
-    closeModal('composeModal');
-    e.target.reset();
-    showToast('Message sent');
-    renderList();
+    const subject = document.getElementById('composeSubject')?.value.trim() || '';
+    const body = document.getElementById('composeBody')?.value.trim() || '';
+    if (!student || !body) { showToast('Recipient and message required', 'error'); return; }
+
+    const button = document.getElementById('sendComposeBtn');
+    if (button) button.disabled = true;
+    try {
+      const response = await fetch('../api/send-message.php', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || '',
+        },
+        body: JSON.stringify({
+          studentId: student.id,
+          classId: cls?.id || '',
+          subject,
+          body,
+        }),
+      });
+      let result;
+      try {
+        result = await response.json();
+      } catch {
+        throw new Error('The email service returned an invalid response.');
+      }
+      if (!response.ok || !result.ok) {
+        throw new Error(result.message || 'The message email could not be sent.');
+      }
+
+      const messages = getMessages();
+      messages.unshift({
+        id: uid('msg'),
+        from: student.name || student.email || 'Student',
+        recipientEmail: result.recipientEmail,
+        subject,
+        preview: body,
+        time: 'Just now',
+        createdAt: new Date().toISOString(),
+        unread: false,
+        class: cls ? classDisplayName(cls) : 'General',
+      });
+      sbSet(SB_KEYS.MESSAGES, messages);
+      closeModal('composeModal');
+      form.reset();
+      syncComposeOptions();
+      showToast(`Message sent to ${result.recipientEmail}`);
+      renderList();
+    } catch (error) {
+      showToast(error.message || 'The message email could not be sent.', 'error');
+    } finally {
+      if (button) button.disabled = false;
+    }
   });
 
   renderList();

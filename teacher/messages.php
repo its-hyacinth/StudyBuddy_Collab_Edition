@@ -175,6 +175,7 @@
             <select class="form-control" id="composeTo" required>
               <option value="">Select student</option>
             </select>
+            <p class="subtitle" id="composeRecipientEmail" role="status" aria-live="polite" hidden></p>
           </div>
           <div class="form-group">
             <label for="composeClass">Class (optional)</label>
