@@ -185,6 +185,10 @@
           <span class="row-label">Google Classroom submission</span>
           <p id="assignmentDetailsSubmission"></p>
         </div>
+        <div class="form-group" id="assignmentDetailsTeacherSubmissionGroup" hidden>
+          <span class="row-label">Your submission</span>
+          <p id="assignmentDetailsTeacherSubmission"></p>
+        </div>
         <div class="form-group" id="assignmentDetailsFilesGroup" hidden>
           <span class="row-label">Submitted files</span>
           <div id="assignmentDetailsFiles"></div>
@@ -193,6 +197,32 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-primary" data-close-modal="assignmentDetailsModal">Close</button>
       </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="submitAssignmentModal">
+    <div class="modal" role="dialog" aria-labelledby="submitAssignmentTitle">
+      <div class="modal-header">
+        <h3 id="submitAssignmentTitle">Submit assignment</h3>
+        <button type="button" class="modal-close" data-close-modal="submitAssignmentModal" aria-label="Close">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <form id="submitAssignmentForm">
+        <div class="modal-body">
+          <input type="hidden" id="submitAssignmentId" name="assignmentId" />
+          <p id="submitAssignmentName" class="form-group"></p>
+          <div class="form-group">
+            <label for="submissionFile">Choose a file (PDF, Office document, text, or image; up to 10 MB)</label>
+            <input type="file" class="form-control" id="submissionFile" name="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.png,.jpg,.jpeg" required />
+          </div>
+          <p id="submissionStatusMessage" class="subtitle" aria-live="polite"></p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-close-modal="submitAssignmentModal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="submitAssignmentButton">Submit file</button>
+        </div>
+      </form>
     </div>
   </div>
 

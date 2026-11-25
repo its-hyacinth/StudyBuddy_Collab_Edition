@@ -6,6 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!session) return;
 
   let classFilter = '';
+  let statusFilter = '';
+  let search = '';
 
   function escapeHtml(str) {
     return String(str ?? '').replace(/[&<>"']/g, (c) => ({
@@ -29,6 +31,13 @@ document.addEventListener('DOMContentLoaded', () => {
       ].filter(Boolean));
       grades = grades.filter((grade) => grade.classId === classFilter || labels.has(grade.class));
     }
+    if (statusFilter) grades = grades.filter((grade) => grade.status === statusFilter);
+    if (search) {
+      const query = search.toLowerCase();
+      grades = grades.filter((grade) =>
+        [grade.student, grade.assignment, grade.class].some((value) => String(value || '').toLowerCase().includes(query))
+      );
+    }
 
     const all = getGrades();
     const vals = document.querySelectorAll('.stat-grid .stat-value');
@@ -42,20 +51,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const tbody = document.querySelector('#gradesTable tbody') || document.getElementById('gradesTableBody');
     if (tbody) {
       tbody.innerHTML = grades.map((g) => `
-        <tr data-id="${g.id}">
-          <td>${g.student}</td>
-          <td>${g.assignment}</td>
-          <td>${g.class}</td>
+        <tr data-id="${escapeHtml(g.id)}">
+          <td>${escapeHtml(g.student)}</td>
+          <td>${escapeHtml(g.assignment)}</td>
+          <td>${escapeHtml(g.class)}</td>
           <td>
             ${g.status === 'pending'
-              ? `<input type="number" class="form-control score-input" data-id="${g.id}" min="0" max="${g.max}" placeholder="0–${g.max}" style="height:36px;width:90px" />`
-              : `<strong>${g.score}</strong> / ${g.max}`}
+              ? `<input type="number" class="form-control score-input" data-id="${escapeHtml(g.id)}" min="0" max="${Number(g.max) || 0}" placeholder="0–${Number(g.max) || 0}" style="height:36px;width:90px" />`
+              : `<strong>${escapeHtml(g.score)}</strong>`}
           </td>
+          <td>${escapeHtml(g.max)}</td>
           <td><span class="badge ${statusClass(g.status)}">${statusLabel(g.status)}</span></td>
+          <td>${g.submission?.gradeId
+            ? `<a href="../api/submissions.php?file=${encodeURIComponent(g.submission.gradeId)}">${escapeHtml(g.submission.fileName || 'Download file')}</a><div class="subtitle">${escapeHtml(g.submission.submittedAt ? new Date(g.submission.submittedAt).toLocaleString() : '')}</div>`
+            : '—'}</td>
           <td>
             ${g.status === 'pending'
-              ? `<button type="button" class="btn btn-sm btn-primary" data-save="${g.id}">Save</button>`
-              : `<button type="button" class="btn btn-sm btn-ghost" data-edit="${g.id}">Edit</button>`}
+              ? `<button type="button" class="btn btn-sm btn-primary" data-save="${escapeHtml(g.id)}">Save</button>`
+              : `<button type="button" class="btn btn-sm btn-ghost" data-edit="${escapeHtml(g.id)}">Edit</button>`}
           </td>
         </tr>`).join('');
 
@@ -63,9 +76,13 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.addEventListener('click', () => {
           const id = btn.dataset.save;
           const input = tbody.querySelector(`.score-input[data-id="${id}"]`);
-          const score = Number(input?.value);
+          const value = input?.value.trim() || '';
+          const score = Number(value);
           const g = getGrades().find((x) => x.id === id);
-          if (!g || Number.isNaN(score)) { showToast('Enter a valid score', 'error'); return; }
+          if (!g || value === '' || !Number.isFinite(score) || score < 0 || score > Number(g.max)) {
+            showToast('Enter a score between 0 and the maximum points.', 'error');
+            return;
+          }
           updateGrade(id, { score, status: 'graded' });
           showToast('Grade saved');
           render();
@@ -83,8 +100,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (pending) {
       pending.innerHTML = getGrades().filter((g) => g.status === 'pending').map((g) => `
         <div class="list-item">
-          <div class="item-meta"><div class="item-title">${g.student}</div>
-          <div class="item-sub">${g.assignment} · ${g.class}</div></div>
+          <div class="item-meta"><div class="item-title">${escapeHtml(g.student)}</div>
+          <div class="item-sub">${escapeHtml(g.assignment)} · ${escapeHtml(g.class)}</div></div>
           <span class="badge badge-pending">Pending</span>
         </div>`).join('') || '<p style="color:var(--text-muted);font-size:13px">All caught up!</p>';
     }
@@ -93,6 +110,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('gradeClassFilter')?.addEventListener('change', (e) => {
     classFilter = e.target.value;
+    render();
+  });
+  document.getElementById('gradeStatusFilter')?.addEventListener('change', (e) => {
+    statusFilter = e.target.value;
+    render();
+  });
+  document.getElementById('gradeSearch')?.addEventListener('input', (e) => {
+    search = e.target.value.trim();
     render();
   });
 

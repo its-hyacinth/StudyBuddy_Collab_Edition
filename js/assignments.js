@@ -177,6 +177,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const color = getSubjects().find((s) => s.id === a.subjectId)?.color || '#2563EB';
     const status = a.displayStatus || displayStatus(a);
     const completed = status === 'completed';
+    const acceptsSubmission = a.source === 'teacher' && a.teacherAssignmentId && a.teacherId;
+    const hasSubmission = !!a.submission?.gradeId;
     return `
       <tr data-id="${escapeHtml(a.id)}" data-status="${escapeHtml(a.status)}" class="${completed ? 'assignment-completed' : ''}">
         <td><label class="custom-check"><input type="checkbox" class="row-check" aria-label="Mark ${escapeHtml(a.title)} as ${completed ? 'incomplete' : 'complete'}" ${completed ? 'checked' : ''} /><span class="box"></span></label></td>
@@ -192,7 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <td><span class="subject-tag ${subjectShort(a.subject)}">${escapeHtml(a.subject)}</span></td>
         <td>${formatDate(a.dueDate)}</td>
         <td><span class="badge ${statusClass(status)}">${statusLabel(status)}</span></td>
-        <td>${actionMenu(a)}</td>
+        <td>${acceptsSubmission ? `<button type="button" class="btn btn-sm ${hasSubmission ? 'btn-outline' : 'btn-primary'}" data-submit="${escapeHtml(a.id)}">${hasSubmission ? 'Resubmit file' : 'Submit file'}</button> ` : ''}${actionMenu(a)}</td>
       </tr>`;
   }
 
@@ -239,6 +241,21 @@ document.addEventListener('DOMContentLoaded', () => {
         details += ` · Grade ${assignment.submissionGrade}${assignment.points !== null && assignment.points !== undefined ? ` / ${assignment.points}` : ''}`;
       }
       submission.textContent = details;
+    }
+
+    const teacherSubmissionGroup = document.getElementById('assignmentDetailsTeacherSubmissionGroup');
+    const teacherSubmission = document.getElementById('assignmentDetailsTeacherSubmission');
+    const hasTeacherSubmission = assignment.source === 'teacher' && assignment.teacherAssignmentId && assignment.teacherId;
+    if (teacherSubmissionGroup) teacherSubmissionGroup.hidden = !hasTeacherSubmission;
+    if (teacherSubmission && hasTeacherSubmission) {
+      const current = assignment.submission;
+      if (current?.gradeId) {
+        const submittedAt = new Date(current.submittedAt);
+        const dateLabel = Number.isNaN(submittedAt.getTime()) ? '' : ` · ${submittedAt.toLocaleString()}`;
+        teacherSubmission.innerHTML = `Submitted: <a href="../api/submissions.php?file=${encodeURIComponent(current.gradeId)}">${escapeHtml(current.fileName || 'Download submitted file')}</a>${escapeHtml(dateLabel)}`;
+      } else {
+        teacherSubmission.textContent = 'No file submitted yet.';
+      }
     }
 
     const filesGroup = document.getElementById('assignmentDetailsFilesGroup');
@@ -318,6 +335,22 @@ document.addEventListener('DOMContentLoaded', () => {
     updateAssignment(id, { status: previousStatus, completionPreviousStatus: null });
   }
 
+  function openSubmissionDialog(id) {
+    const assignment = getAssignments().find((item) => item.id === id);
+    if (!assignment || assignment.source !== 'teacher' || !assignment.teacherAssignmentId || !assignment.teacherId) {
+      showToast('This assignment does not accept StudyBuddy file submissions.', 'error');
+      return;
+    }
+    document.getElementById('submitAssignmentId').value = assignment.id;
+    document.getElementById('submitAssignmentName').textContent = assignment.title || 'Assignment';
+    document.getElementById('submissionStatusMessage').textContent = assignment.submission?.fileName
+      ? `Current submission: ${assignment.submission.fileName}`
+      : 'No file has been submitted yet.';
+    const input = document.getElementById('submissionFile');
+    if (input) input.value = '';
+    openModal('submitAssignmentModal');
+  }
+
   function renderTable() {
     const list = filtered();
     const tbody = document.getElementById('assignmentsTableBody')
@@ -364,6 +397,9 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast('Marked as completed');
         render();
       });
+    });
+    document.querySelectorAll('[data-submit]').forEach((btn) => {
+      btn.addEventListener('click', () => openSubmissionDialog(btn.dataset.submit));
     });
     document.querySelectorAll('[data-delete]').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -804,6 +840,39 @@ document.addEventListener('DOMContentLoaded', () => {
     ).join('');
     subjSelect.disabled = subjects.length === 0;
   }
+
+  document.getElementById('submitAssignmentForm')?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const assignmentId = document.getElementById('submitAssignmentId')?.value;
+    const file = document.getElementById('submissionFile')?.files?.[0];
+    if (!assignmentId || !file) {
+      showToast('Choose a file to submit.', 'error');
+      return;
+    }
+    const button = document.getElementById('submitAssignmentButton');
+    if (button) button.disabled = true;
+    try {
+      const body = new FormData();
+      body.append('assignmentId', assignmentId);
+      body.append('file', file);
+      const response = await fetch('../api/submissions.php', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || '' },
+        body,
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.ok) throw new Error(result?.message || 'Unable to submit this file.');
+      updateAssignment(assignmentId, { submission: result.submission });
+      closeModal('submitAssignmentModal');
+      showToast('Assignment file submitted');
+      render();
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Assignment submission failed.', 'error');
+    } finally {
+      if (button) button.disabled = false;
+    }
+  });
 
   render();
   sbWhenReady(render);

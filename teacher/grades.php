@@ -95,6 +95,7 @@
                     <th>Score</th>
                     <th>Max</th>
                     <th>Status</th>
+                    <th>Submission</th>
                     <th></th>
                   </tr>
                 </thead>
