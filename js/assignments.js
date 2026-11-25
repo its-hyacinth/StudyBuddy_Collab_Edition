@@ -719,7 +719,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (filterSel) {
       const previous = classFilter;
       filterSel.innerHTML = '<option value="">All Classes</option>' + options;
-      if ([...filterSel.options].some((option) => option.value === previous)) filterSel.value = previous;
+      if ([...filterSel.options].some((option) => option.value === previous)) {
+        filterSel.value = previous;
+      } else {
+        classFilter = '';
+        filterSel.value = '';
+      }
     }
     const classSel = document.getElementById('asgClass');
     if (classSel) {
@@ -752,10 +757,27 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (isTeacher) {
-    fillTeacherClassSelects();
     document.getElementById('asgClass')?.addEventListener('change', updateAsgAudienceHint);
     document.getElementById('asgIncludeIrregular')?.addEventListener('change', updateAsgAudienceHint);
+  }
+
+  function refreshTeacherClassSelects() {
+    if (!isTeacher) return;
+    fillTeacherClassSelects();
     updateAsgAudienceHint();
+  }
+
+  if (isTeacher) {
+    window.addEventListener('focus', () => {
+      sbInvalidate(SB_KEYS.CLASSES);
+      refreshTeacherClassSelects();
+      render();
+    });
+    window.addEventListener('studybuddy:state-updated', (event) => {
+      if (event.detail?.key !== SB_KEYS.CLASSES) return;
+      refreshTeacherClassSelects();
+      render();
+    });
   }
 
   // ---- Teacher: assignment details popup + edit ----
@@ -1075,6 +1097,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const requestedAssignmentId = new URLSearchParams(window.location.search).get('assignment');
   render();
   sbWhenReady(() => {
+    refreshTeacherClassSelects();
     render();
     if (!requestedAssignmentId) return;
     if (isTeacher) openRequestedTeacherAssignment?.(requestedAssignmentId);
