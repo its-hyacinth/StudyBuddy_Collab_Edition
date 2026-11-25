@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_SERVER['HTTP_X_PROFILE_SAVE'] ??
     if (mb_strlen($v) > 255) $fail(422, "$key is too long");
     if ($key === 'fullName' && $v === '') $fail(422, 'Full name is required');
     if ($key === 'email' && !filter_var($v, FILTER_VALIDATE_EMAIL)) $fail(422, 'Invalid email');
-    if (isset($USER_COLS[$key])) { $sets[] = "`{$USER_COLS[$key]}` = ?"; $vals[] = $v; }
+    if (isset($USER_COLS[$key])) { $sets[] = "{$USER_COLS[$key]} = ?"; $vals[] = $v; }
     else { $extra[$key] = $v; }
     $clean[$key] = $v;
   }
