@@ -480,6 +480,8 @@ function deliver_joined_class(PDO $pdo, int $teacherId, string $teacherName, arr
         if (!is_array($student)) continue;
         if (strtolower(trim((string)($student['email'] ?? ''))) !== $email) continue;
         $student['name'] = $studentName !== '' ? $studentName : (string)($student['name'] ?? 'Student');
+        $student['email'] = $email;
+        $student['userId'] = $studentUserId;
         $ids = is_array($student['classIds'] ?? null) ? $student['classIds'] : [];
         if (!empty($student['classId'])) $ids[] = (string)$student['classId'];
         $ids[] = $classId;
@@ -494,6 +496,7 @@ function deliver_joined_class(PDO $pdo, int $teacherId, string $teacherName, arr
     if (!$found) {
         $students[] = [
             'id' => 'stu_join_' . $studentUserId,
+            'userId' => $studentUserId,
             'name' => $studentName !== '' ? $studentName : 'Student',
             'email' => $studentEmail,
             'course' => (string)($class['course'] ?? ''),

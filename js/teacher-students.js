@@ -21,13 +21,32 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function initials(name) {
-    return name.split(' ').filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+    return String(name || 'Student').split(' ').filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
   }
 
   function studentGpa(student) {
     return student.gpa !== null && student.gpa !== undefined && Number.isFinite(Number(student.gpa))
       ? Number(student.gpa).toFixed(2)
       : 'N/A';
+  }
+
+  function studentClasses(student, classes) {
+    return classes.filter((cls) => studentMatchesClass(student, cls, true));
+  }
+
+  function studentAcademicInfo(student, enrolledClasses) {
+    const primaryClass = enrolledClasses[0];
+    return {
+      course: normalizeCourseCode(student.course || primaryClass?.course || '') || '—',
+      year: yearLevelLabel(student.year || student.yearLevel || primaryClass?.year || '') || '—',
+      section: student.section || student.block || primaryClass?.block || '',
+    };
+  }
+
+  function classChipLabel(cls) {
+    return [classSubjectCode(cls) || cls.name || 'Class', cls.block ? `Block ${cls.block}` : '']
+      .filter(Boolean)
+      .join(' · ');
   }
 
   function showStudentInsight(title, content) {
@@ -38,15 +57,16 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function openStudentDetails(student) {
-    const cls = getClasses().find((item) => item.id === student.classId);
+    const classes = studentClasses(student, getClasses());
+    const academicInfo = studentAcademicInfo(student, classes);
     const status = student.status || 'inactive';
     const details = [
       ['Email', student.email || 'Not provided'],
-      ['Course', student.course || 'Not provided'],
-      ['Year level', student.year || 'Not provided'],
-      ['Block', student.section ? `Block ${student.section}` : 'Not set'],
+      ['Course', academicInfo.course === '—' ? 'Not provided' : academicInfo.course],
+      ['Year level', academicInfo.year === '—' ? 'Not provided' : academicInfo.year],
+      ['Block', academicInfo.section ? `Block ${academicInfo.section}` : 'Not set'],
       ['Standing', isIrregularStudent(student) ? 'Irregular' : 'Regular'],
-      ['Class', cls ? classDisplayName(cls) : 'No class assigned'],
+      ['Classes', classes.length ? classes.map(classDisplayName).join(', ') : (student.subjectCode || 'No class assigned')],
       ['Student ID', student.studentId || 'Not provided'],
       ['GPA', studentGpa(student)],
     ];
@@ -68,12 +88,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const students = getStudents();
     const classes = getClasses();
     const roster = students.length ? students.map((student) => {
-      const cls = classes.find((item) => item.id === student.classId);
+      const enrolledClasses = studentClasses(student, classes);
+      const academicInfo = studentAcademicInfo(student, enrolledClasses);
+      const studentClassNames = enrolledClasses.map(classDisplayName);
       return `
         <div class="list-item">
           <div class="item-meta">
             <div class="item-title">${escapeHtml(student.name)}</div>
-            <div class="item-sub">${escapeHtml(student.course || 'Course not set')} · ${escapeHtml(student.year || 'Year not set')} · ${escapeHtml(cls ? classDisplayName(cls) : 'No class assigned')}</div>
+            <div class="item-sub">${escapeHtml(academicInfo.course)} · ${escapeHtml(academicInfo.year)} · ${escapeHtml(studentClassNames.join(', ') || 'No class assigned')}</div>
           </div>
           <span class="badge ${statusClass(student.status || 'inactive')}">${escapeHtml(statusLabel(student.status || 'inactive'))}</span>
         </div>`;
@@ -86,20 +108,25 @@ document.addEventListener('DOMContentLoaded', () => {
   function openTopPerformers() {
     const students = getStudents().slice()
       .sort((a, b) => (Number(b.gpa) || 0) - (Number(a.gpa) || 0));
-    const content = students.length ? students.map((student, index) => `
-      <div class="list-item">
-        <span class="badge badge-info">${index + 1}</span>
-        <div class="item-meta">
-          <div class="item-title">${escapeHtml(student.name)}</div>
-          <div class="item-sub">GPA ${escapeHtml(studentGpa(student))} · ${escapeHtml(student.course || 'Course not set')} · ${escapeHtml(student.year || 'Year not set')}</div>
-        </div>
-        <span class="badge ${statusClass(student.status || 'inactive')}">${escapeHtml(statusLabel(student.status || 'inactive'))}</span>
-      </div>`).join('') : '<p class="empty-state">No student performance data available.</p>';
+    const classes = getClasses();
+    const content = students.length ? students.map((student, index) => {
+      const academicInfo = studentAcademicInfo(student, studentClasses(student, classes));
+      return `
+        <div class="list-item">
+          <span class="badge badge-info">${index + 1}</span>
+          <div class="item-meta">
+            <div class="item-title">${escapeHtml(student.name)}</div>
+            <div class="item-sub">GPA ${escapeHtml(studentGpa(student))} · ${escapeHtml(academicInfo.course)} · ${escapeHtml(academicInfo.year)}</div>
+          </div>
+          <span class="badge ${statusClass(student.status || 'inactive')}">${escapeHtml(statusLabel(student.status || 'inactive'))}</span>
+        </div>`;
+    }).join('') : '<p class="empty-state">No student performance data available.</p>';
     showStudentInsight('Student performance', content);
   }
 
   function render() {
     const all = getStudents();
+    const classes = getClasses();
 
     // ---- Filtering ----
     let list = all.slice();
@@ -111,9 +138,11 @@ document.addEventListener('DOMContentLoaded', () => {
       list = list.filter((s) =>
         String(s.name || '').toLowerCase().includes(q) ||
         String(s.email || '').toLowerCase().includes(q) ||
+        String(s.studentId || '').toLowerCase().includes(q) ||
         String(s.course || '').toLowerCase().includes(q) ||
         String(s.subjectCode || '').toLowerCase().includes(q) ||
-        String(s.section || '').toLowerCase().includes(q)
+        String(s.section || '').toLowerCase().includes(q) ||
+        studentClasses(s, classes).some((cls) => classDisplayName(cls).toLowerCase().includes(q))
       );
     }
 
@@ -128,7 +157,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (el) el.textContent = value;
     };
     // Same total as My Classes and the Dashboard: Classroom students + students added here
-    const classes = getClasses();
     const classroomTotal = classes.reduce((s, c) => s + (Number(c.students) || 0), 0);
     setText('statTotalStudents', classroomTotal + all.length);
     const totalDelta = document.getElementById('statTotalStudents')?.closest('.stat-card')?.querySelector('.stat-delta');
@@ -141,32 +169,47 @@ document.addEventListener('DOMContentLoaded', () => {
     const tbody = document.getElementById('studentsTableBody');
     if (tbody) {
       tbody.innerHTML = list.length
-        ? list.map((s) => `
-        <tr data-id="${escapeHtml(s.id)}" data-status="${escapeHtml(s.status)}">
+        ? list.map((s) => {
+          const enrolledClasses = studentClasses(s, classes);
+          const academicInfo = studentAcademicInfo(s, enrolledClasses);
+          const visibleClasses = enrolledClasses.slice(0, 2);
+          const moreClassCount = enrolledClasses.length - visibleClasses.length;
+          const classChips = visibleClasses.map((cls) => `
+            <span class="student-class-chip" title="${escapeHtml(classDisplayName(cls))}">${escapeHtml(classChipLabel(cls))}</span>
+          `).join('');
+          const fallbackClass = !enrolledClasses.length && s.subjectCode
+            ? `<span class="student-class-chip">${escapeHtml(s.subjectCode)}</span>`
+            : '';
+          const moreClasses = moreClassCount > 0
+            ? `<span class="student-class-more" title="${escapeHtml(enrolledClasses.slice(2).map(classDisplayName).join(', '))}">+${moreClassCount}</span>`
+            : '';
+          const fullName = s.name || 'Student';
+          return `
+        <tr data-id="${escapeHtml(s.id)}" data-status="${escapeHtml(s.status || 'active')}">
           <td>
-            <div class="cell-title">
-              <div class="avatar" style="width:36px;height:36px;flex-shrink:0;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:12px">
-                ${escapeHtml(initials(s.name))}
-              </div>
-              <div>
-                <div class="title">${escapeHtml(s.name)}</div>
-                <div class="subtitle">${s.studentId ? 'ID: ' + escapeHtml(s.studentId) : ''}</div>
+            <div class="student-identity">
+              <div class="student-avatar">${escapeHtml(initials(fullName))}</div>
+              <div class="student-identity-text">
+                <div class="title" title="${escapeHtml(fullName)}">${escapeHtml(fullName)}</div>
+                ${s.studentId ? `<div class="subtitle">ID ${escapeHtml(s.studentId)}</div>` : ''}
               </div>
             </div>
           </td>
-          <td>${escapeHtml(s.email)}</td>
-          <td>${escapeHtml(s.course)}</td>
-          <td>${escapeHtml(s.year || '—')}${s.section ? `<div class="subtitle">Block ${escapeHtml(s.section)}</div>` : ''}</td>
-          <td>${escapeHtml((() => { const cls = classes.find((c) => c.id === s.classId); return cls ? classDisplayName(cls) : (s.subjectCode || '—'); })())}</td>
-          <td><strong>${escapeHtml(s.gpa)}</strong></td>
+          <td><span class="student-email" title="${escapeHtml(s.email || '')}">${escapeHtml(s.email || '—')}</span></td>
           <td>
-            <span class="badge ${statusClass(s.status)}">${statusLabel(s.status)}</span>
+            <div class="student-program">${escapeHtml(academicInfo.course)}</div>
+            <div class="subtitle">${escapeHtml(academicInfo.year)}${academicInfo.section ? ` · Block ${escapeHtml(academicInfo.section)}` : ''}</div>
+          </td>
+          <td><div class="student-class-list">${classChips}${fallbackClass}${moreClasses || (!classChips && !fallbackClass ? '<span class="subtitle">No class</span>' : '')}</div></td>
+          <td class="student-gpa-cell"><strong>${escapeHtml(studentGpa(s))}</strong></td>
+          <td>
+            <span class="badge ${statusClass(s.status || 'active')}">${escapeHtml(statusLabel(s.status || 'active'))}</span>
             ${isIrregularStudent(s) ? '<div class="subtitle">Irregular</div>' : ''}
           </td>
           <td>
             <div class="action-menu-wrap">
               <button type="button" class="action-menu-btn" data-student-menu
-                aria-label="Actions for ${escapeHtml(s.name)}" aria-expanded="false">
+                aria-label="Actions for ${escapeHtml(fullName)}" aria-expanded="false">
                 <i data-lucide="more-horizontal"></i>
               </button>
               <div class="action-dropdown">
@@ -176,8 +219,9 @@ document.addEventListener('DOMContentLoaded', () => {
               </div>
             </div>
           </td>
-        </tr>`).join('')
-        : `<tr><td colspan="8" style="text-align:center;padding:24px">${search || statusFilter || courseFilter || yearFilter ? 'No students match these filters.' : 'No students on this list yet. Import a class list, add a student, or have them join with a class code.'}</td></tr>`;
+        </tr>`;
+        }).join('')
+        : `<tr><td colspan="7" class="student-empty-cell">${search || statusFilter || courseFilter || yearFilter ? 'No students match these filters.' : 'No students on this list yet. Import a class list, add a student, or have them join with a class code.'}</td></tr>`;
     }
 
     // ---- Student overview (donut center + legend; keeps the donut markup intact) ----
@@ -211,28 +255,34 @@ document.addEventListener('DOMContentLoaded', () => {
         .slice()
         .sort((a, b) => (Number(b.gpa) || 0) - (Number(a.gpa) || 0))
         .slice(0, 3)
-        .map((s, i) => `
-        <div class="list-item" role="button" tabindex="0" data-student-details="${escapeHtml(s.id)}" aria-label="View details for ${escapeHtml(s.name)}">
-          <div class="cell-icon" style="background:${colors[i][0]};color:${colors[i][1]};width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px">${i + 1}</div>
-          <div class="item-meta">
-            <div class="item-title">${escapeHtml(s.name)}</div>
-            <div class="item-sub">GPA ${escapeHtml(s.gpa)} · ${escapeHtml(s.course)}</div>
-          </div>
-        </div>`).join('');
+        .map((s, i) => {
+          const academicInfo = studentAcademicInfo(s, studentClasses(s, classes));
+          return `
+            <div class="list-item" role="button" tabindex="0" data-student-details="${escapeHtml(s.id)}" aria-label="View details for ${escapeHtml(s.name)}">
+              <div class="cell-icon" style="background:${colors[i][0]};color:${colors[i][1]};width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px">${i + 1}</div>
+              <div class="item-meta">
+                <div class="item-title">${escapeHtml(s.name)}</div>
+                <div class="item-sub">GPA ${escapeHtml(studentGpa(s))} · ${escapeHtml(academicInfo.course)} · ${escapeHtml(academicInfo.year)}</div>
+              </div>
+            </div>`;
+        }).join('');
     }
 
     // ---- At-risk students ----
     const riskBox = document.getElementById('atRiskStudents');
     if (riskBox) {
       riskBox.innerHTML = atRisk.length
-        ? atRisk.slice(0, 5).map((s) => `
-        <div class="list-item">
-          <div class="item-meta">
-            <div class="item-title">${escapeHtml(s.name)}</div>
-            <div class="item-sub">GPA ${escapeHtml(s.gpa)} · ${escapeHtml(s.course)}</div>
-          </div>
-          <span class="badge badge-warning">At Risk</span>
-        </div>`).join('')
+        ? atRisk.slice(0, 5).map((s) => {
+          const academicInfo = studentAcademicInfo(s, studentClasses(s, classes));
+          return `
+            <div class="list-item">
+              <div class="item-meta">
+                <div class="item-title">${escapeHtml(s.name)}</div>
+                <div class="item-sub">GPA ${escapeHtml(studentGpa(s))} · ${escapeHtml(academicInfo.course)}</div>
+              </div>
+              <span class="badge badge-warning">At Risk</span>
+            </div>`;
+        }).join('')
         : '<div class="list-item"><div class="item-meta"><div class="item-sub">No at-risk students.</div></div></div>';
     }
 
@@ -304,6 +354,43 @@ document.addEventListener('DOMContentLoaded', () => {
     const sel = document.getElementById('studentClass');
     if (sel) sel.innerHTML = classOptionsHtml('No class');
     openModal('addStudentModal');
+  });
+
+  document.getElementById('syncStudentInfoBtn')?.addEventListener('click', async (event) => {
+    const button = event.currentTarget;
+    const originalContent = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<i data-lucide="loader-circle"></i> Syncing...';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    try {
+      const response = await fetch('../api/student-roster-sync.php', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || '',
+        },
+      });
+      let result;
+      try {
+        result = await response.json();
+      } catch {
+        throw new Error('The student sync response was not valid JSON.');
+      }
+      if (!response.ok || !result.ok) {
+        throw new Error(result.message || 'Student information could not be synced.');
+      }
+      sbInvalidate(SB_KEYS.STUDENTS);
+      render();
+      showToast(result.updated
+        ? `Synced ${result.updated} student profile${result.updated === 1 ? '' : 's'}.`
+        : result.linked ? 'Student information is already up to date.' : 'No linked student accounts were found.');
+    } catch (error) {
+      showToast(error.message || 'Student information could not be synced.', 'error');
+    } finally {
+      button.innerHTML = originalContent;
+      button.disabled = false;
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
   });
 
   // ---- Roster import: Excel, CSV, text, and PDF ----

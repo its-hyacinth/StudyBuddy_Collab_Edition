@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="../css/pages.css" />
   <script defer src="https://unpkg.com/lucide@latest"></script>
 </head>
-<body>
+<body class="teacher-students-page">
   <div class="app-shell" id="appShell">
     <div class="page-content">
       <div class="page-header">
@@ -23,6 +23,9 @@
           <p class="page-subtitle">View and manage students enrolled in your classes.</p>
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button type="button" class="btn btn-outline" id="syncStudentInfoBtn">
+            <i data-lucide="refresh-cw"></i> Sync Student Info
+          </button>
           <button type="button" class="btn btn-outline" id="importStudentsBtn">
             <i data-lucide="upload"></i> Import List
           </button>
@@ -69,10 +72,10 @@
 
       <div class="page-layout">
         <div class="page-main">
-          <div class="toolbar">
+          <div class="toolbar student-toolbar">
             <div class="search-mini">
               <i data-lucide="search"></i>
-              <input type="search" id="studentSearch" placeholder="Search by name or email..." />
+              <input type="search" id="studentSearch" placeholder="Search name, email, ID, or class..." />
             </div>
             <select id="studentCourseFilter" aria-label="Filter by course">
               <option value="">All Courses</option>
@@ -91,19 +94,27 @@
             </select>
           </div>
 
-          <div class="card">
+          <div class="card student-roster-card">
             <div class="table-wrap">
               <table class="data-table" id="studentsTable">
+                <colgroup>
+                  <col class="student-col-name" />
+                  <col class="student-col-email" />
+                  <col class="student-col-program" />
+                  <col class="student-col-classes" />
+                  <col class="student-col-gpa" />
+                  <col class="student-col-status" />
+                  <col class="student-col-actions" />
+                </colgroup>
                 <thead>
                   <tr>
-                    <th>Student</th>
-                    <th>Email</th>
-                    <th>Course</th>
-                    <th>Year / Block</th>
-                    <th>Class</th>
-                    <th style="text-align: left;">GPA</th>
-                    <th>Status</th>
-                    <th></th>
+                    <th scope="col">Student</th>
+                    <th scope="col">Email</th>
+                    <th scope="col">Course &amp; Level</th>
+                    <th scope="col">Classes</th>
+                    <th scope="col">GPA</th>
+                    <th scope="col">Status</th>
+                    <th scope="col" aria-label="Actions"></th>
                   </tr>
                 </thead>
                 <!-- Rows are filled in by teacher-students.js -->

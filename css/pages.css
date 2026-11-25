@@ -864,6 +864,129 @@
   width: 1%;
 }
 
+.teacher-students-page .student-roster-card {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.teacher-students-page .student-roster-card .table-wrap {
+  overflow-x: auto;
+}
+
+.teacher-students-page #studentsTable {
+  width: 100%;
+  min-width: 920px;
+  table-layout: fixed;
+}
+
+.teacher-students-page #studentsTable .student-col-name { width: 20%; }
+.teacher-students-page #studentsTable .student-col-email { width: 22%; }
+.teacher-students-page #studentsTable .student-col-program { width: 16%; }
+.teacher-students-page #studentsTable .student-col-classes { width: 20%; }
+.teacher-students-page #studentsTable .student-col-gpa { width: 8%; }
+.teacher-students-page #studentsTable .student-col-status { width: 9%; }
+.teacher-students-page #studentsTable .student-col-actions { width: 5%; }
+
+.teacher-students-page #studentsTable th:first-child,
+.teacher-students-page #studentsTable td:first-child {
+  width: auto;
+}
+
+.teacher-students-page #studentsTable thead th {
+  text-align: left;
+  white-space: nowrap;
+}
+
+.teacher-students-page #studentsTable th,
+.teacher-students-page #studentsTable td {
+  padding: 14px 12px;
+  vertical-align: middle;
+}
+
+.student-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.student-avatar {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.student-identity-text,
+.student-email {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.student-identity-text .title,
+.student-email,
+.student-program {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.student-email {
+  color: var(--text-body);
+}
+
+.student-program {
+  font-weight: 600;
+}
+
+.student-class-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.student-class-chip,
+.student-class-more {
+  display: inline-block;
+  max-width: 100%;
+  padding: 4px 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--page-bg);
+  color: var(--text-body);
+  font-size: 11px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.student-class-more {
+  flex: 0 0 auto;
+  background: var(--primary-light, #eef2ff);
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.student-gpa-cell strong {
+  white-space: nowrap;
+}
+
+.student-empty-cell {
+  padding: 24px !important;
+  text-align: center;
+}
+
 .empty-state {
   text-align: center;
   padding: 40px 20px;
