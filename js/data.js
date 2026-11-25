@@ -336,6 +336,37 @@ function classDisplayName(cls) {
   return block ? `${block} — ${subject}` : subject;
 }
 
+function gradeMatchesClass(grade, cls) {
+  if (grade.classId) return String(grade.classId) === String(cls.id);
+  const gradeLabel = normalizeSubjectCode(grade.class);
+  if (!gradeLabel) return false;
+  const classLabels = [classDisplayName(cls), cls.name, cls.subject]
+    .map(normalizeSubjectCode)
+    .filter(Boolean);
+  if (classLabels.includes(gradeLabel)) return true;
+  const classCode = normalizeSubjectCode(classSubjectCode(cls));
+  return !!classCode && gradeLabel.startsWith(classCode);
+}
+
+function classPerformance(cls, grades) {
+  const graded = grades.filter((grade) =>
+    grade.status === 'graded'
+    && grade.score !== null
+    && grade.score !== undefined
+    && grade.score !== ''
+    && Number.isFinite(Number(grade.score))
+    && Number(grade.max) > 0
+    && gradeMatchesClass(grade, cls)
+  );
+  if (!graded.length) return null;
+  const earned = graded.reduce((sum, grade) => sum + Number(grade.score), 0);
+  const possible = graded.reduce((sum, grade) => sum + Number(grade.max), 0);
+  return {
+    average: Math.min(100, Math.max(0, Math.round((earned / possible) * 100))),
+    gradedCount: graded.length,
+  };
+}
+
 function studentMatchesClass(student, cls, includeIrregular = true) {
   if (!student || !cls) return false;
   if (String(student.status || 'active').toLowerCase() === 'inactive') return false;

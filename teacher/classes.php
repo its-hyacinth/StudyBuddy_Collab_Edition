@@ -61,7 +61,7 @@
           <div class="stat-body">
             <div class="stat-label">Avg. Progress</div>
             <div class="stat-value" id="statAvgProgress">67%</div>
-            <div class="stat-delta up"><i data-lucide="trending-up"></i> +5% from last month</div>
+            <div class="stat-delta" id="statAvgProgressContext">Waiting for graded work</div>
           </div>
         </div>
       </div>

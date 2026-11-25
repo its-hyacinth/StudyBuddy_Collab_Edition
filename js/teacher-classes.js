@@ -71,16 +71,30 @@ document.addEventListener('DOMContentLoaded', () => {
     const classes = getClasses();
     const students = getStudents();
     const assignments = getAssignments();
+    const grades = getGrades();
+    const classProgress = classes.map((cls) => ({
+      cls,
+      performance: classPerformance(cls, grades),
+    }));
+    const performanceByClass = new Map(classProgress.map(({ cls, performance }) => [String(cls.id), performance]));
+    const classesWithPerformance = classProgress.filter((item) => item.performance);
 
     // ---- Stat cards (by ID, so a layout change can't mix them up) ----
-    const avgProgress = Math.round(
-      classes.reduce((s, c) => s + (Number(c.progress) || 0), 0) / (classes.length || 1)
-    );
+    const avgProgress = classesWithPerformance.length
+      ? Math.round(classesWithPerformance.reduce((sum, item) => sum + item.performance.average, 0) / classesWithPerformance.length)
+      : null;
     // Total = students from Classroom + every student added on the Students page
     const baseTotal = classes.reduce((s, c) => s + (Number(c.students) || 0), 0);
     setText('statTotalClasses', classes.length);
     setText('statTotalStudents', baseTotal + students.length);
-    setText('statAvgProgress', avgProgress + '%');
+    setText('statAvgProgress', avgProgress === null ? '—' : `${avgProgress}%`);
+    const progressContext = document.getElementById('statAvgProgressContext');
+    if (progressContext) {
+      progressContext.textContent = classesWithPerformance.length
+        ? `Based on ${classesWithPerformance.length} class${classesWithPerformance.length === 1 ? '' : 'es'} with graded work`
+        : 'Waiting for graded work';
+      progressContext.className = `stat-delta ${classesWithPerformance.length ? 'up' : ''}`.trim();
+    }
     // Same rule as the Dashboard: every assignment that isn't completed
     setText('statActiveAsg', assignments.filter((a) => a.status !== 'completed').length);
 
@@ -99,6 +113,8 @@ document.addEventListener('DOMContentLoaded', () => {
         ? list.map((c) => {
           const code = classSubjectCode(c);
           const title = c.subject && c.subject !== c.name ? c.subject : '';
+          const performance = performanceByClass.get(String(c.id));
+          const progress = performance ? performance.average : null;
           return `
         <tr data-id="${escapeHtml(c.id)}" style="cursor:pointer" title="Click for class details">
           <td>
@@ -118,8 +134,8 @@ document.addEventListener('DOMContentLoaded', () => {
           </td>
           <td>
             <div class="progress-row">
-              <div class="progress-bar"><div class="fill ${escapeHtml(c.short)}" style="width:${Number(c.progress) || 0}%"></div></div>
-              <span class="progress-pct">${Number(c.progress) || 0}%</span>
+              <div class="progress-bar" title="${performance ? `${performance.gradedCount} graded submission${performance.gradedCount === 1 ? '' : 's'}` : 'No graded submissions yet'}"><div class="fill ${escapeHtml(c.short)}" style="width:${progress ?? 0}%"></div></div>
+              <span class="progress-pct">${progress === null ? '—' : `${progress}%`}</span>
             </div>
           </td>
           <td><span class="badge badge-success">Active</span></td>
@@ -133,6 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const grid = document.getElementById('classesGridView');
     if (grid) {
       grid.innerHTML = list.map((c) => {
+        const performance = performanceByClass.get(String(c.id));
         return `
         <div class="subject-card ${escapeHtml(c.short)}" data-id="${escapeHtml(c.id)}" style="cursor:pointer" title="Click for class details">
           <div class="subject-card-top">
@@ -142,7 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
           <div class="subject-card-stats" style="display:grid;grid-template-columns:repeat(2,1fr);justify-items:center;text-align:center;width:100%">
             <div class="ss" style="width:100%;text-align:center;margin:0"><div class="ss-val">${enrolledCount(c, students)}</div><div class="ss-lbl">Students</div></div>
-            <div class="ss" style="width:100%;text-align:center;margin:0"><div class="ss-val">${Number(c.progress) || 0}%</div><div class="ss-lbl">Progress</div></div>
+            <div class="ss" style="width:100%;text-align:center;margin:0"><div class="ss-val">${performance ? `${performance.average}%` : '—'}</div><div class="ss-lbl">Progress</div></div>
           </div>
         </div>`;
       }).join('');
@@ -150,15 +167,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ---- Overview (keeps the donut, rebuilds center + legend) ----
     const center = document.querySelector('#classOverview .center-label');
-    if (center) center.innerHTML = `${avgProgress}%<small>Avg Progress</small>`;
+    if (center) center.innerHTML = `${avgProgress === null ? '—' : `${avgProgress}%`}<small>Avg Progress</small>`;
     const ring = document.querySelector('#classOverview .donut circle:nth-of-type(2)');
-    if (ring) ring.setAttribute('stroke-dashoffset', (226.2 * (1 - avgProgress / 100)).toFixed(1));
+    if (ring) ring.setAttribute('stroke-dashoffset', (226.2 * (1 - (avgProgress ?? 0) / 100)).toFixed(1));
     const legend = document.querySelector('#classOverview .donut-legend');
     if (legend) {
-      legend.innerHTML = classes.slice(0, 5).map((c) => `
+      legend.innerHTML = classProgress.slice(0, 5).map(({ cls: c, performance }) => `
         <div class="donut-legend-row">
-          <div class="lbl"><span>${escapeHtml(classDisplayName(c))}</span><span>${Number(c.progress) || 0}%</span></div>
-          <div class="progress-bar"><div class="fill ${escapeHtml(c.short)}" style="width:${Number(c.progress) || 0}%"></div></div>
+          <div class="lbl"><span>${escapeHtml(classDisplayName(c))}</span><span>${performance ? `${performance.average}%` : '—'}</span></div>
+          <div class="progress-bar" title="${performance ? `${performance.gradedCount} graded submission${performance.gradedCount === 1 ? '' : 's'}` : 'No graded submissions yet'}"><div class="fill ${escapeHtml(c.short)}" style="width:${performance?.average ?? 0}%"></div></div>
         </div>`).join('');
     }
 
@@ -211,7 +228,8 @@ document.addEventListener('DOMContentLoaded', () => {
     setText('detailDays', c.schedule || notSet);
     setText('detailTime', timeText(c) || notSet);
     setText('detailStudents', enrolledCount(c, students));
-    setText('detailProgress', (Number(c.progress) || 0) + '%');
+    const performance = classPerformance(c, getGrades());
+    setText('detailProgress', performance ? `${performance.average}%` : '—');
     setText('detailDescription', c.description || 'No description provided.');
 
     openModal('classDetailsModal');
@@ -369,6 +387,14 @@ document.addEventListener('DOMContentLoaded', () => {
   sbWhenReady(() => {
     ensureJoinCodes();
     if (editId) openEditClass(editId);
+    render();
+  });
+  const classStateKeys = new Set([SB_KEYS.ASSIGNMENTS, SB_KEYS.CLASSES, SB_KEYS.STUDENTS, SB_KEYS.GRADES]);
+  window.addEventListener('studybuddy:state-updated', (event) => {
+    if (classStateKeys.has(event.detail?.key)) render();
+  });
+  window.addEventListener('focus', () => {
+    sbInvalidate(...classStateKeys);
     render();
   });
 });
