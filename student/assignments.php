@@ -34,7 +34,7 @@
 
       <div class="page-layout">
         <div class="page-main">
-          <div class="stat-grid" id="asgStats" style="grid-template-columns:repeat(4,1fr)"></div>
+          <div class="stat-grid" id="asgStats"></div>
 
           <div class="card">
             <div class="filter-tabs" id="asgTabs" role="tablist"></div>

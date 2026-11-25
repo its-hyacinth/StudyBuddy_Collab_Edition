@@ -1317,3 +1317,53 @@
   .subject-tiles { grid-template-columns: 1fr; }
   .greeting-banner .banner-art { display: none; }
 }
+
+.form-grid-two {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 16px;
+}
+
+.message-page-layout {
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+}
+
+.message-page-main { display: contents; }
+
+.message-panel {
+  display: flex;
+  min-width: 0;
+  min-height: 420px;
+  height: calc(100vh - var(--header-height) - 120px);
+  flex-direction: column;
+}
+
+.message-reply-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.message-reply-field { flex: 1; margin-bottom: 0; }
+
+@media (max-width: 900px) {
+  .message-page-layout {
+    grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .auth-right { padding: 18px 14px; }
+  .form-grid-two { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .message-page-layout { grid-template-columns: minmax(0, 1fr); }
+  .message-panel { min-height: 0; height: auto; }
+  .message-list-panel { min-height: 220px; height: min(38vh, 320px); }
+  .message-thread-panel { min-height: 380px; height: min(64vh, 560px); }
+  .message-thread-panel .card-header { align-items: flex-start; flex-wrap: wrap; }
+  .message-thread-panel .card-header-left { flex: 1 1 200px; min-width: 0; }
+  .message-thread-panel #threadMeta { overflow-wrap: anywhere; }
+  .message-thread-panel .thread-msg { max-width: 90% !important; }
+  .message-reply-form { align-items: stretch; flex-wrap: wrap; }
+  .message-reply-field { flex: 1 1 100%; }
+  .message-thread-panel #threadReply form > .btn { margin-left: auto; }
+}

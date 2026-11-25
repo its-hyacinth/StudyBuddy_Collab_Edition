@@ -342,7 +342,7 @@
         </button>
       </div>
       <div class="modal-body">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px 16px">
+        <div class="form-grid-two">
           <div><div class="stat-label" style="font-weight:700;font-size:15px;color:#0F172A;margin-bottom:2px">Class</div><div class="title" id="tAsgClass"></div></div>
           <div><div class="stat-label" style="font-weight:700;font-size:15px;color:#0F172A;margin-bottom:2px">Status</div><div><span class="badge" id="tAsgStatus"></span></div></div>
           <div><div class="stat-label" style="font-weight:700;font-size:15px;color:#0F172A;margin-bottom:2px">Due</div><div class="title" id="tAsgDue"></div></div>

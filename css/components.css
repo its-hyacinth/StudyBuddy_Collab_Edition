@@ -1195,7 +1195,40 @@ textarea.form-control {
   .settings-layout { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
-  .stat-grid { grid-template-columns: 1fr; }
+  .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .form-row { grid-template-columns: 1fr; }
   .cal-full .cal-day { min-height: 60px; }
+
+  .card { padding: 14px; }
+  .stat-card { gap: 9px; padding: 12px; }
+  .stat-card .stat-icon { width: 36px; height: 36px; border-radius: 10px; }
+  .stat-card .stat-value { font-size: 22px; }
+  .filter-tabs { width: 100%; flex-wrap: wrap; }
+  .filter-tab { flex: 1 1 auto; justify-content: center; padding: 8px 10px; }
+  .btn { padding: 9px 12px; white-space: normal; text-align: center; }
+  .form-control { font-size: 16px; }
+  .table-wrap {
+    max-width: 100%;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .modal-backdrop { align-items: flex-end; padding: 8px; }
+  .modal {
+    max-height: calc(100vh - 16px);
+    max-height: calc(100dvh - 16px);
+    border-radius: 16px 16px 10px 10px;
+  }
+  .modal-header { padding: 16px 16px 0; }
+  .modal-body { padding: 16px; }
+  .modal-footer { flex-wrap: wrap; padding: 0 16px 16px; }
+  .modal-footer .btn { flex: 1 1 120px; }
+  .connected-row { align-items: flex-start; flex-wrap: wrap; padding: 12px; }
+  .connected-row .conn-info { flex: 1 1 calc(100% - 60px); min-width: 0; }
+  .connected-row > .btn { width: 100%; }
+}
+
+@media (max-width: 380px) {
+  .stat-grid { grid-template-columns: 1fr; }
+  .header-actions { gap: 2px; }
+  .card { padding: 12px; }
 }

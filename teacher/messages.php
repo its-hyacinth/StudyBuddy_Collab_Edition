@@ -27,10 +27,10 @@
         </button>
       </div>
 
-      <div class="page-layout" style="grid-template-columns: 320px 1fr;">
-        <div class="page-main" style="display:contents;">
+      <div class="page-layout message-page-layout">
+        <div class="page-main message-page-main">
           <!-- Message List Panel -->
-          <div class="card" style="height:calc(100vh - var(--header-height) - 120px);display:flex;flex-direction:column;">
+          <div class="card message-panel message-list-panel">
             <div class="toolbar" style="margin-bottom:12px;">
               <div class="search-mini" style="max-width:100%;flex:1;">
                 <i data-lucide="search"></i>
@@ -105,7 +105,7 @@
           </div>
 
           <!-- Thread Panel -->
-          <div class="card" id="threadPanel" style="height:calc(100vh - var(--header-height) - 120px);display:flex;flex-direction:column;">
+          <div class="card message-panel message-thread-panel" id="threadPanel">
             <div class="card-header" style="border-bottom:1px solid var(--border);padding-bottom:16px;margin-bottom:0;">
               <div class="card-header-left">
                 <div class="cell-icon" style="background:#DBEAFE;color:#2563EB;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:600" id="threadAvatar">MS</div>
@@ -144,8 +144,8 @@
             </div>
 
             <div id="threadReply" style="border-top:1px solid var(--border);padding-top:16px;">
-              <form id="replyForm" style="display:flex;gap:10px;align-items:flex-end;">
-                <div class="form-group" style="flex:1;margin-bottom:0;">
+              <form id="replyForm" class="message-reply-form">
+                <div class="form-group message-reply-field">
                   <textarea class="form-control" id="replyInput" placeholder="Type your reply..." rows="2" style="min-height:44px;resize:none"></textarea>
                 </div>
                 <button type="submit" class="btn btn-primary" id="sendReplyBtn">

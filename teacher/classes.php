@@ -508,7 +508,7 @@
         </button>
       </div>
       <div class="modal-body">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px 16px">
+        <div class="form-grid-two">
           <div><div class="stat-label" style="font-weight:700;font-size:15px;color:#0F172A;margin-bottom:2px">Subject Code</div><div class="title" id="detailSubject"></div></div>
           <div><div class="stat-label" style="font-weight:700;font-size:15px;color:#0F172A;margin-bottom:2px">Instructor</div><div class="title" id="detailInstructor"></div></div>
           <div><div class="stat-label" style="font-weight:700;font-size:15px;color:#0F172A;margin-bottom:2px">Room</div><div class="title" id="detailRoom"></div></div>
