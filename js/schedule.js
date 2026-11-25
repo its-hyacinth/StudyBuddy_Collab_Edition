@@ -704,14 +704,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   render();
   sbWhenReady(render);
-  if (validRequestedDate) openDaySchedule(requestedDate);
+  const openRequestedDate = () => {
+    if (validRequestedDate) openDaySchedule(requestedDate);
+  };
   if (window.SB_PENDING_SCHEDULE_SYNC) {
     window.SB_PENDING_SCHEDULE_SYNC = false;
     syncScheduleToGoogleCalendar(googleCalendarSyncEntries(), document.getElementById('syncGoogleCalBtn'));
+    openRequestedDate();
   } else if (window.SB_PENDING_CALENDAR_IMPORT) {
     window.SB_PENDING_CALENDAR_IMPORT = false;
-    syncGoogleCalendar(document.getElementById('importGoogleCalBtn'));
+    syncGoogleCalendar(document.getElementById('importGoogleCalBtn')).finally(openRequestedDate);
   } else if (googleCalendarSyncReady(window.SB_GOOGLE)) {
-    window.refreshGoogleCalendar().catch((error) => showToast(error.message || 'Could not load Google Calendar.', 'error'));
+    window.refreshGoogleCalendar()
+      .then(openRequestedDate)
+      .catch((error) => {
+        showToast(error.message || 'Could not load Google Calendar.', 'error');
+        openRequestedDate();
+      });
+  } else {
+    openRequestedDate();
   }
 });

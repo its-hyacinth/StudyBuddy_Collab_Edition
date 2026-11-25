@@ -10,12 +10,19 @@ document.addEventListener('DOMContentLoaded', () => {
   if (greeting) greeting.textContent = `${greetingTime()}, ${firstName}! 👋`;
 
   let todayItems = [];
+  let googleCalendarItems = [];
   let todayStr = '';
   function paintDashboard() {
   const subjects = getSubjects();
   const assignments = getAssignments();
   const tasks = getTasks();
   const schedule = getSchedule();
+  const localSchedule = schedule.filter((entry) => entry.source !== 'google-calendar' && entry.source !== 'classroom');
+  const localScheduleIds = new Set(localSchedule.map((entry) => String(entry.id)));
+  const calendarSchedule = [
+    ...localSchedule,
+    ...googleCalendarItems.filter((entry) => !localScheduleIds.has(String(entry.studyBuddyScheduleId || ''))),
+  ];
   const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
   }[char]));
@@ -55,17 +62,20 @@ document.addEventListener('DOMContentLoaded', () => {
     taskDelta.textContent = `${dueToday} due today`;
   }
 
-  todayItems = schedule.filter((s) => s.date === todayStr).sort((a, b) => String(a.startTime || '').localeCompare(String(b.startTime || '')));
+  todayItems = localSchedule.filter((s) => s.date === todayStr)
+    .sort((a, b) => String(a.startTime || '').localeCompare(String(b.startTime || '')));
+  const todayScheduleItems = calendarSchedule.filter((s) => s.date === todayStr)
+    .sort((a, b) => String(a.startTime || '').localeCompare(String(b.startTime || '')));
   const schedEl = document.getElementById('todaySchedule');
   if (schedEl) {
-    schedEl.innerHTML = todayItems.length
-      ? todayItems.map((s) => `
+    schedEl.innerHTML = todayScheduleItems.length
+      ? todayScheduleItems.map((s) => `
         <a href="schedule.php?date=${encodeURIComponent(s.date)}" class="schedule-item schedule-item-link" aria-label="View schedule for ${escapeHtml(formatDate(s.date))}: ${escapeHtml(s.title)}">
           <span class="dot ${escapeHtml(subjectShort(s.subject))}"></span>
-          <div class="time">${escapeHtml(formatTime(s.startTime))} – ${escapeHtml(formatTime(s.endTime))}</div>
+          <div class="time">${s.startTime ? escapeHtml(formatTime(s.startTime)) : s.allDay ? 'All day' : 'Time not set'}${s.endTime ? ` – ${escapeHtml(formatTime(s.endTime))}` : ''}</div>
           <div class="info">
             <div class="subj">${escapeHtml(s.title)}</div>
-            <div class="room">${escapeHtml(s.room || s.type)}</div>
+            <div class="room">${escapeHtml(s.room || s.location || s.type || '')}</div>
           </div>
           <i data-lucide="chevron-right" class="chevron"></i>
         </a>`).join('')
@@ -121,8 +131,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const now = new Date();
   let calY = now.getFullYear(), calM = now.getMonth();
   const eventDates = [
-    ...schedule.map((item) => item.date),
-    ...assignments.filter((item) => item.status !== 'completed').map((item) => item.dueDate),
+    ...calendarSchedule.map((item) => item.date),
+    ...assignments.filter((item) => item.dueDate && (item.source === 'classroom' || item.status !== 'completed')).map((item) => item.dueDate),
+    ...tasks.filter((item) => item.dueDate && item.status !== 'completed').map((item) => item.dueDate),
   ].filter(Boolean);
   const mini = document.getElementById('miniCalendar');
   const renderCal = (y, m) => {
@@ -137,14 +148,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const eventsEl = document.getElementById('upcomingEvents');
   if (eventsEl) {
-    const upcomingEvents = schedule.filter((item) => item.date >= todayStr)
+    const upcomingEvents = calendarSchedule.filter((item) => item.date >= todayStr)
       .sort((a, b) => `${a.date}${a.startTime || ''}`.localeCompare(`${b.date}${b.startTime || ''}`)).slice(0, 4);
     eventsEl.innerHTML = upcomingEvents.length ? upcomingEvents.map((s) => `
       <a href="schedule.php?date=${encodeURIComponent(s.date)}" class="list-item list-item-link" aria-label="View events for ${escapeHtml(formatDate(s.date))}: ${escapeHtml(s.title)}">
         <span class="dot ${escapeHtml(subjectShort(s.subject))}"></span>
         <div class="item-meta">
           <div class="item-title">${escapeHtml(s.title)}</div>
-          <div class="item-sub">${escapeHtml(formatDate(s.date))} · ${escapeHtml(formatTime(s.startTime))}</div>
+          <div class="item-sub">${escapeHtml(formatDate(s.date))} · ${s.startTime ? escapeHtml(formatTime(s.startTime)) : s.allDay ? 'All day' : 'Time not set'}</div>
         </div>
         <i data-lucide="chevron-right" class="chevron"></i>
       </a>`).join('') : '<p class="empty-state">No upcoming events.</p>';
@@ -180,6 +191,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
   paintDashboard();
   sbWhenReady(paintDashboard);
+
+  const loadDashboardGoogleCalendar = async () => {
+    try {
+      const status = await googleConnectionStatus();
+      if (!googleCalendarSyncReady(status)) {
+        googleCalendarItems = [];
+        paintDashboard();
+        return;
+      }
+      const now = new Date();
+      const { start, end } = googleCalendarMonthRange(now.getFullYear(), now.getMonth());
+      googleCalendarItems = await fetchGoogleCalendarEvents(start, end);
+      paintDashboard();
+    } catch (error) {
+      console.error('Could not load Google Calendar events for the dashboard:', error);
+      showToast(error.message || 'Could not load Google Calendar events.', 'error');
+    }
+  };
+  loadDashboardGoogleCalendar();
 
   const runClassroomSync = async (btn) => {
     const result = await syncGoogleClassroom(btn);
