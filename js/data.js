@@ -538,6 +538,27 @@ function deleteSubject(id) {
 }
 
 function getAssignments() { return sbGet(SB_KEYS.ASSIGNMENTS, []); }
+function getSubjectAssignments(subject, assignments = getAssignments()) {
+  return assignments.filter((assignment) =>
+    assignment.subjectId === subject.id
+    || assignment.classId === subject.id
+    || (subject.classroomId && (assignment.classId === subject.classroomId || assignment.classroomId === subject.classroomId))
+    || (!assignment.subjectId && [subject.name, subject.shortName, subject.short, subject.code].includes(assignment.subject))
+  );
+}
+function getSubjectProgress(subject, assignments = getAssignments()) {
+  const value = Number(subject.progress) || 0;
+  const subjectAssignments = getSubjectAssignments(subject, assignments);
+  if ((subject.source === 'classroom' || subject.classroomId) && subjectAssignments.length) {
+    return Math.round(subjectAssignments.filter((assignment) => assignment.status === 'completed').length / subjectAssignments.length * 100);
+  }
+  return Math.min(Math.max(value, 0), 100);
+}
+function getOverallSubjectProgress(subjects = getSubjects(), assignments = getAssignments()) {
+  return subjects.length
+    ? Math.round(subjects.reduce((sum, subject) => sum + getSubjectProgress(subject, assignments), 0) / subjects.length)
+    : 0;
+}
 function getUpcomingAssignments(assignments = getAssignments(), limit = 5) {
   const today = localDateStr();
   const now = new Date();

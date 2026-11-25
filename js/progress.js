@@ -21,37 +21,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }[char]));
   }
 
-  function subjectAssignmentsFor(subject, assignments) {
-    return assignments.filter((assignment) =>
-      assignment.subjectId === subject.id
-      || assignment.classId === subject.id
-      || (subject.classroomId && (assignment.classId === subject.classroomId || assignment.classroomId === subject.classroomId))
-      || (!assignment.subjectId && [subject.name, subject.shortName, subject.short, subject.code].includes(assignment.subject))
-    );
-  }
-
-  function subjectProgress(subject, assignments) {
-    const value = Number(subject.progress) || 0;
-    if ((subject.source === 'classroom' || subject.classroomId) && assignments.length) {
-      return Math.round(assignments.filter((assignment) => assignment.status === 'completed').length / assignments.length * 100);
-    }
-    return Math.min(Math.max(value, 0), 100);
-  }
-
   function progressMetrics() {
     const tasks = getTasks();
     const assignments = getAssignments();
     const subjects = getSubjects();
-    const overall = subjects.length
-      ? Math.round(subjects.reduce((sum, subject) => sum + subjectProgress(subject, subjectAssignmentsFor(subject, assignments)), 0) / subjects.length)
-      : 0;
     return {
       tasks,
       assignments,
       subjects,
       completedTasks: tasks.filter((task) => task.status === 'completed').length,
       completedAssignments: assignments.filter((assignment) => assignment.status === 'completed').length,
-      overall,
+      overall: getOverallSubjectProgress(subjects, assignments),
     };
   }
 
@@ -108,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
         title: 'Overall Progress',
         description: 'Average progress across your subjects.',
         body: metrics.subjects.length ? metrics.subjects.map((subject) => {
-          const value = subjectProgress(subject, subjectAssignmentsFor(subject, metrics.assignments));
+          const value = getSubjectProgress(subject, metrics.assignments);
           const color = /^#[\da-f]{6}$/i.test(subject.color || '') ? subject.color : '#2563EB';
           return `
             <div class="progress-stat-subject">
@@ -247,8 +227,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const rows = subjects.map((s) => {
-      const subjectAssignments = subjectAssignmentsFor(s, assignments);
-      const progress = subjectProgress(s, subjectAssignments);
+      const subjectAssignments = getSubjectAssignments(s, assignments);
+      const progress = getSubjectProgress(s, assignments);
       const completed = subjectAssignments.filter((assignment) => assignment.status === 'completed').length;
       const status = progress >= 70 ? 'On Track' : progress >= 40 ? 'In Progress' : 'Needs Focus';
       const badge = progress >= 70 ? 'badge-completed' : progress >= 40 ? 'badge-progress' : 'badge-pending';

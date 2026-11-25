@@ -26,17 +26,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
   }[char]));
-  const subjectAssignments = (subject) => assignments.filter((assignment) =>
-    assignment.subjectId === subject.id
-    || assignment.classId === subject.id
-    || (subject.classroomId && (assignment.classId === subject.classroomId || assignment.classroomId === subject.classroomId))
-    || (!assignment.subjectId && [subject.name, subject.shortName, subject.short, subject.code].includes(assignment.subject))
-  );
+  const subjectAssignments = (subject) => getSubjectAssignments(subject, assignments);
   const completedTasks = tasks.filter((task) => task.status === 'completed').length;
   const completedAssignments = assignments.filter((assignment) => assignment.status === 'completed').length;
-  const overallProgress = subjects.length
-    ? Math.round(subjects.reduce((sum, subject) => sum + Math.min(Math.max(Number(subject.progress) || 0, 0), 100), 0) / subjects.length)
-    : 0;
+  const overallProgress = getOverallSubjectProgress(subjects, assignments);
+  const subjectsOnTrack = subjects.filter((subject) => getSubjectProgress(subject, assignments) >= 70).length;
   todayStr = localDateStr();
 
   const setStat = (id, value) => {
@@ -87,7 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
     recentEl.innerHTML = subjects.slice(0, 4).map((s) => {
       const count = subjectAssignments(s).length;
       const color = /^#[\da-f]{6}$/i.test(s.color || '') ? s.color : '#2563EB';
-      const subjectProgress = Math.min(Math.max(Number(s.progress) || 0, 0), 100);
+      const subjectProgress = getSubjectProgress(s, assignments);
       return `
       <a href="subjects.php?subject=${encodeURIComponent(s.id)}" class="subject-tile">
         <div class="tile-top">
@@ -180,8 +174,8 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="progress-bar"><div class="fill blue" style="width:${assignments.length ? (completedAssignments / assignments.length) * 100 : 0}%"></div></div>
           </div>
           <div class="donut-legend-row">
-            <div class="lbl"><span>Subjects On Track</span><span>${subjects.filter((subject) => Number(subject.progress) >= 70).length}/${subjects.length}</span></div>
-            <div class="progress-bar"><div class="fill purple" style="width:${subjects.length ? subjects.filter((subject) => Number(subject.progress) >= 70).length / subjects.length * 100 : 0}%"></div></div>
+            <div class="lbl"><span>Subjects On Track</span><span>${subjectsOnTrack}/${subjects.length}</span></div>
+            <div class="progress-bar"><div class="fill purple" style="width:${subjects.length ? subjectsOnTrack / subjects.length * 100 : 0}%"></div></div>
           </div>
         </div>
       </div>`;
