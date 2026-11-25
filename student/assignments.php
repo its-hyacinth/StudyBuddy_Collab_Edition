@@ -120,49 +120,6 @@
     </div>
   </div>
 
-  <div class="modal-backdrop" id="addAssignmentModal">
-    <div class="modal" role="dialog" aria-labelledby="addAssignmentTitle">
-      <div class="modal-header">
-        <h3 id="addAssignmentTitle">Add Assignment</h3>
-        <button type="button" class="modal-close" data-close-modal="addAssignmentModal" aria-label="Close">
-          <i data-lucide="x"></i>
-        </button>
-      </div>
-      <form id="addAssignmentForm">
-        <div class="modal-body">
-          <div class="form-group">
-            <label for="asgTitle">Title</label>
-            <input type="text" class="form-control" id="asgTitle" name="title" placeholder="Assignment title" required />
-          </div>
-          <div class="form-group">
-            <label for="asgSubject">Subject</label>
-            <select class="form-control" id="asgSubject" name="subjectId" required>
-              <option value="">Select subject</option>
-            </select>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label for="asgDueDate">Due Date</label>
-              <input type="date" class="form-control" id="asgDueDate" name="dueDate" required />
-            </div>
-            <div class="form-group">
-              <label for="asgPoints">Points</label>
-              <input type="number" class="form-control" id="asgPoints" name="points" placeholder="Points possible" min="0" />
-            </div>
-          </div>
-          <div class="form-group">
-            <label for="asgDescription">Description</label>
-            <textarea class="form-control" id="asgDescription" name="description" placeholder="Assignment details..."></textarea>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-ghost" data-close-modal="addAssignmentModal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Add Assignment</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
   <div class="modal-backdrop" id="assignmentDetailsModal">
     <div class="modal" role="dialog" aria-labelledby="assignmentDetailsTitle">
       <div class="modal-header">
