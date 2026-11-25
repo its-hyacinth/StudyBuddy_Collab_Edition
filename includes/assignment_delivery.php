@@ -127,6 +127,41 @@ function sb_save_user_collection(PDO $pdo, int $userId, string $key, array $item
     if (isset($collections[$key])) persistCollectionRows($pdo, $userId, $key, $items, $collections);
 }
 
+function sync_teacher_submission_grades(PDO $pdo, int $teacherId, array $grades, array $collections): void {
+    $studentAssignments = [];
+    $changedStudents = [];
+    foreach ($grades as $grade) {
+        if (!is_array($grade) || empty($grade['submission']['gradeId'])) continue;
+        $studentId = (int)($grade['studentId'] ?? 0);
+        $assignmentId = (string)($grade['assignmentId'] ?? '');
+        if ($studentId < 1 || $assignmentId === '') continue;
+
+        if (!isset($studentAssignments[$studentId])) {
+            $studentAssignments[$studentId] = sb_load_user_collection($pdo, $studentId, 'studybuddy_assignments', $collections);
+        }
+        $matched = false;
+        foreach ($studentAssignments[$studentId] as &$assignment) {
+            if (!is_array($assignment)
+                || (int)($assignment['teacherId'] ?? 0) !== $teacherId
+                || (string)($assignment['teacherAssignmentId'] ?? '') !== $assignmentId
+                || (string)($assignment['submission']['gradeId'] ?? '') !== (string)$grade['submission']['gradeId']) {
+                continue;
+            }
+            $assignment['submission']['score'] = is_numeric($grade['score'] ?? null) ? (float)$grade['score'] : null;
+            $assignment['submission']['max'] = is_numeric($grade['max'] ?? null) ? (float)$grade['max'] : null;
+            $assignment['submission']['status'] = ($grade['status'] ?? '') === 'graded' ? 'graded' : 'pending';
+            $matched = true;
+            break;
+        }
+        unset($assignment);
+        if ($matched) $changedStudents[$studentId] = true;
+    }
+
+    foreach (array_keys($changedStudents) as $studentId) {
+        sb_save_user_collection($pdo, (int)$studentId, 'studybuddy_assignments', $studentAssignments[$studentId], $collections);
+    }
+}
+
 function sb_indexed(array $rows): array {
     $indexed = [];
     foreach ($rows as $row) {

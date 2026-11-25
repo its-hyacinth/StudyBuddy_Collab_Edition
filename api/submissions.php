@@ -211,12 +211,15 @@ foreach ($grades as $index => $item) {
 }
 if (!$foundGrade) $grades[] = $grade;
 
-$studentAssignments = array_map(static function ($assignment) use ($assignmentId, $submission) {
+$studentAssignments = array_map(static function ($assignment) use ($assignmentId, $submission, $teacherAssignment) {
     if (!is_array($assignment) || (string)($assignment['id'] ?? '') !== $assignmentId) return $assignment;
     $assignment['submission'] = [
         'gradeId' => $submission['gradeId'],
         'fileName' => $submission['fileName'],
         'submittedAt' => $submission['submittedAt'],
+        'score' => null,
+        'max' => (float)($teacherAssignment['points'] ?? 0),
+        'status' => 'pending',
     ];
     return $assignment;
 }, $studentAssignments);

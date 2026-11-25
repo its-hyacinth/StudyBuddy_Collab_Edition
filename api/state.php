@@ -122,6 +122,10 @@ try {
             }
         }
         if ($notifyKey) notifyStudentCollectionAdditions($pdo, (int)$user['id'], $key, $value, $existingIds);
+        if (($user['role'] ?? '') === 'teacher' && $key === 'studybuddy_grades') {
+            require_once __DIR__ . '/../includes/assignment_delivery.php';
+            sync_teacher_submission_grades($pdo, (int)$user['id'], $value, $collections);
+        }
         $delivery = null;
         $mailQueue = [];
         if ($deliverAssignments) {

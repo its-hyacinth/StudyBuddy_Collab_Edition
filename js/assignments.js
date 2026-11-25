@@ -256,7 +256,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if (current?.gradeId) {
         const submittedAt = new Date(current.submittedAt);
         const dateLabel = Number.isNaN(submittedAt.getTime()) ? '' : ` · ${submittedAt.toLocaleString()}`;
-        teacherSubmission.innerHTML = `Submitted: <a href="../api/submissions.php?file=${encodeURIComponent(current.gradeId)}">${escapeHtml(current.fileName || 'Download submitted file')}</a>${escapeHtml(dateLabel)}`;
+        const gradeLabel = current.status === 'graded' && current.score !== null && current.score !== undefined
+          ? `Teacher's grade: ${escapeHtml(current.score)} / ${escapeHtml(current.max)} points`
+          : "Teacher's grade: Pending review";
+        teacherSubmission.innerHTML = `Submitted: <a href="../api/submissions.php?file=${encodeURIComponent(current.gradeId)}">${escapeHtml(current.fileName || 'Download submitted file')}</a>${escapeHtml(dateLabel)}<br>${gradeLabel}`;
       } else {
         teacherSubmission.textContent = 'No file submitted yet.';
       }
