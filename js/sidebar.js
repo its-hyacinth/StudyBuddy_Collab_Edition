@@ -29,12 +29,12 @@
 const STUDENT_NAV = [
   { href: 'dashboard.php', icon: 'layout-dashboard', label: 'Dashboard' },
   { href: 'subjects.php', icon: 'book-open', label: 'Subjects' },
-  { href: 'resources.php', icon: 'folder-open', label: 'Resources' },
   { href: 'assignments.php', icon: 'clipboard-list', label: 'Assignments' },
   { href: 'todo.php', icon: 'check-square', label: 'To-Do List' },
   { href: 'schedule.php', icon: 'calendar', label: 'Schedule' },
   { href: 'progress.php', icon: 'trending-up', label: 'Study Progress' },
   { href: 'drive.php', icon: 'hard-drive', label: 'Google Drive' },
+  { href: 'resources.php', icon: 'folder-open', label: 'Resources' },
 ];
 
 const TEACHER_NAV = [
