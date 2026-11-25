@@ -866,26 +866,26 @@
 
 .teacher-students-page .student-roster-card {
   min-width: 0;
-  overflow: hidden;
 }
 
 .teacher-students-page .student-roster-card .table-wrap {
-  overflow-x: auto;
+  overflow-x: clip;
+  overflow-y: visible;
 }
 
 .teacher-students-page #studentsTable {
   width: 100%;
-  min-width: 920px;
+  min-width: 0;
   table-layout: fixed;
 }
 
 .teacher-students-page #studentsTable .student-col-name { width: 20%; }
-.teacher-students-page #studentsTable .student-col-email { width: 22%; }
+.teacher-students-page #studentsTable .student-col-email { width: 20%; }
 .teacher-students-page #studentsTable .student-col-program { width: 16%; }
-.teacher-students-page #studentsTable .student-col-classes { width: 20%; }
-.teacher-students-page #studentsTable .student-col-gpa { width: 8%; }
-.teacher-students-page #studentsTable .student-col-status { width: 9%; }
-.teacher-students-page #studentsTable .student-col-actions { width: 5%; }
+.teacher-students-page #studentsTable .student-col-classes { width: 18%; }
+.teacher-students-page #studentsTable .student-col-gpa { width: 7%; }
+.teacher-students-page #studentsTable .student-col-status { width: 11%; }
+.teacher-students-page #studentsTable .student-col-actions { width: 8%; }
 
 .teacher-students-page #studentsTable th:first-child,
 .teacher-students-page #studentsTable td:first-child {
@@ -899,7 +899,7 @@
 
 .teacher-students-page #studentsTable th,
 .teacher-students-page #studentsTable td {
-  padding: 14px 12px;
+  padding: 12px 8px;
   vertical-align: middle;
 }
 
@@ -985,6 +985,47 @@
 .student-empty-cell {
   padding: 24px !important;
   text-align: center;
+}
+
+@media (max-width: 640px) {
+  .teacher-students-page #studentsTable col.student-col-email,
+  .teacher-students-page #studentsTable col.student-col-gpa,
+  .teacher-students-page #studentsTable th:nth-child(2),
+  .teacher-students-page #studentsTable td:nth-child(2),
+  .teacher-students-page #studentsTable th:nth-child(5),
+  .teacher-students-page #studentsTable td:nth-child(5) {
+    display: none;
+  }
+
+  .teacher-students-page #studentsTable .student-col-name { width: 26%; }
+  .teacher-students-page #studentsTable .student-col-program { width: 21%; }
+  .teacher-students-page #studentsTable .student-col-classes { width: 25%; }
+  .teacher-students-page #studentsTable .student-col-status { width: 17%; }
+  .teacher-students-page #studentsTable .student-col-actions { width: 11%; }
+  .teacher-students-page #studentsTable th,
+  .teacher-students-page #studentsTable td {
+    padding-right: 5px;
+    padding-left: 5px;
+  }
+
+  .teacher-students-page #studentsTable thead th {
+    white-space: normal;
+    line-height: 1.2;
+  }
+
+  .teacher-students-page #studentsTable .badge {
+    padding: 2px 4px;
+    font-size: 10px;
+  }
+
+  .teacher-students-page #studentsTable td:last-child {
+    padding-right: 2px;
+    padding-left: 2px;
+  }
+
+  .teacher-students-page #studentsTable .action-menu-btn {
+    padding: 4px;
+  }
 }
 
 .empty-state {
