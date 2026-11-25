@@ -134,6 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
           title: `${grade.student || 'Student'} submitted ${grade.assignment || 'an assignment'}`,
           sub: className,
           icon: 'file-check',
+          href: `grades.php?grade=${encodeURIComponent(grade.id)}`,
         });
       }
       if (grade.status === 'graded' && grade.gradedAt) {
@@ -141,6 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
           title: `Grade updated for ${grade.student || 'student'}`,
           sub: `${grade.assignment || 'Assignment'} · ${className}`,
           icon: 'award',
+          href: `grades.php?grade=${encodeURIComponent(grade.id)}`,
         });
       }
     });
@@ -151,6 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
         title: `Assignment created: ${assignment.title || 'Untitled assignment'}`,
         sub: cls ? classDisplayName(cls) : (assignment.subject || 'Class'),
         icon: 'clipboard-plus',
+        href: `assignments.php?assignment=${encodeURIComponent(assignment.id)}`,
       });
     });
     getMessages().forEach((message) => {
@@ -159,17 +162,18 @@ document.addEventListener('DOMContentLoaded', () => {
         title: `Message sent to ${message.from || 'student'}`,
         sub: `${message.class || 'General'} · ${message.preview || ''}`,
         icon: 'message-square',
+        href: `messages.php?message=${encodeURIComponent(message.id)}`,
       });
     });
     activity.innerHTML = events
       .sort((a, b) => b.timestamp - a.timestamp)
       .slice(0, 5)
       .map((event) => `
-      <div class="list-item">
+      <a class="list-item list-item-link" href="${escapeHtml(event.href)}">
         <div class="cell-icon" style="background:#DBEAFE;color:#2563EB;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center"><i data-lucide="${event.icon}"></i></div>
         <div class="item-meta"><div class="item-title">${escapeHtml(event.title)}</div><div class="item-sub">${escapeHtml(event.sub)}</div></div>
         <span style="font-size:11px;color:var(--text-muted)">${escapeHtml(activityTime(event.timestamp))}</span>
-      </div>`).join('') || '<p class="empty-state" style="padding:16px">No recent activity yet.</p>';
+      </a>`).join('') || '<p class="empty-state" style="padding:16px">No recent activity yet.</p>';
   }
 
   // ---- Class performance ----

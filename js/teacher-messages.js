@@ -7,6 +7,25 @@ document.addEventListener('DOMContentLoaded', () => {
   wireModalClosers();
 
   let selectedId = null;
+  const requestedMessageId = new URLSearchParams(window.location.search).get('message');
+
+  function openMessage(id) {
+    const messageId = String(id);
+    const messages = getMessages();
+    const message = messages.find((item) => String(item.id) === messageId);
+    if (!message) {
+      showToast('This message is no longer available.', 'error');
+      return;
+    }
+    selectedId = messageId;
+    if (message.unread) {
+      sbSet(SB_KEYS.MESSAGES, messages.map((item) =>
+        String(item.id) === messageId ? { ...item, unread: false } : item
+      ));
+    }
+    renderList();
+    renderThread();
+  }
 
   function renderList() {
     const msgs = getMessages();
@@ -26,11 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     el.querySelectorAll('[data-id]').forEach((row) => {
       row.addEventListener('click', () => {
-        selectedId = row.dataset.id;
-        const list = getMessages().map((m) => m.id === selectedId ? { ...m, unread: false } : m);
-        sbSet(SB_KEYS.MESSAGES, list);
-        renderList();
-        renderThread();
+        openMessage(row.dataset.id);
       });
     });
 
@@ -137,6 +152,11 @@ document.addEventListener('DOMContentLoaded', () => {
   renderList();
   renderThread();
   syncComposeOptions();
-  sbWhenReady(() => { renderList(); renderThread(); syncComposeOptions(); });
+  sbWhenReady(() => {
+    renderList();
+    renderThread();
+    syncComposeOptions();
+    if (requestedMessageId) openMessage(requestedMessageId);
+  });
   if (typeof lucide !== 'undefined') lucide.createIcons();
 });

@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let page = 1;
   let editingAsgId = null;  // teacher: assignment being edited (null = creating)
   let currentAsgId = null;  // teacher: assignment open in the details popup
+  let openRequestedTeacherAssignment = null;
   const perPage = isTeacher ? 8 : 15;
   const subjectFilterElement = document.getElementById('asgSubjectFilter');
   const subjectFilterButton = document.getElementById('asgSubjectFilterButton');
@@ -764,7 +765,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function showTeacherAssignmentDetails(id) {
-    const a = getAssignments().find((x) => x.id === id);
+    const a = getAssignments().find((x) => String(x.id) === String(id));
     if (!a) { showToast('Assignment is no longer available.', 'error'); return; }
     currentAsgId = id;
     const cls = classOf(a, getClasses());
@@ -787,6 +788,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     openModal('asgDetailsModal');
   }
+  openRequestedTeacherAssignment = showTeacherAssignmentDetails;
 
   function openEditAssignment(id) {
     const a = getAssignments().find((x) => x.id === id);
@@ -992,12 +994,12 @@ document.addEventListener('DOMContentLoaded', () => {
     openSubmissionDialog(event.currentTarget.dataset.assignmentId);
   });
 
-  const requestedAssignmentId = !isTeacher
-    ? new URLSearchParams(window.location.search).get('assignment')
-    : null;
+  const requestedAssignmentId = new URLSearchParams(window.location.search).get('assignment');
   render();
   sbWhenReady(() => {
     render();
-    if (requestedAssignmentId) showAssignmentDetails(requestedAssignmentId);
+    if (!requestedAssignmentId) return;
+    if (isTeacher) openRequestedTeacherAssignment?.(requestedAssignmentId);
+    else showAssignmentDetails(requestedAssignmentId);
   });
 });
