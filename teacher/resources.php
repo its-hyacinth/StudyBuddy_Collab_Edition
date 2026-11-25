@@ -392,7 +392,7 @@
             </select>
           </div>
           <div class="form-group">
-            <label for="resourceFile">File</label>
+            <label for="resourceFile">File (max 4 MB)</label>
             <input class="form-control" type="file" id="resourceFile" accept=".pdf,.doc,.docx,.ppt,.pptx,.zip,.png,.jpg" required />
           </div>
           <div class="form-group">

@@ -442,12 +442,28 @@ document.addEventListener('DOMContentLoaded', () => {
             render();
             return;
           }
-          const removeResource = () => {
+          const removeResource = async () => {
             const current = getResources().find((item) => item.id === resource.id);
             if (!current) {
               showToast('This resource is no longer available.', 'error');
               render();
               return;
+            }
+            if (current.source === 'upload') {
+              try {
+                const response = await fetch(`../api/resource-files.php?resource=${encodeURIComponent(current.id)}`, {
+                  method: 'DELETE',
+                  credentials: 'same-origin',
+                  headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || '' },
+                });
+                const result = await response.json().catch(() => null);
+                if (!response.ok || !result?.ok) {
+                  throw new Error(result?.message || `Unable to delete resource file (HTTP ${response.status}).`);
+                }
+              } catch (error) {
+                showToast(error instanceof Error ? error.message : 'Unable to delete resource file.', 'error');
+                return;
+              }
             }
             const updated = getResources()
               .filter((item) => item.id !== current.id)
@@ -576,7 +592,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('uploadResourceForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const title = document.getElementById('resourceTitle')?.value.trim();
-    const cls = document.getElementById('resourceClass')?.value || 'General';
+    const cls = document.getElementById('resourceClass')?.value || '';
     const file = document.getElementById('resourceFile')?.files?.[0];
     if (!title) { showToast('Title required', 'error'); return; }
     if (!file) { showToast('Choose a file to upload.', 'error'); return; }
@@ -586,7 +602,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const body = new FormData();
       body.append('file', file);
-      const response = await fetch('../api/upload.php', {
+      const response = await fetch('../api/resource-files.php', {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || '' },
@@ -594,12 +610,15 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       const result = await response.json().catch(() => null);
       if (!response.ok || !result?.ok) {
-        throw new Error(result?.message || 'Unable to upload resource file.');
+        throw new Error(result?.message || `Unable to upload resource file (HTTP ${response.status}).`);
+      }
+      if (typeof result.resourceId !== 'string' || !result.resourceId || typeof result.url !== 'string' || !result.url) {
+        throw new Error('The upload service returned an invalid resource reference.');
       }
 
       const list = getResources();
       list.unshift({
-        id: uid('res'),
+        id: result.resourceId,
         title,
         class: cls,
         type: resourceType(file),
@@ -611,8 +630,22 @@ document.addEventListener('DOMContentLoaded', () => {
         description: document.getElementById('resourceDescription')?.value.trim() || '',
         fileName: result.name,
         url: `../${result.url}`,
+        source: 'upload',
       });
       sbSet(SB_KEYS.RESOURCES, list);
+      if (!getResources().some((resource) => resource.id === result.resourceId)) {
+        try {
+          const cleanup = await fetch(`../api/resource-files.php?resource=${encodeURIComponent(result.resourceId)}`, {
+            method: 'DELETE',
+            credentials: 'same-origin',
+            headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || '' },
+          });
+          if (!cleanup.ok) console.error('Could not remove an uploaded resource after its details failed to save.');
+        } catch (cleanupError) {
+          console.error('Could not remove an uploaded resource after its details failed to save.', cleanupError);
+        }
+        throw new Error('The file uploaded, but its resource details could not be saved. Please try again.');
+      }
       closeModal('uploadResourceModal');
       e.target.reset();
       showToast('Resource uploaded');
