@@ -85,14 +85,14 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast('Enter a score between 0 and the maximum points.', 'error');
             return;
           }
-          updateGrade(id, { score, status: 'graded' });
+          updateGrade(id, { score, status: 'graded', gradedAt: new Date().toISOString() });
           showToast('Grade saved');
           render();
         });
       });
       tbody.querySelectorAll('[data-edit]').forEach((btn) => {
         btn.addEventListener('click', () => {
-          updateGrade(btn.dataset.edit, { status: 'pending', score: null });
+          updateGrade(btn.dataset.edit, { status: 'pending', score: null, gradedAt: null });
           render();
         });
       });

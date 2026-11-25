@@ -527,7 +527,7 @@ function getUpcomingAssignments(assignments = getAssignments(), limit = 5) {
 }
 function addAssignment(asg) {
   const list = getAssignments();
-  const item = { id: uid('asg'), status: 'upcoming', points: 50, ...asg };
+  const item = { id: uid('asg'), createdAt: new Date().toISOString(), status: 'upcoming', points: 50, ...asg };
   list.push(item);
   sbSet(SB_KEYS.ASSIGNMENTS, list);
   return item;

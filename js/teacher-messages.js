@@ -124,7 +124,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!to || !body) { showToast('Recipient and message required', 'error'); return; }
     const list = getMessages();
     list.unshift({
-      id: uid('msg'), from: to, preview: body, time: 'Just now', unread: false, class: cls ? classDisplayName(cls) : 'General',
+      id: uid('msg'), from: to, preview: body, time: 'Just now', createdAt: new Date().toISOString(),
+      unread: false, class: cls ? classDisplayName(cls) : 'General',
     });
     sbSet(SB_KEYS.MESSAGES, list);
     closeModal('composeModal');

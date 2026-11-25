@@ -22,6 +22,48 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el) el.textContent = value;
   };
 
+  function gradeMatchesClass(grade, cls) {
+    if (grade.classId) return String(grade.classId) === String(cls.id);
+    const gradeLabel = normalizeSubjectCode(grade.class);
+    if (!gradeLabel) return false;
+    const classLabels = [classDisplayName(cls), cls.name, cls.subject]
+      .map(normalizeSubjectCode)
+      .filter(Boolean);
+    if (classLabels.includes(gradeLabel)) return true;
+    const classCode = normalizeSubjectCode(classSubjectCode(cls));
+    return !!classCode && gradeLabel.startsWith(classCode);
+  }
+
+  function classPerformance(cls, grades) {
+    const graded = grades.filter((grade) =>
+      grade.status === 'graded'
+      && grade.score !== null
+      && grade.score !== undefined
+      && grade.score !== ''
+      && Number.isFinite(Number(grade.score))
+      && Number(grade.max) > 0
+      && gradeMatchesClass(grade, cls)
+    );
+    if (!graded.length) return null;
+    const earned = graded.reduce((sum, grade) => sum + Number(grade.score), 0);
+    const possible = graded.reduce((sum, grade) => sum + Number(grade.max), 0);
+    return {
+      average: Math.min(100, Math.max(0, Math.round((earned / possible) * 100))),
+      gradedCount: graded.length,
+    };
+  }
+
+  function activityTime(timestamp) {
+    const date = new Date(timestamp);
+    if (Number.isNaN(date.getTime())) return '';
+    const elapsed = Math.max(0, Date.now() - date.getTime());
+    if (elapsed < 60_000) return 'Just now';
+    if (elapsed < 3_600_000) return `${Math.floor(elapsed / 60_000)}m ago`;
+    if (elapsed < 86_400_000) return `${Math.floor(elapsed / 3_600_000)}h ago`;
+    if (elapsed < 172_800_000) return 'Yesterday';
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  }
+
   const greeting = document.getElementById('greeting');
   if (greeting) {
     // Use the logged-in teacher's name so it matches Settings and the sidebar
@@ -80,30 +122,74 @@ document.addEventListener('DOMContentLoaded', () => {
   // ---- Recent activity ----
   const activity = document.getElementById('recentActivity');
   if (activity) {
-    const msgs = getMessages();
-    activity.innerHTML = [
-      ...msgs.slice(0, 3).map((m) => ({ title: `Message from ${m.from}`, sub: m.preview, time: m.time })),
-      { title: 'Assignment submitted', sub: 'Math Quiz 1 — Maria Santos', time: '2h ago' },
-      { title: 'Grade updated', sub: 'Essay Draft — Pedro Garcia', time: 'Yesterday' },
-    ].map((a) => `
+    const events = [];
+    const addEvent = (timestamp, event) => {
+      const time = Date.parse(timestamp || '');
+      if (Number.isFinite(time)) events.push({ ...event, timestamp: time });
+    };
+    grades.forEach((grade) => {
+      const className = grade.class || classDisplayName(classes.find((item) => String(item.id) === String(grade.classId))) || 'Class';
+      if (grade.submission?.submittedAt) {
+        addEvent(grade.submission.submittedAt, {
+          title: `${grade.student || 'Student'} submitted ${grade.assignment || 'an assignment'}`,
+          sub: className,
+          icon: 'file-check',
+        });
+      }
+      if (grade.status === 'graded' && grade.gradedAt) {
+        addEvent(grade.gradedAt, {
+          title: `Grade updated for ${grade.student || 'student'}`,
+          sub: `${grade.assignment || 'Assignment'} · ${className}`,
+          icon: 'award',
+        });
+      }
+    });
+    assignments.forEach((assignment) => {
+      if (!assignment.createdAt) return;
+      const cls = classes.find((item) => String(item.id) === String(assignment.classId || assignment.subjectId));
+      addEvent(assignment.createdAt, {
+        title: `Assignment created: ${assignment.title || 'Untitled assignment'}`,
+        sub: cls ? classDisplayName(cls) : (assignment.subject || 'Class'),
+        icon: 'clipboard-plus',
+      });
+    });
+    getMessages().forEach((message) => {
+      if (!message.createdAt) return;
+      addEvent(message.createdAt, {
+        title: `Message sent to ${message.from || 'student'}`,
+        sub: `${message.class || 'General'} · ${message.preview || ''}`,
+        icon: 'message-square',
+      });
+    });
+    activity.innerHTML = events
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, 5)
+      .map((event) => `
       <div class="list-item">
-        <div class="card-icon blue"><i data-lucide="activity"></i></div>
-        <div class="item-meta"><div class="item-title">${escapeHtml(a.title)}</div><div class="item-sub">${escapeHtml(a.sub)}</div></div>
-        <span style="font-size:11px;color:var(--text-muted)">${escapeHtml(a.time)}</span>
-      </div>`).join('');
+        <div class="cell-icon" style="background:#DBEAFE;color:#2563EB;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center"><i data-lucide="${event.icon}"></i></div>
+        <div class="item-meta"><div class="item-title">${escapeHtml(event.title)}</div><div class="item-sub">${escapeHtml(event.sub)}</div></div>
+        <span style="font-size:11px;color:var(--text-muted)">${escapeHtml(activityTime(event.timestamp))}</span>
+      </div>`).join('') || '<p class="empty-state" style="padding:16px">No recent activity yet.</p>';
   }
 
   // ---- Class performance ----
-  // #classPerformance already IS the .bar-chart element, so fill it directly
-  // (the old code nested a second .bar-chart inside it and broke the layout)
   const chart = document.getElementById('classPerformance');
   if (chart) {
-    chart.innerHTML = classes.map((c) => `
+    chart.innerHTML = classes.length ? classes.map((c) => {
+      const performance = classPerformance(c, grades);
+      const value = performance ? `${performance.average}%` : '—';
+      const height = performance ? performance.average : 0;
+      const label = classSubjectCode(c) || c.subject || c.name || 'Class';
+      const title = performance
+        ? `${classDisplayName(c)}: ${performance.average}% from ${performance.gradedCount} graded submission${performance.gradedCount === 1 ? '' : 's'}`
+        : `${classDisplayName(c)}: no graded submissions`;
+      return `
       <div class="bar-col">
-        <div class="bar-val">${Number(c.progress) || 0}%</div>
-        <div class="bar" style="height:${Number(c.progress) || 0}%;background:var(--${escapeHtml(c.short)})"></div>
-        <div class="bar-label">${escapeHtml((classSubjectCode(c) || String(c.subject || c.name)).slice(0, 10))}</div>
-      </div>`).join('');
+        <div class="bar-val" title="${escapeHtml(title)}">${value}</div>
+        <div class="bar" title="${escapeHtml(title)}" style="height:${height}%;background:var(--${escapeHtml(c.short)}, var(--primary))"></div>
+        <div class="bar-label" title="${escapeHtml(classDisplayName(c))}">${escapeHtml(label.slice(0, 10))}</div>
+      </div>`;
+    }).join('') : '<p class="empty-state" style="padding:16px">No classes available.</p>';
   }
 
   // ---- Today's schedule ----
@@ -131,10 +217,21 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>`).join('');
   }
 
+  if (typeof lucide !== 'undefined') lucide.createIcons();
   }
 
   paintDashboard();
   sbWhenReady(paintDashboard);
+  const dashboardStateKeys = new Set([
+    SB_KEYS.ASSIGNMENTS, SB_KEYS.CLASSES, SB_KEYS.STUDENTS, SB_KEYS.GRADES, SB_KEYS.MESSAGES,
+  ]);
+  window.addEventListener('studybuddy:state-updated', (event) => {
+    if (dashboardStateKeys.has(event.detail?.key)) paintDashboard();
+  });
+  window.addEventListener('focus', () => {
+    sbInvalidate(...dashboardStateKeys);
+    paintDashboard();
+  });
 
   document.querySelectorAll('[data-action]').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -149,5 +246,4 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  if (typeof lucide !== 'undefined') lucide.createIcons();
 });
