@@ -480,7 +480,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <td><span class="badge badge-info">${escapeHtml(r.type.toUpperCase())}</span></td>
           <td>${escapeHtml(r.size || '—')}</td>
           <td>${escapeHtml(formatDate(r.uploaded))}</td>
-          <td>${resourceDownloadCount(r)}</td>
+          <td style="text-align: center">${resourceDownloadCount(r)}</td>
           <td class="resource-actions-cell">
             <div class="resource-actions">
               <button type="button" class="btn btn-sm btn-ghost" data-open="${escapeHtml(r.id)}" aria-label="${r.type === 'folder' ? 'Open folder' : 'Open resource'} ${escapeHtml(r.title)}" title="${r.type === 'folder' ? 'Open folder' : 'Open resource'}">

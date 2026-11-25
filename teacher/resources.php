@@ -111,7 +111,7 @@
                     <th>Type</th>
                     <th>Size</th>
                     <th>Uploaded</th>
-                    <th>Students Downloaded</th>
+                    <th style="text-align: center">Students Downloaded</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
