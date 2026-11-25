@@ -17,20 +17,31 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   const gradeClassFilter = document.getElementById('gradeClassFilter');
-  if (gradeClassFilter) {
-    gradeClassFilter.innerHTML = '<option value="">All Classes</option>' + getClasses().map((cls) =>
+  function populateGradeClassFilter() {
+    if (!gradeClassFilter) return;
+    const selectedClass = classFilter || gradeClassFilter.value;
+    const classes = getClasses();
+    gradeClassFilter.innerHTML = '<option value="">All Classes</option>' + classes.map((cls) =>
       `<option value="${escapeHtml(cls.id)}">${escapeHtml(classDisplayName(cls))}</option>`
     ).join('');
+    if (classes.some((cls) => String(cls.id) === selectedClass)) {
+      gradeClassFilter.value = selectedClass;
+      classFilter = selectedClass;
+    } else {
+      gradeClassFilter.value = '';
+      classFilter = '';
+    }
   }
+  populateGradeClassFilter();
 
   function render() {
     let grades = getGrades();
     if (classFilter) {
-      const cls = getClasses().find((item) => item.id === classFilter);
+      const cls = getClasses().find((item) => String(item.id) === classFilter);
       const labels = new Set([
         cls?.name, cls?.subject, classDisplayName(cls), classSubjectCode(cls),
       ].filter(Boolean));
-      grades = grades.filter((grade) => grade.classId === classFilter || labels.has(grade.class));
+      grades = grades.filter((grade) => String(grade.classId || '') === classFilter || labels.has(grade.class));
     }
     if (statusFilter) grades = grades.filter((grade) => grade.status === statusFilter);
     if (search) {
@@ -88,19 +99,23 @@ document.addEventListener('DOMContentLoaded', () => {
       tbody.innerHTML = grades.map((g) => `
         <tr data-id="${escapeHtml(g.id)}">
           <td>${escapeHtml(g.student)}</td>
-          <td>${escapeHtml(g.assignment)}</td>
-          <td>${escapeHtml(g.class)}</td>
-          <td>
-            ${g.status === 'pending'
-              ? `<input type="number" class="form-control score-input" data-id="${escapeHtml(g.id)}" min="0" max="${Number(g.max) || 0}" placeholder="0–${Number(g.max) || 0}" style="height:36px;width:90px" />`
-              : `<strong>${escapeHtml(g.score)}</strong>`}
+          <td class="grade-assignment-cell">
+            <div>${escapeHtml(g.assignment)}</div>
+            <div class="grade-mobile-class">${escapeHtml(g.class)}</div>
           </td>
-          <td>${escapeHtml(g.max)}</td>
-          <td><span class="badge ${statusClass(g.status)}">${statusLabel(g.status)}</span></td>
-          <td>${g.submission?.gradeId
+          <td class="grade-class-cell">${escapeHtml(g.class)}</td>
+          <td class="grade-score-cell">
+            <div class="grade-score-main">${g.status === 'pending'
+              ? `<input type="number" class="form-control score-input" data-id="${escapeHtml(g.id)}" min="0" max="${Number(g.max) || 0}" placeholder="0–${Number(g.max) || 0}" />`
+              : `<strong>${escapeHtml(g.score)}</strong>`}</div>
+            <span class="grade-mobile-max">/ ${escapeHtml(g.max)}</span>
+          </td>
+          <td class="grade-max-cell">${escapeHtml(g.max)}</td>
+          <td class="grade-status-cell"><span class="badge ${statusClass(g.status)}">${statusLabel(g.status)}</span></td>
+          <td class="grade-submission-cell">${g.submission?.gradeId
             ? `<a href="../api/submissions.php?file=${encodeURIComponent(g.submission.gradeId)}">${escapeHtml(g.submission.fileName || 'Download file')}</a><div class="subtitle">${escapeHtml(g.submission.submittedAt ? new Date(g.submission.submittedAt).toLocaleString() : '')}</div>`
             : '—'}</td>
-          <td>
+          <td class="grade-action-cell">
             ${g.status === 'pending'
               ? `<button type="button" class="btn btn-sm btn-primary" data-save="${escapeHtml(g.id)}">Save</button>`
               : `<button type="button" class="btn btn-sm btn-ghost" data-edit="${escapeHtml(g.id)}">Edit</button>`}
@@ -158,6 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   render();
   sbWhenReady(() => {
+    populateGradeClassFilter();
     render();
     if (requestedGradeId) {
       const tbody = document.querySelector('#gradesTable tbody') || document.getElementById('gradesTableBody');
@@ -167,7 +183,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
   window.addEventListener('focus', () => {
-    sbInvalidate(SB_KEYS.GRADES);
+    sbInvalidate(SB_KEYS.GRADES, SB_KEYS.CLASSES);
+    populateGradeClassFilter();
     render();
   });
 });

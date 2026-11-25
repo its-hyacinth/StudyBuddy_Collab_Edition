@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="../css/pages.css" />
   <script defer src="https://unpkg.com/lucide@latest"></script>
 </head>
-<body>
+<body class="teacher-grades-page">
   <div class="app-shell" id="appShell">
     <div class="page-content">
       <div class="page-header">
@@ -71,11 +71,6 @@
             </div>
             <select id="gradeClassFilter" aria-label="Filter by class">
               <option value="">All Classes</option>
-              <option value="Math 101">Math 101</option>
-              <option value="Science 205">Science 205</option>
-              <option value="English 101">English 101</option>
-              <option value="CS 308">CS 308</option>
-              <option value="Filipino 101">Filipino 101</option>
             </select>
             <select id="gradeStatusFilter" aria-label="Filter by status">
               <option value="">All Status</option>
@@ -84,9 +79,19 @@
             </select>
           </div>
 
-          <div class="card">
+          <div class="card grade-table-card">
             <div class="table-wrap">
               <table class="data-table" id="gradesTable">
+                <colgroup>
+                  <col class="grade-col-student" />
+                  <col class="grade-col-assignment" />
+                  <col class="grade-col-class" />
+                  <col class="grade-col-score" />
+                  <col class="grade-col-max" />
+                  <col class="grade-col-status" />
+                  <col class="grade-col-submission" />
+                  <col class="grade-col-actions" />
+                </colgroup>
                 <thead>
                   <tr>
                     <th>Student</th>
