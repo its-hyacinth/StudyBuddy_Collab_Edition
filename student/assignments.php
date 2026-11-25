@@ -26,9 +26,6 @@
           <button type="button" class="btn btn-outline" id="syncClassroomBtn">
             <i data-lucide="refresh-cw"></i> Sync Classroom
           </button>
-          <button type="button" class="btn btn-primary" id="addAssignmentBtn">
-            <i data-lucide="plus"></i> Add Assignment
-          </button>
         </div>
       </div>
 
@@ -97,9 +94,6 @@
               </div>
             </div>
             <div class="qa-grid">
-              <button type="button" class="qa-btn blue" data-action="add-assignment">
-                <i data-lucide="clipboard-plus"></i> Add Assignment
-              </button>
               <button type="button" class="qa-btn green" data-action="mark-complete">
                 <i data-lucide="check-circle"></i> Mark Complete
               </button>
