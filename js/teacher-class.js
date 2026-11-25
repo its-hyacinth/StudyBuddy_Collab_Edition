@@ -35,7 +35,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('classMeta').textContent = [classBlockLabel(cls), classSubjectCode(cls), cls.subject].filter(Boolean).join(' · ');
     document.getElementById('joinCode').textContent = cls.joinCode;
     const edit = document.getElementById('editClassLink');
-    if (edit) edit.href = `classes.php?edit=${encodeURIComponent(cls.id)}`;
+    if (edit) {
+      const id = encodeURIComponent(cls.id);
+      edit.href = `classes.php?edit=${id}&returnClass=${id}`;
+    }
 
     const roster = classRoster(cls, getStudents(), true);
     document.getElementById('peopleCount').textContent = `${roster.length} student${roster.length === 1 ? '' : 's'}`;

@@ -22,10 +22,7 @@
           <h1 class="page-title" id="classTitle">Class</h1>
           <p class="subtitle" id="classMeta"></p>
         </div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap">
-          <a class="btn btn-outline" id="editClassLink" href="classes.php"><i data-lucide="edit"></i> Edit class</a>
-          <button type="button" class="btn btn-primary" id="addStudentBtn"><i data-lucide="user-plus"></i> Add student</button>
-        </div>
+        <button type="button" class="btn btn-primary" id="addStudentBtn"><i data-lucide="user-plus"></i> Add student</button>
       </div>
 
       <div class="card" style="margin-bottom:16px">
@@ -74,6 +71,7 @@
                 <div class="card-icon orange"><i data-lucide="info"></i></div>
                 <h2 class="card-title">Class details</h2>
               </div>
+              <a class="btn btn-outline btn-sm" id="editClassLink" href="classes.php"><i data-lucide="edit"></i> Edit details</a>
             </div>
             <div id="classDetails" class="subtitle"></div>
           </div>

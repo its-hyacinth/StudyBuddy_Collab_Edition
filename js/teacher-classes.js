@@ -9,6 +9,9 @@ document.addEventListener('DOMContentLoaded', () => {
   let search = '';
   let editingId = null;      // class being edited (null = adding a new one)
   let currentDetailId = null; // class shown in the details popup
+  const query = new URLSearchParams(window.location.search);
+  const editId = query.get('edit');
+  const returnClassId = query.get('returnClass');
 
   function escapeHtml(str) {
     return String(str ?? '').replace(/[&<>"']/g, (c) => ({
@@ -341,7 +344,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     sbSet(SB_KEYS.CLASSES, list);
+    const savedClassId = editingId;
+    const returnToClassDetails = savedClassId && returnClassId === String(savedClassId);
     closeModal('addClassModal');
+    if (returnToClassDetails) {
+      window.location.href = `class.php?id=${encodeURIComponent(savedClassId)}`;
+      return;
+    }
     showToast(editingId ? 'Class updated' : 'Class created');
     editingId = null;
     e.target.reset();
@@ -354,7 +363,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!classes.some((item) => !item.joinCode)) return;
     sbSet(SB_KEYS.CLASSES, classes.map((item) => item.joinCode ? item : { ...item, joinCode: makeJoinCode() }));
   }
-  const editId = new URLSearchParams(window.location.search).get('edit');
   ensureJoinCodes();
   if (editId) openEditClass(editId);
   render();
