@@ -45,6 +45,19 @@ document.addEventListener('DOMContentLoaded', () => {
   const classes = getClasses();
   const assignments = getAssignments();
   const grades = getGrades();
+  const upcomingAssignments = getUpcomingAssignments(assignments, assignments.length);
+  const classForAssignment = (assignment) => classes.find((cls) =>
+    String(cls.id) === String(assignment.classId || assignment.subjectId)
+  ) || classes.find((cls) => assignment.subjectCode
+    && normalizeSubjectCode(classSubjectCode(cls)) === normalizeSubjectCode(assignment.subjectCode)
+  ) || classes.find((cls) => cls.name === assignment.subject || classDisplayName(cls) === assignment.subject);
+  const nextAssignmentsByClass = new Map();
+  upcomingAssignments.forEach((assignment) => {
+    const cls = classForAssignment(assignment);
+    if (cls && !nextAssignmentsByClass.has(String(cls.id))) {
+      nextAssignmentsByClass.set(String(cls.id), assignment);
+    }
+  });
 
   // ---- Stat cards (the IDs are on the .stat-value elements themselves) ----
   const baseTotal = classes.reduce((sum, c) => sum + (Number(c.students) || 0), 0);
@@ -65,7 +78,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // ---- My Classes table ----
   const table = document.querySelector('#classesTable tbody') || document.getElementById('classesTableBody');
   if (table) {
-    table.innerHTML = classes.map((c) => `
+    table.innerHTML = classes.map((c) => {
+      const nextActivity = nextAssignmentsByClass.get(String(c.id));
+      return `
       <tr data-id="${escapeHtml(c.id)}">
         <td>
           <div class="cell-title">
@@ -77,7 +92,10 @@ document.addEventListener('DOMContentLoaded', () => {
         </td>
         <td><span class="subject-tag ${escapeHtml(c.short)}">${escapeHtml(classSubjectCode(c) || c.subject)}</span></td>
         <td style="text-align:center;">${enrolledCount(c, students)}</td>
-        <td><div class="title" style="font-size:13px">${escapeHtml(c.nextActivity)}</div><div class="subtitle">${escapeHtml(formatDate(c.nextDate))}</div></td>
+        <td>
+          <div class="title" style="font-size:13px">${escapeHtml(nextActivity?.title || nextActivity?.name || 'No upcoming activity')}</div>
+          <div class="subtitle">${escapeHtml(nextActivity?.dueDate ? formatDate(nextActivity.dueDate) : '—')}</div>
+        </td>
         <td>
           <div class="progress-row">
             <div class="progress-bar"><div class="fill ${escapeHtml(c.short)}" style="width:${Number(c.progress) || 0}%"></div></div>
@@ -85,7 +103,8 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         </td>
         <td><a href="classes.php" class="btn btn-ghost btn-sm">Manage</a></td>
-      </tr>`).join('');
+      </tr>`;
+    }).join('');
   }
 
   // ---- Recent activity ----
