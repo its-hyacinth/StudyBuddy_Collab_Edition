@@ -70,6 +70,34 @@ document.addEventListener('DOMContentLoaded', () => {
     return downloadCounts.get(String(resource.id)) || 0;
   }
 
+  function isResourceSharedWithClass(resource) {
+    if (resource.shared || resource.source === 'upload') return true;
+    if (resource.source === 'google-drive') return false;
+    try {
+      const url = new URL(resource.url, window.location.href);
+      return /(?:^|\/)uploads\//i.test(url.pathname)
+        || (/\/api\/resource-files\.php$/i.test(url.pathname) && url.searchParams.has('resource'));
+    } catch {
+      return false;
+    }
+  }
+
+  function resourceClassId(resource, classes) {
+    const resourceClassId = String(resource.classId || '');
+    if (resourceClassId) {
+      return classes.some((item) => String(item.id) === resourceClassId) ? resourceClassId : '';
+    }
+    const label = normalizeSubjectCode(resource.class);
+    if (!label) return '';
+    const match = classes.find((item) => [
+      classDisplayName(item),
+      item.name,
+      item.subject,
+      classSubjectCode(item),
+    ].some((value) => value && normalizeSubjectCode(value) === label));
+    return match ? String(match.id) : '';
+  }
+
   async function refreshResourceDownloadCounts(showError = false) {
     if (downloadStatsLoading) return;
     downloadStatsLoading = true;
@@ -399,6 +427,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const totalDownloads = document.getElementById('statDownloads');
     const storageUsed = document.getElementById('statStorage');
     const sharedClasses = document.getElementById('statShared');
+    const sharedClassesHint = document.getElementById('statSharedHint');
+    const classes = getClasses().filter((item) => item && item.id);
     const storageCategories = { pdf: 0, archive: 0, documents: 0, other: 0 };
     const totalBytes = files.reduce((total, resource) => {
       const bytes = resourceSizeBytes(resource);
@@ -408,7 +438,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (totalResources) totalResources.textContent = files.length;
     if (totalDownloads) totalDownloads.textContent = files.reduce((total, resource) => total + resourceDownloadCount(resource), 0);
     if (storageUsed) storageUsed.textContent = formatBytes(totalBytes);
-    if (sharedClasses) sharedClasses.textContent = new Set(files.filter((resource) => resource.shared).map((resource) => resource.class)).size;
+    const coveredClassIds = new Set(files
+      .filter(isResourceSharedWithClass)
+      .map((resource) => resourceClassId(resource, classes))
+      .filter(Boolean));
+    if (sharedClasses) sharedClasses.textContent = coveredClassIds.size;
+    if (sharedClassesHint) {
+      sharedClassesHint.textContent = !classes.length
+        ? 'No classes available'
+        : coveredClassIds.size === classes.length
+          ? 'All classes covered'
+          : `${coveredClassIds.size} of ${classes.length} classes covered`;
+    }
 
     const storageOverview = document.getElementById('storageOverview');
     if (storageOverview) {

@@ -52,8 +52,8 @@
           <div class="stat-icon orange"><i data-lucide="share-2"></i></div>
           <div class="stat-body">
             <div class="stat-label">Shared with Classes</div>
-            <div class="stat-value" id="statShared">5</div>
-            <div class="stat-delta up"><i data-lucide="check"></i> All classes covered</div>
+            <div class="stat-value" id="statShared">0</div>
+            <div class="stat-delta" id="statSharedHint">No classes available</div>
           </div>
         </div>
       </div>
