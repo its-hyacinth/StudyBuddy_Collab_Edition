@@ -16,6 +16,10 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentAsgId = null;  // teacher: assignment open in the details popup
   const perPage = isTeacher ? 8 : 15;
   const subjectFilterElement = document.getElementById('asgSubjectFilter');
+  const subjectFilterButton = document.getElementById('asgSubjectFilterButton');
+  const subjectFilterLabel = document.getElementById('asgSubjectFilterLabel');
+  const subjectFilterOptions = document.getElementById('asgSubjectFilterOptions');
+  let subjectFilterOpen = false;
 
   function escapeHtml(str) {
     return String(str ?? '').replace(/[&<>"']/g, (c) => ({
@@ -24,13 +28,18 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function refreshSubjectFilter() {
-    if (!subjectFilterElement || isTeacher) return;
+    if (!subjectFilterElement || !subjectFilterButton || !subjectFilterOptions || isTeacher) return;
     const subjects = getSubjects();
     if (classFilter && !subjects.some((subject) => String(subject.id) === classFilter)) classFilter = '';
-    subjectFilterElement.innerHTML = '<option value="">All Subjects</option>' + subjects.map((subject) =>
-      `<option value="${escapeHtml(subject.id)}">${escapeHtml(subject.name)}</option>`
+    const options = [{ id: '', name: 'All Subjects' }, ...subjects];
+    subjectFilterOptions.innerHTML = options.map((subject) =>
+      `<button type="button" role="option" tabindex="-1" data-subject-filter-value="${escapeHtml(subject.id)}" aria-selected="${String(String(subject.id) === classFilter)}">${escapeHtml(subject.name)}</button>`
     ).join('');
-    subjectFilterElement.value = classFilter;
+    if (subjectFilterLabel) {
+      subjectFilterLabel.textContent = options.find((subject) => String(subject.id) === classFilter)?.name || 'All Subjects';
+    }
+    subjectFilterOptions.hidden = !subjectFilterOpen;
+    subjectFilterButton.setAttribute('aria-expanded', String(subjectFilterOpen));
   }
 
   // First existing element's value from a list of possible IDs
@@ -599,11 +608,58 @@ document.addEventListener('DOMContentLoaded', () => {
     page = 1;
     render();
   });
-  if (subjectFilterElement && !isTeacher) {
-    subjectFilterElement.addEventListener('change', (event) => {
-      classFilter = event.target.value;
+  if (subjectFilterElement && subjectFilterButton && subjectFilterOptions && !isTeacher) {
+    subjectFilterButton.addEventListener('click', () => {
+      subjectFilterOpen = !subjectFilterOpen;
+      refreshSubjectFilter();
+      if (subjectFilterOpen) {
+        const selectedOption = subjectFilterOptions.querySelector('[aria-selected="true"]');
+        (selectedOption || subjectFilterOptions.querySelector('[role="option"]'))?.focus();
+      }
+    });
+    subjectFilterButton.addEventListener('keydown', (event) => {
+      if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+      event.preventDefault();
+      subjectFilterOpen = true;
+      refreshSubjectFilter();
+      const options = [...subjectFilterOptions.querySelectorAll('[role="option"]')];
+      (event.key === 'ArrowUp' ? options[options.length - 1] : options[0])?.focus();
+    });
+    subjectFilterOptions.addEventListener('click', (event) => {
+      const option = event.target.closest('[data-subject-filter-value]');
+      if (!option) return;
+      classFilter = option.dataset.subjectFilterValue || '';
+      subjectFilterOpen = false;
       page = 1;
       render();
+      subjectFilterButton.focus();
+    });
+    subjectFilterOptions.addEventListener('keydown', (event) => {
+      const options = [...subjectFilterOptions.querySelectorAll('[role="option"]')];
+      const currentIndex = options.indexOf(document.activeElement);
+      let nextIndex = currentIndex;
+      if (event.key === 'ArrowDown') nextIndex = Math.min(currentIndex + 1, options.length - 1);
+      else if (event.key === 'ArrowUp') nextIndex = Math.max(currentIndex - 1, 0);
+      else if (event.key === 'Home') nextIndex = 0;
+      else if (event.key === 'End') nextIndex = options.length - 1;
+      else if (event.key === 'Escape') {
+        subjectFilterOpen = false;
+        refreshSubjectFilter();
+        subjectFilterButton.focus();
+        return;
+      } else return;
+      event.preventDefault();
+      options[nextIndex]?.focus();
+    });
+    subjectFilterElement.addEventListener('focusout', (event) => {
+      if (!subjectFilterOpen || subjectFilterElement.contains(event.relatedTarget)) return;
+      subjectFilterOpen = false;
+      refreshSubjectFilter();
+    });
+    document.addEventListener('click', (event) => {
+      if (!subjectFilterOpen || subjectFilterElement.contains(event.target)) return;
+      subjectFilterOpen = false;
+      refreshSubjectFilter();
     });
   }
   document.getElementById('asgSort')?.addEventListener('change', (e) => {

@@ -44,9 +44,13 @@
                 <i data-lucide="search"></i>
                 <input type="search" id="asgSearch" placeholder="Search assignments..." />
               </div>
-              <select id="asgSubjectFilter" aria-label="Filter by subject">
-                <option value="">All Subjects</option>
-              </select>
+              <div class="subject-filter" id="asgSubjectFilter">
+                <button type="button" class="subject-filter-button" id="asgSubjectFilterButton" aria-haspopup="listbox" aria-expanded="false" aria-controls="asgSubjectFilterOptions">
+                  <span id="asgSubjectFilterLabel">All Subjects</span>
+                  <i data-lucide="chevron-down" aria-hidden="true"></i>
+                </button>
+                <div class="subject-filter-options" id="asgSubjectFilterOptions" role="listbox" aria-label="Filter by subject" hidden></div>
+              </div>
             </div>
 
             <div class="table-wrap">
