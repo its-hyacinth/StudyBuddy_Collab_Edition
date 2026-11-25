@@ -295,7 +295,7 @@ function initShell(role) {
     }
 
     notificationList.innerHTML = items.map((item) => {
-      const createdAt = new Date(String(item.created_at || '').replace(' ', 'T'));
+      const createdAt = new Date(String(item.created_at || ''));
       const time = Number.isNaN(createdAt.getTime()) ? '' : createdAt.toLocaleString();
       const id = Number(item.id);
       return `

@@ -15,10 +15,20 @@ try {
         $count->execute([$userId]);
         $items = $pdo->prepare('SELECT id,title,body,target_url,is_read,created_at FROM notifications WHERE user_id=? ORDER BY created_at DESC,id DESC LIMIT 25');
         $items->execute([$userId]);
+        $notifications = $items->fetchAll();
+        $utc = new DateTimeZone('UTC');
+        foreach ($notifications as &$notification) {
+            $createdAt = $notification['created_at'] ?? null;
+            if (!is_string($createdAt) || $createdAt === '') continue;
+            $notification['created_at'] = (new DateTimeImmutable($createdAt, $utc))
+                ->setTimezone($utc)
+                ->format(DATE_ATOM);
+        }
+        unset($notification);
         json_response([
             'ok' => true,
             'unreadCount' => (int)$count->fetchColumn(),
-            'items' => $items->fetchAll(),
+            'items' => $notifications,
         ]);
     }
 

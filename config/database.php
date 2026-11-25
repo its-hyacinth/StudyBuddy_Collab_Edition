@@ -107,6 +107,7 @@ function db(): PDO {
             rawurldecode((string)($parts['pass'] ?? '')),
             $options
         );
+        $pdo->exec("SET TIME ZONE 'UTC'");
         sb_ensure_postgres($pdo);
         return $pdo;
     }
@@ -116,6 +117,7 @@ function db(): PDO {
         . ';dbname=' . db_setting('SB_DB_NAME', 'Studybuddy')
         . ';charset=utf8mb4';
     $pdo = new StudyBuddyPdo($dsn, db_setting('SB_DB_USER', 'root'), db_setting('SB_DB_PASS', ''), $options);
+    $pdo->exec("SET time_zone = '+00:00'");
     if (!$pdo->query("SHOW COLUMNS FROM notifications LIKE 'target_url'")->fetch()) {
         $pdo->exec('ALTER TABLE notifications ADD target_url VARCHAR(1000) NULL AFTER body');
     }
