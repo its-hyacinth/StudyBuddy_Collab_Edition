@@ -45,7 +45,7 @@
           <div class="stat-icon purple"><i data-lucide="hard-drive"></i></div>
           <div class="stat-body">
             <div class="stat-label">Storage Used</div>
-            <div class="stat-value" id="statStorage">7.7 MB</div>
+            <div class="stat-value" id="statStorage">0 B</div>
             <div class="stat-delta up"><i data-lucide="info"></i> Of 50 MB limit</div>
           </div>
         </div>
@@ -268,22 +268,26 @@
             </div>
             <div id="storageOverview">
               <div class="progress-row" style="margin-bottom:8px;">
-                <div class="progress-bar"><div class="fill blue" style="width:15%"></div></div>
-                <span class="progress-pct">15%</span>
+                <div class="progress-bar"><div class="fill blue" style="width:0%"></div></div>
+                <span class="progress-pct">0%</span>
               </div>
-              <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:16px;">7.7 MB of 50 MB used</p>
+              <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:16px;">0 B of 50 MB used</p>
               <div class="storage-legend">
                 <div class="storage-legend-row">
                   <div class="sl-left"><span class="dot math"></span> PDFs</div>
-                  <span class="sl-val">2.0 MB</span>
+                  <span class="sl-val">0 B</span>
                 </div>
                 <div class="storage-legend-row">
                   <div class="sl-left"><span class="dot cs"></span> Archives</div>
-                  <span class="sl-val">3.4 MB</span>
+                  <span class="sl-val">0 B</span>
                 </div>
                 <div class="storage-legend-row">
-                  <div class="sl-left"><span class="dot english"></span> Slides & Docs</div>
-                  <span class="sl-val">2.3 MB</span>
+                  <div class="sl-left"><span class="dot english"></span> Slides &amp; Docs</div>
+                  <span class="sl-val">0 B</span>
+                </div>
+                <div class="storage-legend-row">
+                  <div class="sl-left"><span class="dot filipino"></span> Images &amp; other</div>
+                  <span class="sl-val">0 B</span>
                 </div>
               </div>
             </div>
@@ -297,27 +301,7 @@
               </div>
             </div>
             <div id="topResources">
-              <div class="list-item">
-                <div class="file-icon pdf" style="width:32px;height:32px"><i data-lucide="file-text"></i></div>
-                <div class="item-meta">
-                  <div class="item-title">Algebra Formula Sheet</div>
-                  <div class="item-sub">64 downloads</div>
-                </div>
-              </div>
-              <div class="list-item">
-                <div class="file-icon slide" style="width:32px;height:32px"><i data-lucide="presentation"></i></div>
-                <div class="item-meta">
-                  <div class="item-title">Lecture Slides Week 3</div>
-                  <div class="item-sub">49 downloads</div>
-                </div>
-              </div>
-              <div class="list-item">
-                <div class="file-icon folder" style="width:32px;height:32px"><i data-lucide="archive"></i></div>
-                <div class="item-meta">
-                  <div class="item-title">Python Starter Kit</div>
-                  <div class="item-sub">45 downloads</div>
-                </div>
-              </div>
+              <p style="font-size:12.5px;color:var(--text-muted);">No downloads yet.</p>
             </div>
           </div>
 

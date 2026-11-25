@@ -18,6 +18,24 @@ function sb_ensure_resource_file_storage(PDO $pdo): void {
         file_content {$blobType} NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS resource_downloads (
+        teacher_id BIGINT NOT NULL,
+        resource_id VARCHAR(120) NOT NULL,
+        download_count INT NOT NULL DEFAULT 0,
+        PRIMARY KEY (teacher_id, resource_id)
+    )");
+}
+
+function sb_record_resource_download(PDO $pdo, int $teacherId, string $resourceId): void {
+    if (defined('SB_DB_DRIVER') && SB_DB_DRIVER === 'pgsql') {
+        $sql = 'INSERT INTO resource_downloads (teacher_id, resource_id, download_count) VALUES (?,?,1)
+                ON CONFLICT (teacher_id, resource_id) DO UPDATE
+                SET download_count = resource_downloads.download_count + 1';
+    } else {
+        $sql = 'INSERT INTO resource_downloads (teacher_id, resource_id, download_count) VALUES (?,?,1)
+                ON DUPLICATE KEY UPDATE download_count = download_count + 1';
+    }
+    $pdo->prepare($sql)->execute([$teacherId, $resourceId]);
 }
 
 function sb_resource_student_has_teacher(PDO $pdo, int $teacherId, int $studentId): bool {
@@ -75,6 +93,14 @@ function sb_resource_file_download(PDO $pdo, array $user): never {
     if (!is_string($contents)) {
         json_response(['ok' => false, 'message' => 'The resource file could not be read.'], 500);
     }
+    if (($user['role'] ?? '') === 'student') {
+        try {
+            sb_record_resource_download($pdo, $teacherId, $resourceId);
+        } catch (Throwable $error) {
+            error_log('Could not record resource download: ' . $error->getMessage());
+            json_response(['ok' => false, 'message' => 'The resource download could not be recorded. Please try again.'], 500);
+        }
+    }
 
     $name = preg_replace('/[\r\n"\\\\]/', '_', (string)($file['file_name'] ?? 'resource')) ?: 'resource';
     $fallbackName = preg_replace('/[^A-Za-z0-9._ -]/', '_', $name) ?: 'resource';
@@ -100,6 +126,18 @@ try {
     json_response(['ok' => false, 'message' => 'Resource file storage is unavailable. Please contact your administrator.'], 500);
 }
 
+if ($method === 'GET' && isset($_GET['stats'])) {
+    if (($user['role'] ?? '') !== 'teacher') {
+        json_response(['ok' => false, 'message' => 'Only teachers can view resource download totals.'], 403);
+    }
+    $query = $pdo->prepare('SELECT resource_id, download_count FROM resource_downloads WHERE teacher_id = ?');
+    $query->execute([(int)$user['id']]);
+    $downloads = [];
+    foreach ($query->fetchAll() as $row) {
+        $downloads[(string)$row['resource_id']] = (int)$row['download_count'];
+    }
+    json_response(['ok' => true, 'downloads' => $downloads]);
+}
 if ($method === 'GET') sb_resource_file_download($pdo, $user);
 
 if ($method === 'DELETE') {
@@ -111,13 +149,64 @@ if ($method === 'DELETE') {
     if ($resourceId === '' || strlen($resourceId) > 100) {
         json_response(['ok' => false, 'message' => 'Resource file not found.'], 404);
     }
+    $pdo->beginTransaction();
     $delete = $pdo->prepare('DELETE FROM resource_files WHERE resource_id = ? AND teacher_id = ?');
     $delete->execute([$resourceId, (int)$user['id']]);
-    if ($delete->rowCount() < 1) json_response(['ok' => false, 'message' => 'Resource file not found.'], 404);
+    $fileDeleted = $delete->rowCount() > 0;
+    $deleteDownloads = $pdo->prepare('DELETE FROM resource_downloads WHERE resource_id = ? AND teacher_id = ?');
+    $deleteDownloads->execute([$resourceId, (int)$user['id']]);
+    $downloadsDeleted = $deleteDownloads->rowCount() > 0;
+    $resourceQuery = $pdo->prepare('SELECT 1 FROM resources WHERE user_id = ? AND external_id = ?');
+    $resourceQuery->execute([(int)$user['id'], $resourceId]);
+    $resourceExists = $resourceQuery->fetchColumn() !== false;
+    if (!$fileDeleted && !$downloadsDeleted && !$resourceExists) {
+        $pdo->rollBack();
+        json_response(['ok' => false, 'message' => 'Resource file not found.'], 404);
+    }
+    $pdo->commit();
     json_response(['ok' => true]);
 }
 
 if ($method !== 'POST') json_response(['ok' => false, 'message' => 'Method not allowed.'], 405);
+if (str_contains(strtolower((string)($_SERVER['CONTENT_TYPE'] ?? '')), 'application/json')) {
+    $input = json_decode((string)file_get_contents('php://input'), true);
+    if (is_array($input) && ($input['action'] ?? '') === 'track-download') {
+        if (($user['role'] ?? '') !== 'student') {
+            json_response(['ok' => false, 'message' => 'Only students can record shared resource downloads.'], 403);
+        }
+        verify_csrf();
+        $resourceId = trim((string)($input['resourceId'] ?? ''));
+        if ($resourceId === '' || strlen($resourceId) > 120) {
+            json_response(['ok' => false, 'message' => 'Choose a valid shared resource.'], 422);
+        }
+        $resourceQuery = $pdo->prepare('SELECT user_id, payload_json FROM resources WHERE external_id = ?');
+        $resourceQuery->execute([$resourceId]);
+        $teacherId = 0;
+        foreach ($resourceQuery->fetchAll() as $row) {
+            $resource = json_decode((string)$row['payload_json'], true);
+            $resourceUrl = is_array($resource) ? parse_url((string)($resource['url'] ?? '')) : false;
+            $isGoogleDriveUrl = is_array($resourceUrl)
+                && ($resourceUrl['scheme'] ?? '') === 'https'
+                && in_array(strtolower((string)($resourceUrl['host'] ?? '')), ['drive.google.com', 'docs.google.com'], true);
+            $candidateTeacherId = (int)$row['user_id'];
+            if (is_array($resource) && !empty($resource['shared']) && $isGoogleDriveUrl
+                && sb_resource_student_has_teacher($pdo, $candidateTeacherId, (int)$user['id'])) {
+                $teacherId = $candidateTeacherId;
+                break;
+            }
+        }
+        if ($teacherId < 1) {
+            json_response(['ok' => false, 'message' => 'Shared resource not found.'], 404);
+        }
+        try {
+            sb_record_resource_download($pdo, $teacherId, $resourceId);
+        } catch (Throwable $error) {
+            error_log('Could not record shared resource download: ' . $error->getMessage());
+            json_response(['ok' => false, 'message' => 'The resource download could not be recorded. Please try again.'], 500);
+        }
+        json_response(['ok' => true]);
+    }
+}
 if (($user['role'] ?? '') !== 'teacher') {
     json_response(['ok' => false, 'message' => 'Only teachers can upload resource files.'], 403);
 }

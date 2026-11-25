@@ -79,6 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
               type: resource.type || 'link',
               url: resource.url,
               sharedResource: true,
+              resourceId: resource.id,
             })),
           ]
         : [...liveFiles];
@@ -100,6 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
           type: resource.type || 'link',
           url: resource.url,
           sharedResource: true,
+          resourceId: resource.id,
         })),
       ];
     } else {
@@ -208,6 +210,25 @@ document.addEventListener('DOMContentLoaded', () => {
           if (url.origin !== window.location.origin && !googleDriveUrl) {
             showToast('This file link is not supported.', 'error');
             return;
+          }
+          if (file.sharedResource && googleDriveUrl && file.resourceId) {
+            fetch(`${SB_API_BASE}resource-files.php`, {
+              method: 'POST',
+              credentials: 'same-origin',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || '',
+              },
+              body: JSON.stringify({
+                action: 'track-download',
+                resourceId: file.resourceId,
+              }),
+            }).then(async (response) => {
+              const result = await response.json().catch(() => null);
+              if (!response.ok || !result?.ok) {
+                throw new Error(result?.message || `Unable to record resource download (HTTP ${response.status}).`);
+              }
+            }).catch((error) => console.error('Could not record shared resource download:', error));
           }
           window.open(url.href, '_blank', 'noopener,noreferrer');
         } else {

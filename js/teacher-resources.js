@@ -13,8 +13,11 @@ document.addEventListener('DOMContentLoaded', () => {
   let draggedResourceId = null;
   let suppressClickUntil = 0;
   let currentResources = [];
+  let downloadCounts = new Map();
+  let downloadStatsLoading = false;
 
   const typeIcon = { pdf: 'file', doc: 'file-text', zip: 'archive', slide: 'presentation', image: 'image', link: 'external-link', folder: 'folder' };
+  const storageLimitBytes = 50 * 1024 * 1024;
 
   function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, (char) => ({
@@ -48,6 +51,42 @@ document.addEventListener('DOMContentLoaded', () => {
     const unit = match[2].toUpperCase();
     const multiplier = { B: 1, KB: 1024, MB: 1024 ** 2, GB: 1024 ** 3 }[unit];
     return Number(match[1]) * multiplier;
+  }
+
+  function resourceSizeBytes(resource) {
+    return Math.max(0, Number(resource.sizeBytes) || parseSize(resource.size));
+  }
+
+  function resourceStorageCategory(resource) {
+    const type = String(resource.type || '').toLowerCase();
+    const extension = String(resource.fileName || resource.title || '').split('.').pop().toLowerCase();
+    if (type === 'pdf' || extension === 'pdf') return 'pdf';
+    if (type === 'zip' || extension === 'zip') return 'archive';
+    if (['doc', 'slide'].includes(type) || ['doc', 'docx', 'ppt', 'pptx'].includes(extension)) return 'documents';
+    return 'other';
+  }
+
+  function resourceDownloadCount(resource) {
+    return downloadCounts.get(String(resource.id)) ?? (Number(resource.downloads) || 0);
+  }
+
+  async function refreshResourceDownloadCounts(showError = false) {
+    if (downloadStatsLoading) return;
+    downloadStatsLoading = true;
+    try {
+      const response = await fetch('../api/resource-files.php?stats=1', { credentials: 'same-origin', cache: 'no-store' });
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.ok || !result.downloads || typeof result.downloads !== 'object') {
+        throw new Error(result?.message || `Unable to load download totals (HTTP ${response.status}).`);
+      }
+      downloadCounts = new Map(Object.entries(result.downloads).map(([id, count]) => [id, Number(count) || 0]));
+      render();
+    } catch (error) {
+      console.error('Could not refresh resource download totals:', error);
+      if (showError) showToast('Download totals could not be refreshed.', 'error');
+    } finally {
+      downloadStatsLoading = false;
+    }
   }
 
   function classNames() {
@@ -243,7 +282,7 @@ document.addEventListener('DOMContentLoaded', () => {
           ['Type', String(resource.type || 'file').toUpperCase()],
           ['Size', resource.size || '—'],
           ['Uploaded', formatDate(resource.uploaded)],
-          ['Downloads', Number(resource.downloads) || 0],
+          ['Downloads', resourceDownloadCount(resource)],
           ['Location', location],
         ];
     if (resource.description) details.push(['Description', resource.description]);
@@ -353,10 +392,59 @@ document.addEventListener('DOMContentLoaded', () => {
     const totalDownloads = document.getElementById('statDownloads');
     const storageUsed = document.getElementById('statStorage');
     const sharedClasses = document.getElementById('statShared');
+    const storageCategories = { pdf: 0, archive: 0, documents: 0, other: 0 };
+    const totalBytes = files.reduce((total, resource) => {
+      const bytes = resourceSizeBytes(resource);
+      storageCategories[resourceStorageCategory(resource)] += bytes;
+      return total + bytes;
+    }, 0);
     if (totalResources) totalResources.textContent = files.length;
-    if (totalDownloads) totalDownloads.textContent = files.reduce((total, resource) => total + (Number(resource.downloads) || 0), 0);
-    if (storageUsed) storageUsed.textContent = formatBytes(files.reduce((total, resource) => total + (Number(resource.sizeBytes) || parseSize(resource.size)), 0));
+    if (totalDownloads) totalDownloads.textContent = files.reduce((total, resource) => total + resourceDownloadCount(resource), 0);
+    if (storageUsed) storageUsed.textContent = formatBytes(totalBytes);
     if (sharedClasses) sharedClasses.textContent = new Set(files.filter((resource) => resource.shared).map((resource) => resource.class)).size;
+
+    const storageOverview = document.getElementById('storageOverview');
+    if (storageOverview) {
+      const percentage = Math.min(100, (totalBytes / storageLimitBytes) * 100);
+      const categories = [
+        ['pdf', 'PDFs', 'math'],
+        ['archive', 'Archives', 'cs'],
+        ['documents', 'Slides & Docs', 'english'],
+        ['other', 'Images & other', 'filipino'],
+      ];
+      storageOverview.innerHTML = `
+        <div class="progress-row" style="margin-bottom:8px;">
+          <div class="progress-bar"><div class="fill blue" style="width:${percentage}%"></div></div>
+          <span class="progress-pct">${Math.round(percentage)}%</span>
+        </div>
+        <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:16px;">${formatBytes(totalBytes)} of 50 MB used</p>
+        <div class="storage-legend">
+          ${categories.map(([key, label, color]) => `
+            <div class="storage-legend-row">
+              <div class="sl-left"><span class="dot ${color}"></span> ${label}</div>
+              <span class="sl-val">${formatBytes(storageCategories[key])}</span>
+            </div>`).join('')}
+        </div>`;
+    }
+
+    const mostDownloaded = document.getElementById('topResources');
+    if (mostDownloaded) {
+      const topResources = files
+        .map((resource) => ({ ...resource, downloadCount: resourceDownloadCount(resource) }))
+        .filter((resource) => resource.downloadCount > 0)
+        .sort((a, b) => b.downloadCount - a.downloadCount || String(a.title).localeCompare(String(b.title)))
+        .slice(0, 3);
+      mostDownloaded.innerHTML = topResources.length
+        ? topResources.map((resource) => `
+          <div class="list-item">
+            <div class="file-icon ${escapeHtml(resource.type || 'link')}" style="width:32px;height:32px"><i data-lucide="${typeIcon[resource.type] || 'file'}"></i></div>
+            <div class="item-meta">
+              <div class="item-title">${escapeHtml(resource.title || 'Untitled resource')}</div>
+              <div class="item-sub">${resource.downloadCount} download${resource.downloadCount === 1 ? '' : 's'}</div>
+            </div>
+          </div>`).join('')
+        : '<p style="font-size:12.5px;color:var(--text-muted);">No downloads yet.</p>';
+    }
 
     const tbody = document.querySelector('#resourcesTable tbody') || document.getElementById('resourcesTableBody');
     if (tbody) {
@@ -385,7 +473,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <td><span class="badge badge-info">${escapeHtml(r.type.toUpperCase())}</span></td>
           <td>${escapeHtml(r.size || '—')}</td>
           <td>${escapeHtml(formatDate(r.uploaded))}</td>
-          <td>${Number(r.downloads) || 0}</td>
+          <td>${resourceDownloadCount(r)}</td>
           <td class="resource-actions-cell">
             <div class="resource-actions">
               <button type="button" class="btn btn-sm btn-ghost" data-open="${escapeHtml(r.id)}" aria-label="${r.type === 'folder' ? 'Open folder' : 'Open resource'} ${escapeHtml(r.title)}" title="${r.type === 'folder' ? 'Open folder' : 'Open resource'}">
@@ -449,7 +537,7 @@ document.addEventListener('DOMContentLoaded', () => {
               render();
               return;
             }
-            if (current.source === 'upload') {
+            if (['upload', 'google-drive'].includes(current.source)) {
               try {
                 const response = await fetch(`../api/resource-files.php?resource=${encodeURIComponent(current.id)}`, {
                   method: 'DELETE',
@@ -742,5 +830,10 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   render();
-  sbWhenReady(render);
+  sbWhenReady(() => {
+    render();
+    refreshResourceDownloadCounts(true);
+  });
+  window.addEventListener('focus', () => refreshResourceDownloadCounts());
+  window.setInterval(() => refreshResourceDownloadCounts(), 60000);
 });
