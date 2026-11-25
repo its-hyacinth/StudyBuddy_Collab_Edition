@@ -6,7 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!session) return;
   wireModalClosers();
 
-  let search = '';
+  const requestedSearch = new URLSearchParams(window.location.search).get('search') || '';
+  let search = requestedSearch.trim();
   let statusFilter = '';
   let courseFilter = '';
   let yearFilter = '';
@@ -134,16 +135,23 @@ document.addEventListener('DOMContentLoaded', () => {
     if (courseFilter) list = list.filter((s) => normalizeCourseCode(s.course) === courseFilter);
     if (yearFilter) list = list.filter((s) => s.year === yearFilter);
     if (search) {
-      const q = search.toLowerCase();
-      list = list.filter((s) =>
-        String(s.name || '').toLowerCase().includes(q) ||
-        String(s.email || '').toLowerCase().includes(q) ||
-        String(s.studentId || '').toLowerCase().includes(q) ||
-        String(s.course || '').toLowerCase().includes(q) ||
-        String(s.subjectCode || '').toLowerCase().includes(q) ||
-        String(s.section || '').toLowerCase().includes(q) ||
-        studentClasses(s, classes).some((cls) => classDisplayName(cls).toLowerCase().includes(q))
-      );
+      const query = search.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      list = list.filter((student) => {
+        const enrolledClasses = studentClasses(student, classes);
+        const academicInfo = studentAcademicInfo(student, enrolledClasses);
+        const searchableText = [
+          student.name, student.email, student.studentId, student.course,
+          student.year, student.yearLevel, student.section, student.block,
+          student.subjectCode, student.standing, student.status, student.gpa,
+          academicInfo.course, academicInfo.year, academicInfo.section,
+          ...enrolledClasses.map(classDisplayName),
+        ].filter((value) => value !== null && value !== undefined)
+          .join(' ')
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '');
+        return searchableText.includes(query);
+      });
     }
 
     // ---- Stat cards ----
@@ -290,7 +298,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ---- Event wiring ----
-  document.getElementById('studentSearch')?.addEventListener('input', (e) => {
+  const studentSearchInput = document.getElementById('studentSearch');
+  if (studentSearchInput) studentSearchInput.value = search;
+  studentSearchInput?.addEventListener('input', (e) => {
     search = e.target.value.trim();
     render();
   });

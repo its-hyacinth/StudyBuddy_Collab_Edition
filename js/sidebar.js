@@ -395,6 +395,163 @@ function initShell(role) {
     window.location.href = 'settings.php';
   });
 
+  const globalSearch = document.getElementById('globalSearch');
+  if (globalSearch && role === 'teacher') {
+    const searchContainer = globalSearch.closest('.header-search');
+    const resultsPanel = document.createElement('div');
+    resultsPanel.id = 'globalSearchResults';
+    resultsPanel.className = 'global-search-results';
+    resultsPanel.setAttribute('role', 'listbox');
+    resultsPanel.hidden = true;
+    globalSearch.insertAdjacentElement('afterend', resultsPanel);
+    globalSearch.setAttribute('aria-autocomplete', 'list');
+    globalSearch.setAttribute('aria-haspopup', 'listbox');
+    globalSearch.setAttribute('aria-controls', resultsPanel.id);
+    globalSearch.setAttribute('aria-expanded', 'false');
+
+    const escapeSearchHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    }[char]));
+    const normalizeSearchText = (value) => String(value ?? '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+    const hideSearchResults = () => {
+      resultsPanel.hidden = true;
+      globalSearch.setAttribute('aria-expanded', 'false');
+    };
+
+    function findTeacherSearchResults(query) {
+      const classes = getClasses();
+      const normalizedQuery = normalizeSearchText(query);
+      const terms = normalizedQuery.split(/\s+/).filter(Boolean);
+      const matches = (values) => {
+        const searchableText = normalizeSearchText(
+          values.filter((value) => value !== null && value !== undefined).join(' ')
+        );
+        return terms.every((term) => searchableText.includes(term));
+      };
+      const studentMatches = getStudents()
+        .filter((student) => {
+          const studentClasses = classes.filter((cls) => studentMatchesClass(student, cls, true));
+          return matches([
+            student.name, student.email, student.studentId, student.course,
+            student.year, student.yearLevel, student.section, student.block,
+            student.standing, student.status, student.gpa, student.subjectCode,
+            ...studentClasses.map(classDisplayName),
+          ]);
+        })
+        .slice(0, 3)
+        .map((student) => ({
+          type: 'Student',
+          title: student.name || student.email || 'Student',
+          detail: [student.email, student.studentId && `ID ${student.studentId}`, student.course, student.year || student.yearLevel]
+            .filter(Boolean)
+            .join(' · '),
+          href: `students.php?search=${encodeURIComponent(student.email || student.studentId || student.name || '')}`,
+        }));
+      const classMatches = classes
+        .filter((cls) => matches([
+          classDisplayName(cls), cls.name, cls.subject, cls.subjectCode, cls.code,
+          cls.course, cls.year, cls.block, cls.room, cls.joinCode,
+        ]))
+        .slice(0, 3)
+        .map((cls) => ({
+          type: 'Class',
+          title: classDisplayName(cls),
+          detail: [cls.course, cls.year && yearLevelLabel(cls.year), cls.block && `Block ${cls.block}`]
+            .filter(Boolean)
+            .join(' · '),
+          href: `class.php?id=${encodeURIComponent(cls.id)}`,
+        }));
+      const assignmentMatches = getAssignments()
+        .filter((assignment) => {
+          const cls = classes.find((item) => item.id === (assignment.classId || assignment.subjectId));
+          return matches([
+            assignment.title, assignment.name, assignment.description,
+            assignment.subject, assignment.subjectCode, assignment.status,
+            assignment.dueDate, cls && classDisplayName(cls),
+          ]);
+        })
+        .slice(0, 3)
+        .map((assignment) => {
+          const cls = classes.find((item) => item.id === (assignment.classId || assignment.subjectId));
+          return {
+            type: 'Assignment',
+            title: assignment.title || assignment.name || 'Assignment',
+            detail: [cls && classDisplayName(cls), assignment.dueDate && `Due ${assignment.dueDate}`]
+              .filter(Boolean)
+              .join(' · '),
+            href: `assignments.php?assignment=${encodeURIComponent(assignment.id)}`,
+          };
+        });
+      return [...studentMatches, ...classMatches, ...assignmentMatches].slice(0, 8);
+    }
+
+    function renderTeacherSearchResults() {
+      const query = globalSearch.value.trim();
+      if (!query) {
+        hideSearchResults();
+        return;
+      }
+
+      const results = findTeacherSearchResults(query);
+      resultsPanel.innerHTML = results.length
+        ? results.map((result) => `
+          <a class="global-search-result" href="${escapeSearchHtml(result.href)}" role="option">
+            <span class="global-search-result-copy">
+              <span class="global-search-result-title">${escapeSearchHtml(result.title)}</span>
+              <span class="global-search-result-detail">${escapeSearchHtml(result.detail || '')}</span>
+            </span>
+            <span class="global-search-result-type">${escapeSearchHtml(result.type)}</span>
+          </a>`).join('')
+        : '<div class="global-search-empty">No matching students, classes, or assignments.</div>';
+      resultsPanel.hidden = false;
+      globalSearch.setAttribute('aria-expanded', 'true');
+    }
+
+    let waitingForSearchData = false;
+    globalSearch.addEventListener('input', () => {
+      if (SB_BOOT_SETTLED) {
+        renderTeacherSearchResults();
+        return;
+      }
+      resultsPanel.innerHTML = '<div class="global-search-empty">Loading teacher information...</div>';
+      resultsPanel.hidden = false;
+      globalSearch.setAttribute('aria-expanded', 'true');
+      if (waitingForSearchData) return;
+      waitingForSearchData = true;
+      sbWhenReady(() => {
+        waitingForSearchData = false;
+        if (document.activeElement === globalSearch) renderTeacherSearchResults();
+      });
+    });
+    globalSearch.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        hideSearchResults();
+      } else if (event.key === 'ArrowDown' && !resultsPanel.hidden) {
+        const firstResult = resultsPanel.querySelector('a');
+        if (firstResult) {
+          event.preventDefault();
+          firstResult.focus();
+        }
+      } else if (event.key === 'Enter' && !resultsPanel.hidden) {
+        const firstResult = resultsPanel.querySelector('a');
+        if (firstResult) {
+          event.preventDefault();
+          window.location.href = firstResult.href;
+        }
+      }
+    });
+    document.addEventListener('click', (event) => {
+      if (!searchContainer?.contains(event.target)) hideSearchResults();
+    });
+  }
+
   // Close action menus on outside click
   document.addEventListener('click', (e) => {
     if (!e.target.closest('.action-menu-wrap')) {
