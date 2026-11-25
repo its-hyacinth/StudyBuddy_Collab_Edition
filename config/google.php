@@ -2,9 +2,9 @@
 declare(strict_types=1);
 
 /**
- * Google OAuth for sign-in, Classroom, Drive, and Calendar.
+ * Google OAuth for sign-in, Classroom, Drive, Calendar, and teacher Gmail sending.
  *
- * 1. Google Cloud Console → APIs & Services → Enable "Google Classroom API", "Google Drive API", and "Google Calendar API".
+ * 1. Google Cloud Console → APIs & Services → Enable "Google Classroom API", "Google Drive API", "Google Calendar API", and "Gmail API".
  * 2. OAuth consent screen → External → Testing. Add the Google account you will sign in with as a test user.
  * 3. Credentials → Create credentials → OAuth client ID → Web application.
  *    Authorized JavaScript origins: http://localhost
@@ -43,8 +43,8 @@ function google_redirect_uri(): string {
     return ($https ? 'https' : 'http') . '://' . $host . $base . '/api/google-callback.php';
 }
 
-function google_oauth_scopes(): string {
-    return implode(' ', [
+function google_oauth_scopes(bool $includeGmailSend = false): string {
+    $scopes = [
         'openid',
         'email',
         'https://www.googleapis.com/auth/classroom.courses.readonly',
@@ -54,5 +54,7 @@ function google_oauth_scopes(): string {
         'https://www.googleapis.com/auth/drive',
         'https://www.googleapis.com/auth/calendar.events',
         'https://www.googleapis.com/auth/calendar.calendarlist.readonly',
-    ]);
+    ];
+    if ($includeGmailSend) $scopes[] = 'https://www.googleapis.com/auth/gmail.send';
+    return implode(' ', $scopes);
 }
