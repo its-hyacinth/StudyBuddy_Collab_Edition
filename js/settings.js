@@ -524,16 +524,19 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   $('exportDataBtn')?.addEventListener('click', exportAccountData);
 
-  const subjectCount = $('settingsSubjectCount');
-  if (subjectCount) subjectCount.textContent = getSubjects().length;
-  const progressValue = $('settingsProgressValue');
-  if (progressValue) {
+  function renderAccountOverview() {
     const subjects = getSubjects();
-    const average = subjects.length
-      ? Math.round(subjects.reduce((sum, subject) => sum + Math.min(Math.max(Number(subject.progress) || 0, 0), 100), 0) / subjects.length)
-      : 0;
-    progressValue.textContent = `${average}%`;
+    const subjectCount = $('settingsSubjectCount');
+    const progressValue = $('settingsProgressValue');
+    if (subjectCount) subjectCount.textContent = subjects.length;
+    if (progressValue) progressValue.textContent = `${getOverallSubjectProgress(subjects, getAssignments())}%`;
   }
+  renderAccountOverview();
+  sbWhenReady(renderAccountOverview);
+  document.addEventListener('studybuddy:state-updated', (event) => {
+    if ([SB_KEYS.SUBJECTS, SB_KEYS.ASSIGNMENTS].includes(event.detail?.key)) renderAccountOverview();
+  });
+
   const storageValue = $('localStorageUsage');
   const storageBar = $('storageBar');
   if (storageValue && storageBar) {
