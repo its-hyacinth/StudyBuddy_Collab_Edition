@@ -35,12 +35,11 @@ try {
         $_SESSION['google_oauth_next'] = $next;
         $_SESSION['google_oauth_purpose'] = $login ? 'login' : 'connect';
         $_SESSION['google_oauth_remember'] = ($_GET['remember'] ?? '') === '1';
-        $includeGmailSend = !$login && ($user['role'] ?? '') === 'teacher';
         $query = http_build_query([
             'client_id' => GOOGLE_CLIENT_ID,
             'redirect_uri' => google_redirect_uri(),
             'response_type' => 'code',
-            'scope' => $login ? 'openid email profile' : google_oauth_scopes($includeGmailSend),
+            'scope' => $login ? 'openid email profile' : google_oauth_scopes(),
             'access_type' => $login ? 'online' : 'offline',
             'prompt' => $login ? 'select_account' : 'consent',
             'include_granted_scopes' => 'true',
@@ -82,7 +81,7 @@ try {
             (string)$token['refresh_token'],
             (string)$token['access_token'],
             (int)($token['expires_in'] ?? 3600),
-            (string)($token['scope'] ?? google_oauth_scopes(($user['role'] ?? '') === 'teacher'))
+            (string)($token['scope'] ?? google_oauth_scopes())
         );
         google_redirect($next, ['google' => 'connected']);
     }

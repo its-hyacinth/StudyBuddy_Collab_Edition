@@ -4,7 +4,6 @@ require_once __DIR__ . '/../includes/bootstrap.php';
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/collections.php';
 require_once __DIR__ . '/../includes/assignment_delivery.php';
-require_once __DIR__ . '/../includes/google_mail.php';
 
 $user = require_user();
 if (($user['role'] ?? '') !== 'teacher') {
@@ -92,14 +91,12 @@ $mailBody = "Hello " . $studentName . ",\n\n" . $body;
 if ($classLabel !== '') $mailBody .= "\n\nClass: " . $classLabel;
 $mailBody .= "\n\n--\n" . $teacherName . "\nStudyBuddy";
 
-try {
-    google_send_email($pdo, $teacherId, $recipientEmail, $mailSubject, $mailBody);
-} catch (RuntimeException | PDOException $error) {
-    error_log('Student email delivery failed: ' . $error->getMessage());
-    $message = $error->getMessage();
-    $status = $error instanceof PDOException ? 500 : 502;
-    if (str_starts_with($message, 'Connect Google') || str_starts_with($message, 'Reconnect Google')) $status = 409;
-    json_response(['ok' => false, 'message' => $message], $status);
+if (!sb_send_assignment_mail([
+    'to' => $recipientEmail,
+    'subject' => $mailSubject,
+    'body' => $mailBody,
+])) {
+    json_response(['ok' => false, 'message' => 'The email could not be sent. Check the server mail configuration and try again.'], 502);
 }
 
 json_response(['ok' => true, 'recipientEmail' => $recipientEmail]);
