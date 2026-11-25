@@ -116,3 +116,77 @@ function notifyStudentCollectionAdditions(PDO $pdo, int $userId, string $key, ar
     }
 }
 
+function notifyTeacherResourceUploads(PDO $pdo, int $teacherId, array $resources, array $existingIds): void {
+    require_once __DIR__ . '/shared_resource_access.php';
+
+    $seen = $existingIds;
+    $newUploads = [];
+    foreach ($resources as $resource) {
+        if (!is_array($resource)
+            || ($resource['type'] ?? '') === 'folder'
+            || !sb_uploaded_teacher_resource($resource)) continue;
+        $resourceId = trim((string)($resource['id'] ?? ''));
+        $classId = trim((string)($resource['classId'] ?? ''));
+        if ($resourceId === '' || $classId === '' || isset($seen[$resourceId])) continue;
+        $seen[$resourceId] = true;
+        $newUploads[] = $resource;
+    }
+    if (!$newUploads) return;
+
+    $classQuery = $pdo->prepare('SELECT external_id, payload_json FROM classes WHERE user_id=?');
+    $classQuery->execute([$teacherId]);
+    $teacherClasses = [];
+    foreach ($classQuery->fetchAll() as $row) {
+        $class = json_decode((string)$row['payload_json'], true);
+        if (!is_array($class)) continue;
+        $classId = (string)($class['id'] ?? $row['external_id'] ?? '');
+        if ($classId === '') continue;
+        $class['id'] = $classId;
+        $teacherClasses[$classId] = $class;
+    }
+
+    if (!$teacherClasses) return;
+
+    $accounts = $pdo->query("SELECT id, email FROM users WHERE role='student'")->fetchAll();
+    $accountIdsByEmail = [];
+    foreach ($accounts as $account) {
+        $email = strtolower(trim((string)$account['email']));
+        if ($email !== '') $accountIdsByEmail[$email] = (int)$account['id'];
+    }
+
+    $studentQuery = $pdo->prepare('SELECT email, payload_json FROM students WHERE user_id=?');
+    $studentQuery->execute([$teacherId]);
+    $studentsByClass = [];
+    foreach ($studentQuery->fetchAll() as $row) {
+        $student = json_decode((string)$row['payload_json'], true);
+        if (!is_array($student) || strtolower((string)($student['status'] ?? 'active')) === 'inactive') continue;
+        $email = strtolower(trim((string)($student['email'] ?? $row['email'] ?? '')));
+        $studentId = $accountIdsByEmail[$email] ?? 0;
+        if ($studentId < 1) continue;
+
+        $classIds = array_map('strval', is_array($student['classIds'] ?? null) ? $student['classIds'] : []);
+        if (!empty($student['classId'])) $classIds[] = (string)$student['classId'];
+        foreach (array_unique($classIds) as $classId) {
+            if (isset($teacherClasses[$classId])) $studentsByClass[$classId][$studentId] = true;
+        }
+    }
+
+    $insert = $pdo->prepare('INSERT INTO notifications (user_id,title,body,target_url) VALUES (?,?,?,?)');
+    foreach ($newUploads as $resource) {
+        $classId = trim((string)($resource['classId'] ?? ''));
+        if ($classId === '' || !isset($teacherClasses[$classId])) continue;
+
+        $resourceTitle = trim((string)($resource['title'] ?? '')) ?: 'A resource';
+        $className = trim((string)($resource['class'] ?? ''))
+            ?: trim((string)($teacherClasses[$classId]['name'] ?? $teacherClasses[$classId]['subject'] ?? 'your class'));
+        foreach (array_keys($studentsByClass[$classId] ?? []) as $studentId) {
+            $insert->execute([
+                (int)$studentId,
+                'New resource uploaded',
+                $resourceTitle . ' is available in ' . $className . '.',
+                'resources.php',
+            ]);
+        }
+    }
+}
+

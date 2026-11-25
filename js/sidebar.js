@@ -271,7 +271,7 @@ function initShell(role) {
     const storedTarget = String(item.dataset.notificationTarget || '');
     const allowedPages = role === 'teacher'
       ? ['dashboard.php', 'grades.php', 'assignments.php']
-      : ['dashboard.php', 'assignments.php', 'todo.php', 'subjects.php'];
+      : ['dashboard.php', 'assignments.php', 'todo.php', 'subjects.php', 'resources.php'];
     const page = storedTarget.split('?')[0];
     if (allowedPages.includes(page) && /^[a-z-]+\.php(?:\?[A-Za-z0-9._~%=&-]*)?$/.test(storedTarget)) {
       return storedTarget;
@@ -281,6 +281,7 @@ function initShell(role) {
     if (role === 'teacher') return title.includes('assignment submitted') ? 'grades.php' : 'dashboard.php';
     if (title.includes('task')) return 'todo.php';
     if (title.includes('assignment') || title.includes('activity')) return 'assignments.php';
+    if (title.includes('resource')) return 'resources.php';
     if (title.includes('class')) return 'subjects.php';
     return 'dashboard.php';
   }

@@ -115,10 +115,16 @@ try {
         $notifyKey = ($user['role'] ?? '') === 'student'
             && in_array($key, ['studybuddy_assignments','studybuddy_tasks'], true)
             && is_array($value);
+        $notifyResources = ($user['role'] ?? '') === 'teacher'
+            && $key === 'studybuddy_resources'
+            && is_array($value);
         $deliverAssignments = ($user['role'] ?? '') === 'teacher'
             && $key === 'studybuddy_assignments'
             && is_array($value);
         $previousAssignments = [];
+        $existingResourceIds = $notifyResources
+            ? existingCollectionIds($pdo, (int)$user['id'], $key, $collections)
+            : [];
         if ($deliverAssignments) {
             require_once __DIR__ . '/../includes/assignment_delivery.php';
             $previousAssignments = sb_load_user_collection($pdo, (int)$user['id'], $key, $collections);
@@ -139,6 +145,9 @@ try {
             }
         }
         if ($notifyKey) notifyStudentCollectionAdditions($pdo, (int)$user['id'], $key, $value, $existingIds);
+        if ($notifyResources) {
+            notifyTeacherResourceUploads($pdo, (int)$user['id'], $value, $existingResourceIds);
+        }
         if (($user['role'] ?? '') === 'teacher' && $key === 'studybuddy_grades') {
             require_once __DIR__ . '/../includes/assignment_delivery.php';
             sync_teacher_submission_grades($pdo, (int)$user['id'], $value, $collections);
