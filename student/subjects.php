@@ -29,9 +29,6 @@
           <button type="button" class="btn btn-outline" id="joinClassBtn">
             <i data-lucide="key-round"></i> Join class
           </button>
-          <button type="button" class="btn btn-primary" id="addSubjectBtn">
-            <i data-lucide="plus"></i> Add Subject
-          </button>
         </div>
       </div>
 
