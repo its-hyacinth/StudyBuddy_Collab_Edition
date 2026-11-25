@@ -72,6 +72,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const students = getStudents();
     const assignments = getAssignments();
     const grades = getGrades();
+    const upcomingAssignments = getUpcomingAssignments(assignments, assignments.length);
+    const classForAssignment = (assignment) => classes.find((cls) =>
+      String(cls.id) === String(assignment.classId || assignment.subjectId)
+    ) || classes.find((cls) => assignment.subjectCode
+      && normalizeSubjectCode(classSubjectCode(cls)) === normalizeSubjectCode(assignment.subjectCode)
+    ) || classes.find((cls) => cls.name === assignment.subject || classDisplayName(cls) === assignment.subject);
+    const nextAssignmentsByClass = new Map();
+    upcomingAssignments.forEach((assignment) => {
+      const cls = classForAssignment(assignment);
+      if (cls && !nextAssignmentsByClass.has(String(cls.id))) {
+        nextAssignmentsByClass.set(String(cls.id), assignment);
+      }
+    });
     const classProgress = classes.map((cls) => ({
       cls,
       performance: classPerformance(cls, grades),
@@ -115,6 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const title = c.subject && c.subject !== c.name ? c.subject : '';
           const performance = performanceByClass.get(String(c.id));
           const progress = performance ? performance.average : null;
+          const nextActivity = nextAssignmentsByClass.get(String(c.id));
           return `
         <tr data-id="${escapeHtml(c.id)}" style="cursor:pointer" title="Click for class details">
           <td>
@@ -129,8 +143,8 @@ document.addEventListener('DOMContentLoaded', () => {
           <td style="text-align:center"><span class="subject-tag ${escapeHtml(c.short)}"><span class="dot ${escapeHtml(c.short)}"></span> ${escapeHtml(code || c.subject || '—')}</span></td>
          <td style="text-align:center">${enrolledCount(c, students)}</td>
           <td>
-            <div class="title">${escapeHtml(c.nextActivity)}</div>
-            <div class="subtitle">${escapeHtml(formatDate(c.nextDate))}</div>
+           <div class="title">${escapeHtml(nextActivity?.title || nextActivity?.name || 'No upcoming activity')}</div>
+           <div class="subtitle">${escapeHtml(nextActivity?.dueDate ? formatDate(nextActivity.dueDate) : '—')}</div>
           </td>
           <td>
             <div class="progress-row">
