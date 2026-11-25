@@ -87,7 +87,6 @@
                   <col class="grade-col-assignment" />
                   <col class="grade-col-class" />
                   <col class="grade-col-score" />
-                  <col class="grade-col-max" />
                   <col class="grade-col-status" />
                   <col class="grade-col-submission" />
                   <col class="grade-col-actions" />
@@ -98,7 +97,6 @@
                     <th>Assignment</th>
                     <th>Class</th>
                     <th>Score</th>
-                    <th>Max</th>
                     <th>Status</th>
                     <th>Submission</th>
                     <th></th>

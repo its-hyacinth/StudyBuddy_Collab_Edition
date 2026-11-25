@@ -107,10 +107,10 @@ document.addEventListener('DOMContentLoaded', () => {
           <td class="grade-score-cell">
             <div class="grade-score-main">${g.status === 'pending'
               ? `<input type="number" class="form-control score-input" data-id="${escapeHtml(g.id)}" min="0" max="${Number(g.max) || 0}" placeholder="0–${Number(g.max) || 0}" />`
-              : `<strong>${escapeHtml(g.score)}</strong>`}</div>
-            <span class="grade-mobile-max">/ ${escapeHtml(g.max)}</span>
+              : `<strong>${escapeHtml(g.score)}</strong>`}
+              <span class="grade-score-max">/ ${escapeHtml(g.max)}</span>
+            </div>
           </td>
-          <td class="grade-max-cell">${escapeHtml(g.max)}</td>
           <td class="grade-status-cell"><span class="badge ${statusClass(g.status)}">${statusLabel(g.status)}</span></td>
           <td class="grade-submission-cell">${g.submission?.gradeId
             ? `<a href="../api/submissions.php?file=${encodeURIComponent(g.submission.gradeId)}">${escapeHtml(g.submission.fileName || 'Download file')}</a><div class="subtitle">${escapeHtml(g.submission.submittedAt ? new Date(g.submission.submittedAt).toLocaleString() : '')}</div>`

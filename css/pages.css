@@ -877,8 +877,7 @@
 .teacher-grades-page #gradesTable .grade-col-student { width: 17%; }
 .teacher-grades-page #gradesTable .grade-col-assignment { width: 18%; }
 .teacher-grades-page #gradesTable .grade-col-class { width: 11%; }
-.teacher-grades-page #gradesTable .grade-col-score { width: 11%; }
-.teacher-grades-page #gradesTable .grade-col-max { width: 6%; }
+.teacher-grades-page #gradesTable .grade-col-score { width: 17%; }
 .teacher-grades-page #gradesTable .grade-col-status { width: 9%; }
 .teacher-grades-page #gradesTable .grade-col-submission { width: 20%; }
 .teacher-grades-page #gradesTable .grade-col-actions { width: 8%; }
@@ -900,10 +899,23 @@
 }
 
 .teacher-grades-page #gradesTable .score-input {
-  width: 100%;
+  width: 82px;
   min-width: 0;
+  max-width: 100%;
   height: 36px;
   padding: 6px;
+}
+
+.teacher-grades-page #gradesTable .grade-score-main {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.teacher-grades-page #gradesTable .grade-score-max {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  white-space: nowrap;
 }
 
 .teacher-grades-page #gradesTable .grade-status-cell .badge {
@@ -928,26 +940,22 @@
   white-space: nowrap;
 }
 
-.teacher-grades-page #gradesTable .grade-mobile-class,
-.teacher-grades-page #gradesTable .grade-mobile-max {
+.teacher-grades-page #gradesTable .grade-mobile-class {
   display: none;
 }
 
 @media (max-width: 640px) {
   .teacher-grades-page #gradesTable col.grade-col-class,
-  .teacher-grades-page #gradesTable col.grade-col-max,
   .teacher-grades-page #gradesTable th:nth-child(3),
-  .teacher-grades-page #gradesTable td:nth-child(3),
-  .teacher-grades-page #gradesTable th:nth-child(5),
-  .teacher-grades-page #gradesTable td:nth-child(5) {
+  .teacher-grades-page #gradesTable td:nth-child(3) {
     display: none;
   }
 
-  .teacher-grades-page #gradesTable .grade-col-student { width: 21%; }
+  .teacher-grades-page #gradesTable .grade-col-student { width: 20%; }
   .teacher-grades-page #gradesTable .grade-col-assignment { width: 24%; }
   .teacher-grades-page #gradesTable .grade-col-score { width: 16%; }
-  .teacher-grades-page #gradesTable .grade-col-status { width: 13%; }
-  .teacher-grades-page #gradesTable .grade-col-submission { width: 16%; }
+  .teacher-grades-page #gradesTable .grade-col-status { width: 12%; }
+  .teacher-grades-page #gradesTable .grade-col-submission { width: 18%; }
   .teacher-grades-page #gradesTable .grade-col-actions { width: 10%; }
   .teacher-grades-page #gradesTable th,
   .teacher-grades-page #gradesTable td {
@@ -962,8 +970,13 @@
     font-size: 10px;
   }
 
-  .teacher-grades-page #gradesTable .grade-mobile-max {
+  .teacher-grades-page #gradesTable .grade-score-main {
     display: block;
+  }
+
+  .teacher-grades-page #gradesTable .grade-score-max {
+    display: block;
+    margin-top: 2px;
     color: var(--text-muted);
     font-size: 10px;
   }
