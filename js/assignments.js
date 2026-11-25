@@ -78,6 +78,25 @@ document.addEventListener('DOMContentLoaded', () => {
     return false;
   }
 
+  function isSubmissionDeadlinePassed(assignment) {
+    const dueDate = String(assignment.dueDate || '');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) return false;
+    const dueTime = String(assignment.dueTime || '23:59').slice(0, 5);
+    if (!/^\d{2}:\d{2}$/.test(dueTime)) return false;
+    const timeZone = assignment.timeZone || 'Asia/Manila';
+    const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    }).formatToParts(new Date()).map((part) => [part.type, part.value]));
+    const currentTime = `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+    return currentTime > `${dueDate}T${dueTime}`;
+  }
+
   // Same formula as My Classes / Dashboard: Classroom students + students you added
   function enrolledCount(cls, students, includeIrregular = true) {
     return (Number(cls.students) || 0) + classRoster(cls, students, includeIrregular).length;
@@ -267,8 +286,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (teacherSubmissionGroup) teacherSubmissionGroup.hidden = !hasTeacherSubmission;
     const submitButton = document.getElementById('assignmentDetailsSubmitBtn');
     if (submitButton) {
+      const submissionClosed = hasTeacherSubmission && isSubmissionDeadlinePassed(assignment);
       submitButton.hidden = !hasTeacherSubmission;
-      submitButton.textContent = assignment.submission?.gradeId ? 'Resubmit file' : 'Submit file';
+      submitButton.disabled = submissionClosed;
+      submitButton.textContent = submissionClosed
+        ? 'Submission closed'
+        : assignment.submission?.gradeId ? 'Resubmit file' : 'Submit file';
+      submitButton.title = submissionClosed ? 'The deadline has passed.' : '';
       submitButton.dataset.assignmentId = assignment.id;
     }
     if (teacherSubmission && hasTeacherSubmission) {
@@ -366,6 +390,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const assignment = getAssignments().find((item) => item.id === id);
     if (!assignment || assignment.source !== 'teacher' || !assignment.teacherAssignmentId || !assignment.teacherId) {
       showToast('This assignment does not accept StudyBuddy file submissions.', 'error');
+      return;
+    }
+    if (isSubmissionDeadlinePassed(assignment)) {
+      showToast('The deadline has passed. This assignment no longer accepts submissions.', 'error');
       return;
     }
     document.getElementById('submitAssignmentId').value = assignment.id;
@@ -852,7 +880,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const dueTime = val('asgDueTime') || '';
       if (!dueTime) { showToast('Due time is required', 'error'); return; }
       data = {
-        title, description, dueDate, dueTime, status: 'upcoming',
+        title, description, dueDate, dueTime,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Manila',
+        status: 'upcoming',
         classId: cls.id,
         subjectId: cls.id,
         subject: cls.subject || cls.name,

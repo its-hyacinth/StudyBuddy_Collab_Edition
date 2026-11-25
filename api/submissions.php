@@ -170,6 +170,16 @@ if (!$teacherAssignment || !$isRostered) {
     json_response(['ok' => false, 'message' => 'This assignment is no longer available to your account.'], 404);
 }
 
+try {
+    $deadlinePassed = sb_assignment_deadline_passed($teacherAssignment);
+} catch (Throwable $error) {
+    error_log('Could not validate assignment submission deadline: ' . $error->getMessage());
+    json_response(['ok' => false, 'message' => 'The assignment deadline could not be verified. Please contact your teacher.'], 500);
+}
+if ($deadlinePassed) {
+    json_response(['ok' => false, 'message' => 'The deadline has passed. This assignment no longer accepts submissions.'], 409);
+}
+
 $originalName = basename(str_replace('\\', '/', (string)$file['name']));
 $originalName = trim(preg_replace('/[\r\n\x00-\x1F]/', '_', $originalName) ?: '');
 if ($originalName === '') $originalName = 'submission.' . $extension;

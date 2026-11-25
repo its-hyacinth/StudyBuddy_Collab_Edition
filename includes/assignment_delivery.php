@@ -102,6 +102,31 @@ function sb_deadline_label(string $date, string $time): string {
     return $label;
 }
 
+function sb_assignment_deadline_passed(array $assignment, ?DateTimeImmutable $now = null): bool {
+    $dueDate = trim((string)($assignment['dueDate'] ?? ''));
+    if ($dueDate === '') return false;
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dueDate)) {
+        throw new InvalidArgumentException('Assignment due date is invalid.');
+    }
+
+    $dueTime = trim((string)($assignment['dueTime'] ?? ''));
+    if ($dueTime === '') $dueTime = '23:59';
+    if (!preg_match('/^\d{2}:\d{2}(?::\d{2})?$/', $dueTime)) {
+        throw new InvalidArgumentException('Assignment due time is invalid.');
+    }
+    $dueTime = substr($dueTime, 0, 5);
+    $timeZoneName = trim((string)($assignment['timeZone'] ?? 'Asia/Manila'));
+    $timeZone = new DateTimeZone($timeZoneName !== '' ? $timeZoneName : 'Asia/Manila');
+    $deadline = DateTimeImmutable::createFromFormat('!Y-m-d H:i', $dueDate . ' ' . $dueTime, $timeZone);
+    $parseErrors = DateTimeImmutable::getLastErrors();
+    if ($deadline === false || ($parseErrors !== false && ($parseErrors['warning_count'] || $parseErrors['error_count']))) {
+        throw new InvalidArgumentException('Assignment deadline is invalid.');
+    }
+
+    $currentTime = ($now ?? new DateTimeImmutable('now', $timeZone))->setTimezone($timeZone);
+    return $currentTime->format('Y-m-d H:i') > $deadline->format('Y-m-d H:i');
+}
+
 function sb_load_user_collection(PDO $pdo, int $userId, string $key, array $collections): array {
     if (isset($collections[$key])) {
         $table = $collections[$key]['table'];
@@ -320,6 +345,7 @@ function deliver_teacher_assignments(PDO $pdo, int $teacherId, string $teacherNa
                 'description' => (string)($assignment['description'] ?? ''),
                 'dueDate' => (string)($assignment['dueDate'] ?? ''),
                 'dueTime' => (string)($assignment['dueTime'] ?? ''),
+                'timeZone' => (string)($assignment['timeZone'] ?? 'Asia/Manila'),
                 'status' => (string)($existing['status'] ?? 'upcoming'),
                 'subject' => (string)($assignment['subject'] ?? ($class['subject'] ?? $classLabel)),
                 'subjectCode' => (string)($assignment['subjectCode'] ?? ''),
@@ -362,6 +388,7 @@ function deliver_teacher_assignments(PDO $pdo, int $teacherId, string $teacherNa
         $dueChanged = is_array($previousAssignment) && (
             (string)($previousAssignment['dueDate'] ?? '') !== (string)($assignment['dueDate'] ?? '')
             || (string)($previousAssignment['dueTime'] ?? '') !== (string)($assignment['dueTime'] ?? '')
+            || (string)($previousAssignment['timeZone'] ?? 'Asia/Manila') !== (string)($assignment['timeZone'] ?? 'Asia/Manila')
         );
         $audienceChanged = is_array($previousAssignment) && (
             (string)($previousAssignment['classId'] ?? '') !== (string)($assignment['classId'] ?? '')
@@ -499,6 +526,7 @@ function deliver_joined_class(PDO $pdo, int $teacherId, string $teacherName, arr
             'description' => (string)($assignment['description'] ?? ''),
             'dueDate' => (string)($assignment['dueDate'] ?? ''),
             'dueTime' => (string)($assignment['dueTime'] ?? ''),
+            'timeZone' => (string)($assignment['timeZone'] ?? 'Asia/Manila'),
             'status' => 'upcoming',
             'subject' => (string)($assignment['subject'] ?? $class['subject'] ?? $class['name'] ?? ''),
             'subjectId' => $classId,
