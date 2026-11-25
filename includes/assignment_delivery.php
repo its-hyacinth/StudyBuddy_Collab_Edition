@@ -218,6 +218,38 @@ function sb_refresh_student_submission_grades(PDO $pdo, int $studentId, array $a
     return array_values($assignments);
 }
 
+function sb_refresh_student_assignment_attachments(PDO $pdo, array $assignments, array $collections): array {
+    $teacherAssignments = [];
+    $changed = false;
+    foreach ($assignments as &$assignment) {
+        if (!is_array($assignment) || ($assignment['source'] ?? '') !== 'teacher') continue;
+        $teacherId = (int)($assignment['teacherId'] ?? 0);
+        $assignmentId = (string)($assignment['teacherAssignmentId'] ?? '');
+        if ($teacherId < 1 || $assignmentId === '') continue;
+        if (!isset($teacherAssignments[$teacherId])) {
+            $teacherAssignments[$teacherId] = sb_indexed(
+                sb_load_user_collection($pdo, $teacherId, 'studybuddy_assignments', $collections)
+            );
+        }
+        $teacherAssignment = $teacherAssignments[$teacherId][$assignmentId] ?? null;
+        if (!is_array($teacherAssignment)) continue;
+        $attachment = is_array($teacherAssignment['attachment'] ?? null)
+            ? $teacherAssignment['attachment']
+            : null;
+        if ($attachment === null) {
+            if (array_key_exists('attachment', $assignment)) {
+                unset($assignment['attachment']);
+                $changed = true;
+            }
+        } elseif (($assignment['attachment'] ?? null) !== $attachment) {
+            $assignment['attachment'] = $attachment;
+            $changed = true;
+        }
+    }
+    unset($assignment);
+    return $changed ? array_values($assignments) : $assignments;
+}
+
 function sb_indexed(array $rows): array {
     $indexed = [];
     foreach ($rows as $row) {
@@ -397,8 +429,10 @@ function deliver_teacher_assignments(PDO $pdo, int $teacherId, string $teacherNa
         );
         $changed = $isNew || $dueChanged || $audienceChanged || json_encode([
             $previousAssignment['title'] ?? '', $previousAssignment['description'] ?? '', $previousAssignment['points'] ?? '',
+            $previousAssignment['attachment'] ?? null,
         ]) !== json_encode([
             $assignment['title'] ?? '', $assignment['description'] ?? '', $assignment['points'] ?? '',
+            $assignment['attachment'] ?? null,
         ]);
         if (!$changed) continue;
         $notice = $dueChanged && !$isNew ? 'Assignment deadline updated' : 'New assignment';

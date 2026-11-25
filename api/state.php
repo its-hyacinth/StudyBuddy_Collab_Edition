@@ -79,10 +79,18 @@ try {
         }
         if (($user['role'] ?? '') === 'student' && is_array($values['studybuddy_assignments'] ?? null)) {
             require_once __DIR__ . '/../includes/assignment_delivery.php';
+            $studentAssignments = sb_refresh_student_assignment_attachments(
+                $pdo,
+                $values['studybuddy_assignments'],
+                $collections
+            );
+            if ($studentAssignments !== $values['studybuddy_assignments']) {
+                sb_save_user_collection($pdo, (int)$user['id'], 'studybuddy_assignments', $studentAssignments, $collections);
+            }
             $values['studybuddy_assignments'] = sb_refresh_student_submission_grades(
                 $pdo,
                 (int)$user['id'],
-                $values['studybuddy_assignments'],
+                $studentAssignments,
                 $collections
             );
         }
