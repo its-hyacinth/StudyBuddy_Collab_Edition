@@ -95,7 +95,7 @@ function existingCollectionIds(PDO $pdo, int $userId, string $key, array $collec
 }
 function notifyStudentCollectionAdditions(PDO $pdo, int $userId, string $key, array $items, array $existingIds): void {
     $seen = $existingIds;
-    $insert = $pdo->prepare('INSERT INTO notifications (user_id,title,body) VALUES (?,?,?)');
+    $insert = $pdo->prepare('INSERT INTO notifications (user_id,title,body,target_url) VALUES (?,?,?,?)');
     foreach (array_values($items) as $index => $item) {
         if (!is_array($item)) continue;
         $id = (string)firstValue($item, ['id','externalId','classroomWorkId','classroomId'], 'row_' . $index);
@@ -109,7 +109,10 @@ function notifyStudentCollectionAdditions(PDO $pdo, int $userId, string $key, ar
         $title = $isTask ? 'New task added' : ($isClassroom ? 'New Google Classroom activity' : 'New activity added');
         $subject = trim((string)($item['subject'] ?? ''));
         $body = $itemTitle . ($subject !== '' ? ' · ' . $subject : '');
-        $insert->execute([$userId, $title, $body]);
+        $targetUrl = $isTask
+            ? 'todo.php?task=' . rawurlencode($id)
+            : 'assignments.php?assignment=' . rawurlencode($id);
+        $insert->execute([$userId, $title, $body, $targetUrl]);
     }
 }
 

@@ -13,7 +13,7 @@ try {
         header('Cache-Control: no-store, private');
         $count = $pdo->prepare('SELECT COUNT(*) FROM notifications WHERE user_id=? AND is_read=0');
         $count->execute([$userId]);
-        $items = $pdo->prepare('SELECT id,title,body,is_read,created_at FROM notifications WHERE user_id=? ORDER BY created_at DESC,id DESC LIMIT 25');
+        $items = $pdo->prepare('SELECT id,title,body,target_url,is_read,created_at FROM notifications WHERE user_id=? ORDER BY created_at DESC,id DESC LIMIT 25');
         $items->execute([$userId]);
         json_response([
             'ok' => true,

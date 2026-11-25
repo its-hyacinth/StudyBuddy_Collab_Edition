@@ -323,8 +323,8 @@ function deliver_teacher_assignments(PDO $pdo, int $teacherId, string $teacherNa
                     $touchedStudents[$studentUserId] = $keep;
                     if ($announce) {
                         $title = (string)($assignment['title'] ?? 'Assignment');
-                        $pdo->prepare('INSERT INTO notifications (user_id, title, body) VALUES (?,?,?)')
-                            ->execute([$studentUserId, 'Assignment removed', $title . ' was removed from your calendar.']);
+                        $pdo->prepare('INSERT INTO notifications (user_id, title, body, target_url) VALUES (?,?,?,?)')
+                            ->execute([$studentUserId, 'Assignment removed', $title . ' was removed from your calendar.', 'assignments.php']);
                         $notified++;
                         $mailQueue[] = [
                             'to' => (string)$account['email'],
@@ -363,8 +363,8 @@ function deliver_teacher_assignments(PDO $pdo, int $teacherId, string $teacherNa
             $tell = $announce && ($dueChanged || !$existing);
             if (!$tell) continue;
             $body = $copy['title'] . ' is due ' . $dueLabel . ($classLabel !== '' ? ' · ' . $classLabel : '');
-            $pdo->prepare('INSERT INTO notifications (user_id, title, body) VALUES (?,?,?)')
-                ->execute([$studentUserId, $noticeTitle, $body]);
+            $pdo->prepare('INSERT INTO notifications (user_id, title, body, target_url) VALUES (?,?,?,?)')
+                ->execute([$studentUserId, $noticeTitle, $body, 'assignments.php?assignment=' . rawurlencode($copyId)]);
             $notified++;
             $mailQueue[] = [
                 'to' => (string)$account['email'],
@@ -543,8 +543,8 @@ function deliver_joined_class(PDO $pdo, int $teacherId, string $teacherName, arr
     sb_save_user_collection($pdo, $studentUserId, 'studybuddy_assignments', $kept, $collections);
     if (!$alreadyJoined) {
         $label = sb_class_display($class);
-        $pdo->prepare('INSERT INTO notifications (user_id, title, body) VALUES (?,?,?)')
-            ->execute([$studentUserId, 'You joined a class', $label !== '' ? $label : (string)($class['name'] ?? 'Class')]);
+        $pdo->prepare('INSERT INTO notifications (user_id, title, body, target_url) VALUES (?,?,?,?)')
+            ->execute([$studentUserId, 'You joined a class', $label !== '' ? $label : (string)($class['name'] ?? 'Class'), 'subjects.php?subject=' . rawurlencode($classId)]);
     }
 }
 

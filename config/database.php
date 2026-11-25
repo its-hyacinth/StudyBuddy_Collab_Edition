@@ -116,5 +116,8 @@ function db(): PDO {
         . ';dbname=' . db_setting('SB_DB_NAME', 'Studybuddy')
         . ';charset=utf8mb4';
     $pdo = new StudyBuddyPdo($dsn, db_setting('SB_DB_USER', 'root'), db_setting('SB_DB_PASS', ''), $options);
+    if (!$pdo->query("SHOW COLUMNS FROM notifications LIKE 'target_url'")->fetch()) {
+        $pdo->exec('ALTER TABLE notifications ADD target_url VARCHAR(1000) NULL AFTER body');
+    }
     return $pdo;
 }

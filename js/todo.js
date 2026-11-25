@@ -150,7 +150,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function showTaskDetails(id) {
-    const task = getTasks().find((item) => item.id === id);
+    const task = getTasks().find((item) => String(item.id) === String(id));
     if (!task) {
       showToast('Task details are no longer available', 'error');
       return;
@@ -306,6 +306,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  const requestedTaskId = new URLSearchParams(window.location.search).get('task');
   render();
-  sbWhenReady(render);
+  sbWhenReady(() => {
+    render();
+    if (requestedTaskId) showTaskDetails(requestedTaskId);
+  });
 });

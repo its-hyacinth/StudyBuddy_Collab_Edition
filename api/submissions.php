@@ -261,8 +261,8 @@ $teacherAssignments = array_map(static function ($assignment) use ($teacherAssig
     sb_save_user_collection($pdo, $teacherId, 'studybuddy_grades', $grades, $collections);
     sb_save_user_collection($pdo, $teacherId, 'studybuddy_assignments', $teacherAssignments, $collections);
     sb_save_user_collection($pdo, $studentId, 'studybuddy_assignments', $studentAssignments, $collections);
-    $pdo->prepare('INSERT INTO notifications (user_id, title, body) VALUES (?,?,?)')
-        ->execute([$teacherId, 'Assignment submitted', $grade['student'] . ' submitted ' . $grade['assignment'] . '.']);
+    $pdo->prepare('INSERT INTO notifications (user_id, title, body, target_url) VALUES (?,?,?,?)')
+        ->execute([$teacherId, 'Assignment submitted', $grade['student'] . ' submitted ' . $grade['assignment'] . '.', 'grades.php?grade=' . rawurlencode($gradeId)]);
     $pdo->commit();
 } catch (Throwable $error) {
     if ($pdo->inTransaction()) $pdo->rollBack();

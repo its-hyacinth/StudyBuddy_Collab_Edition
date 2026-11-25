@@ -266,6 +266,24 @@ function initShell(role) {
     }[char]));
   }
 
+  function notificationDestination(item) {
+    const storedTarget = String(item.dataset.notificationTarget || '');
+    const allowedPages = role === 'teacher'
+      ? ['dashboard.php', 'grades.php', 'assignments.php']
+      : ['dashboard.php', 'assignments.php', 'todo.php', 'subjects.php'];
+    const page = storedTarget.split('?')[0];
+    if (allowedPages.includes(page) && /^[a-z-]+\.php(?:\?[A-Za-z0-9._~%=&-]*)?$/.test(storedTarget)) {
+      return storedTarget;
+    }
+
+    const title = item.querySelector('.notification-item-title')?.textContent?.toLowerCase() || '';
+    if (role === 'teacher') return title.includes('assignment submitted') ? 'grades.php' : 'dashboard.php';
+    if (title.includes('task')) return 'todo.php';
+    if (title.includes('assignment') || title.includes('activity')) return 'assignments.php';
+    if (title.includes('class')) return 'subjects.php';
+    return 'dashboard.php';
+  }
+
   function renderNotifications(items, unreadCount) {
     const unread = Math.max(0, Number(unreadCount) || 0);
     notificationDot.hidden = unread === 0;
@@ -281,7 +299,7 @@ function initShell(role) {
       const time = Number.isNaN(createdAt.getTime()) ? '' : createdAt.toLocaleString();
       const id = Number(item.id);
       return `
-        <button type="button" class="notification-item ${Number(item.is_read) ? '' : 'unread'}" data-notification-read="${id}">
+        <button type="button" class="notification-item ${Number(item.is_read) ? '' : 'unread'}" data-notification-read="${id}" data-notification-target="${escapeNotificationHtml(item.target_url || '')}">
           <span class="notification-item-title">${escapeNotificationHtml(item.title || 'Update')}</span>
           <span class="notification-item-body">${escapeNotificationHtml(item.body || '')}</span>
           <time>${escapeNotificationHtml(time)}</time>
@@ -337,13 +355,17 @@ function initShell(role) {
     notificationButton.setAttribute('aria-expanded', String(open));
     if (open) refreshNotifications(true);
   });
-  notificationPanel?.addEventListener('click', (event) => {
+  notificationPanel?.addEventListener('click', async (event) => {
     if (event.target.closest('#markAllNotificationsRead')) {
       setNotificationsRead('read-all');
       return;
     }
     const item = event.target.closest('[data-notification-read]');
-    if (item) setNotificationsRead('read', Number(item.dataset.notificationRead));
+    if (item) {
+      const target = notificationDestination(item);
+      await setNotificationsRead('read', Number(item.dataset.notificationRead));
+      window.location.href = target;
+    }
   });
   document.addEventListener('click', (event) => {
     if (!notificationWrap?.contains(event.target) && notificationPanel && !notificationPanel.hidden) {

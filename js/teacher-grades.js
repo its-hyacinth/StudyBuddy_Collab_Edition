@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let classFilter = '';
   let statusFilter = '';
   let search = '';
+  const requestedGradeId = new URLSearchParams(window.location.search).get('grade');
 
   function escapeHtml(str) {
     return String(str ?? '').replace(/[&<>"']/g, (c) => ({
@@ -38,6 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
         [grade.student, grade.assignment, grade.class].some((value) => String(value || '').toLowerCase().includes(query))
       );
     }
+    if (requestedGradeId) grades = grades.filter((grade) => String(grade.id) === requestedGradeId);
 
     const all = getGrades();
     const vals = document.querySelectorAll('.stat-grid .stat-value');
@@ -122,5 +124,13 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   render();
-  sbWhenReady(render);
+  sbWhenReady(() => {
+    render();
+    if (requestedGradeId) {
+      const tbody = document.querySelector('#gradesTable tbody') || document.getElementById('gradesTableBody');
+      [...(tbody?.querySelectorAll('tr') || [])]
+        .find((row) => row.dataset.id === requestedGradeId)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  });
 });
