@@ -77,6 +77,15 @@ try {
             }
             $values[$key] = $legacyValue;
         }
+        if (($user['role'] ?? '') === 'student' && is_array($values['studybuddy_assignments'] ?? null)) {
+            require_once __DIR__ . '/../includes/assignment_delivery.php';
+            $values['studybuddy_assignments'] = sb_refresh_student_submission_grades(
+                $pdo,
+                (int)$user['id'],
+                $values['studybuddy_assignments'],
+                $collections
+            );
+        }
         json_response($isBatch ? ['ok'=>true,'values'=>$values] : ['ok'=>true,'value'=>$values[$keys[0]]]);
     }
 

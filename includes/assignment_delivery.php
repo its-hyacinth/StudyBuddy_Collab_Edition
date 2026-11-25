@@ -162,6 +162,37 @@ function sync_teacher_submission_grades(PDO $pdo, int $teacherId, array $grades,
     }
 }
 
+function sb_refresh_student_submission_grades(PDO $pdo, int $studentId, array $assignments, array $collections): array {
+    $gradesByTeacher = [];
+    foreach ($assignments as &$assignment) {
+        if (!is_array($assignment) || empty($assignment['submission']['gradeId'])) continue;
+        $teacherId = (int)($assignment['teacherId'] ?? 0);
+        $assignmentId = (string)($assignment['teacherAssignmentId'] ?? '');
+        $gradeId = (string)$assignment['submission']['gradeId'];
+        if ($teacherId < 1 || $assignmentId === '') continue;
+
+        if (!isset($gradesByTeacher[$teacherId])) {
+            $gradesByTeacher[$teacherId] = sb_load_user_collection($pdo, $teacherId, 'studybuddy_grades', $collections);
+        }
+        foreach ($gradesByTeacher[$teacherId] as $grade) {
+            if (!is_array($grade)
+                || (int)($grade['studentId'] ?? 0) !== $studentId
+                || (string)($grade['assignmentId'] ?? '') !== $assignmentId
+                || (string)($grade['submission']['gradeId'] ?? '') !== $gradeId) {
+                continue;
+            }
+            $assignment['submission']['score'] = is_numeric($grade['score'] ?? null) ? (float)$grade['score'] : null;
+            $assignment['submission']['max'] = is_numeric($grade['max'] ?? null)
+                ? (float)$grade['max']
+                : (is_numeric($assignment['submission']['max'] ?? null) ? (float)$assignment['submission']['max'] : null);
+            $assignment['submission']['status'] = ($grade['status'] ?? '') === 'graded' ? 'graded' : 'pending';
+            break;
+        }
+    }
+    unset($assignment);
+    return array_values($assignments);
+}
+
 function sb_indexed(array $rows): array {
     $indexed = [];
     foreach ($rows as $row) {
