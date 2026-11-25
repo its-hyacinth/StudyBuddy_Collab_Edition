@@ -552,6 +552,166 @@ function initShell(role) {
     document.addEventListener('click', (event) => {
       if (!searchContainer?.contains(event.target)) hideSearchResults();
     });
+  } else if (globalSearch && role === 'student') {
+    const searchContainer = globalSearch.closest('.header-search');
+    const resultsPanel = document.createElement('div');
+    resultsPanel.id = 'globalSearchResults';
+    resultsPanel.className = 'global-search-results';
+    resultsPanel.setAttribute('role', 'listbox');
+    resultsPanel.hidden = true;
+    globalSearch.insertAdjacentElement('afterend', resultsPanel);
+    globalSearch.setAttribute('aria-autocomplete', 'list');
+    globalSearch.setAttribute('aria-haspopup', 'listbox');
+    globalSearch.setAttribute('aria-controls', resultsPanel.id);
+    globalSearch.setAttribute('aria-expanded', 'false');
+
+    const escapeSearchHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    }[char]));
+    const normalizeSearchText = (value) => String(value ?? '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+    const hideSearchResults = () => {
+      resultsPanel.hidden = true;
+      globalSearch.setAttribute('aria-expanded', 'false');
+    };
+
+    function findStudentSearchResults(query) {
+      const subjects = getSubjects();
+      const normalizedQuery = normalizeSearchText(query);
+      const terms = normalizedQuery.split(/\s+/).filter(Boolean);
+      const matches = (values) => {
+        const searchableText = normalizeSearchText(
+          values.filter((value) => value !== null && value !== undefined).join(' ')
+        );
+        return terms.every((term) => searchableText.includes(term));
+      };
+      const subjectFor = (item) => subjects.find((subject) =>
+        String(subject.id) === String(item.subjectId || item.classId)
+      ) || subjects.find((subject) =>
+        item.subject && [subject.name, subject.shortName, subject.code].includes(item.subject)
+      );
+      const subjectMatches = subjects
+        .filter((subject) => matches([
+          subject.name, subject.shortName, subject.code, subject.description,
+          subject.professor, subject.course, subject.year, subject.section,
+        ]))
+        .slice(0, 3)
+        .map((subject) => ({
+          type: 'Subject',
+          title: subject.name || subject.shortName || subject.code || 'Subject',
+          detail: [subject.code, subject.professor, subject.course, subject.year, subject.section]
+            .filter(Boolean)
+            .join(' · '),
+          href: `subjects.php?subject=${encodeURIComponent(subject.id)}`,
+        }));
+      const assignmentMatches = getAssignments()
+        .filter((assignment) => {
+          const subject = subjectFor(assignment);
+          return matches([
+            assignment.title, assignment.name, assignment.description,
+            assignment.subject, assignment.subjectCode, assignment.status, assignment.dueDate,
+            subject && subject.name, subject && subject.code,
+          ]);
+        })
+        .slice(0, 3)
+        .map((assignment) => {
+          const subject = subjectFor(assignment);
+          return {
+            type: 'Assignment',
+            title: assignment.title || assignment.name || 'Assignment',
+            detail: [subject && (subject.name || subject.shortName), assignment.dueDate && `Due ${assignment.dueDate}`]
+              .filter(Boolean)
+              .join(' · '),
+            href: `assignments.php?assignment=${encodeURIComponent(assignment.id)}`,
+          };
+        });
+      const taskMatches = getTasks()
+        .filter((task) => {
+          const subject = subjectFor(task);
+          return matches([
+            task.title, task.name, task.description, task.subject,
+            task.status, task.dueDate, subject && subject.name, subject && subject.code,
+          ]);
+        })
+        .slice(0, 3)
+        .map((task) => {
+          const subject = subjectFor(task);
+          return {
+            type: 'Task',
+            title: task.title || task.name || 'Task',
+            detail: [subject && (subject.name || subject.shortName), task.dueDate && `Due ${task.dueDate}`]
+              .filter(Boolean)
+              .join(' · '),
+            href: `todo.php?task=${encodeURIComponent(task.id)}`,
+          };
+        });
+      return [...subjectMatches, ...assignmentMatches, ...taskMatches].slice(0, 8);
+    }
+
+    function renderStudentSearchResults() {
+      const query = globalSearch.value.trim();
+      if (!query) {
+        hideSearchResults();
+        return;
+      }
+
+      const results = findStudentSearchResults(query);
+      resultsPanel.innerHTML = results.length
+        ? results.map((result) => `
+          <a class="global-search-result" href="${escapeSearchHtml(result.href)}" role="option">
+            <span class="global-search-result-copy">
+              <span class="global-search-result-title">${escapeSearchHtml(result.title)}</span>
+              <span class="global-search-result-detail">${escapeSearchHtml(result.detail || '')}</span>
+            </span>
+            <span class="global-search-result-type">${escapeSearchHtml(result.type)}</span>
+          </a>`).join('')
+        : '<div class="global-search-empty">No matching subjects, assignments, or tasks.</div>';
+      resultsPanel.hidden = false;
+      globalSearch.setAttribute('aria-expanded', 'true');
+    }
+
+    let waitingForSearchData = false;
+    globalSearch.addEventListener('input', () => {
+      if (SB_BOOT_SETTLED) {
+        renderStudentSearchResults();
+        return;
+      }
+      resultsPanel.innerHTML = '<div class="global-search-empty">Loading student information...</div>';
+      resultsPanel.hidden = false;
+      globalSearch.setAttribute('aria-expanded', 'true');
+      if (waitingForSearchData) return;
+      waitingForSearchData = true;
+      sbWhenReady(() => {
+        waitingForSearchData = false;
+        if (document.activeElement === globalSearch) renderStudentSearchResults();
+      });
+    });
+    globalSearch.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        hideSearchResults();
+      } else if (event.key === 'ArrowDown' && !resultsPanel.hidden) {
+        const firstResult = resultsPanel.querySelector('a');
+        if (firstResult) {
+          event.preventDefault();
+          firstResult.focus();
+        }
+      } else if (event.key === 'Enter' && !resultsPanel.hidden) {
+        const firstResult = resultsPanel.querySelector('a');
+        if (firstResult) {
+          event.preventDefault();
+          window.location.href = firstResult.href;
+        }
+      }
+    });
+    document.addEventListener('click', (event) => {
+      if (!searchContainer?.contains(event.target)) hideSearchResults();
+    });
   }
 
   // Close action menus on outside click
