@@ -61,9 +61,14 @@
                 <input type="text" class="form-control" id="quickTaskTitle" placeholder="What needs to be done?" />
               </div>
               <div class="form-row" style="margin-bottom:10px">
-                <select class="form-control" id="quickTaskSubject" style="height:38px">
-                  <option value="">Subject (optional)</option>
-                </select>
+                <div class="subject-filter quick-task-subject-filter" id="quickTaskSubjectPicker">
+                  <input type="hidden" id="quickTaskSubject" value="" />
+                  <button type="button" class="subject-filter-button" id="quickTaskSubjectButton" aria-haspopup="listbox" aria-expanded="false" aria-controls="quickTaskSubjectOptions">
+                    <span id="quickTaskSubjectLabel">Subject (optional)</span>
+                    <i data-lucide="chevron-down" aria-hidden="true"></i>
+                  </button>
+                  <div class="subject-filter-options" id="quickTaskSubjectOptions" role="listbox" aria-label="Select task subject" hidden></div>
+                </div>
                 <input type="date" class="form-control" id="quickTaskDate" style="height:38px" />
               </div>
               <button type="submit" class="btn btn-primary btn-block btn-sm">

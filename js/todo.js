@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let filter = 'all';
   let sortBy = 'due';
   let editingTaskId = null;
+  let quickSubjectOpen = false;
 
   function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, (char) => ({
@@ -215,15 +216,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function populateTaskSubjectOptions() {
     const subjects = getTaskSubjectOptions();
-    ['taskSubject', 'quickTaskSubject'].forEach((id) => {
-      const select = document.getElementById(id);
-      if (!select) return;
-      const previous = subjects.some((subject) => subject.id === select.value) ? select.value : '';
-      select.innerHTML = `<option value="">${subjects.length ? 'General / no subject' : 'No subjects available'}</option>` + subjects.map((subject) =>
+    const taskSelect = document.getElementById('taskSubject');
+    if (taskSelect) {
+      const previous = subjects.some((subject) => subject.id === taskSelect.value) ? taskSelect.value : '';
+      taskSelect.innerHTML = `<option value="">${subjects.length ? 'General / no subject' : 'No subjects available'}</option>` + subjects.map((subject) =>
         `<option value="${escapeHtml(subject.id)}">${escapeHtml(subject.name)}</option>`
       ).join('');
-      select.value = previous;
-    });
+      taskSelect.value = previous;
+    }
+
+    const quickSubjectInput = document.getElementById('quickTaskSubject');
+    const quickSubjectLabel = document.getElementById('quickTaskSubjectLabel');
+    const quickSubjectButton = document.getElementById('quickTaskSubjectButton');
+    const quickSubjectOptions = document.getElementById('quickTaskSubjectOptions');
+    if (!quickSubjectInput || !quickSubjectLabel || !quickSubjectButton || !quickSubjectOptions) return;
+    if (!subjects.some((subject) => subject.id === quickSubjectInput.value)) quickSubjectInput.value = '';
+    quickSubjectLabel.textContent = subjects.find((subject) => subject.id === quickSubjectInput.value)?.name || 'Subject (optional)';
+    quickSubjectOptions.innerHTML = `
+      <button type="button" role="option" tabindex="-1" data-quick-subject-value="" aria-selected="${String(quickSubjectInput.value === '')}">General / no subject</button>
+      ${subjects.length
+        ? subjects.map((subject) => `<button type="button" role="option" tabindex="-1" data-quick-subject-value="${escapeHtml(subject.id)}" aria-selected="${String(subject.id === quickSubjectInput.value)}">${escapeHtml(subject.name)}</button>`).join('')
+        : '<button type="button" role="option" tabindex="-1" disabled>No subjects available</button>'}`;
+    quickSubjectOptions.hidden = !quickSubjectOpen;
+    quickSubjectButton.setAttribute('aria-expanded', String(quickSubjectOpen));
+  }
+
+  function setQuickSubjectOpen(open, focusEdge = null) {
+    quickSubjectOpen = open;
+    populateTaskSubjectOptions();
+    if (!open || !focusEdge) return;
+    const options = [...document.querySelectorAll('#quickTaskSubjectOptions [role="option"]:not(:disabled)')];
+    if (focusEdge === 'first') options[0]?.focus();
+    else if (focusEdge === 'last') options[options.length - 1]?.focus();
+    else {
+      const selected = options.find((option) => option.getAttribute('aria-selected') === 'true');
+      (selected || options[0])?.focus();
+    }
   }
 
   function createTask({ title, subjectId, dueDate, dueTime, notes }) {
@@ -270,6 +298,47 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('addTaskBtn')?.addEventListener('click', () => openTaskForm());
   document.getElementById('todoSort')?.addEventListener('change', (e) => { sortBy = e.target.value; render(); });
+
+  const quickSubjectPicker = document.getElementById('quickTaskSubjectPicker');
+  const quickSubjectButton = document.getElementById('quickTaskSubjectButton');
+  const quickSubjectOptions = document.getElementById('quickTaskSubjectOptions');
+  quickSubjectButton?.addEventListener('click', () => setQuickSubjectOpen(!quickSubjectOpen, 'selected'));
+  quickSubjectButton?.addEventListener('keydown', (event) => {
+    if (!['ArrowDown', 'ArrowUp'].includes(event.key)) return;
+    event.preventDefault();
+    setQuickSubjectOpen(true, event.key === 'ArrowUp' ? 'last' : 'first');
+  });
+  quickSubjectOptions?.addEventListener('click', (event) => {
+    const option = event.target.closest('[data-quick-subject-value]');
+    if (!option || option.disabled) return;
+    document.getElementById('quickTaskSubject').value = option.dataset.quickSubjectValue || '';
+    setQuickSubjectOpen(false);
+    quickSubjectButton.focus();
+  });
+  quickSubjectOptions?.addEventListener('keydown', (event) => {
+    const options = [...quickSubjectOptions.querySelectorAll('[role="option"]:not(:disabled)')];
+    const index = options.indexOf(document.activeElement);
+    let nextIndex = index;
+    if (event.key === 'ArrowDown') nextIndex = Math.min(index + 1, options.length - 1);
+    else if (event.key === 'ArrowUp') nextIndex = Math.max(index - 1, 0);
+    else if (event.key === 'Home') nextIndex = 0;
+    else if (event.key === 'End') nextIndex = options.length - 1;
+    else if (event.key === 'Escape') {
+      setQuickSubjectOpen(false);
+      quickSubjectButton.focus();
+      return;
+    } else return;
+    event.preventDefault();
+    options[nextIndex]?.focus();
+  });
+  quickSubjectPicker?.addEventListener('focusout', (event) => {
+    if (!quickSubjectOpen || quickSubjectPicker.contains(event.relatedTarget)) return;
+    setQuickSubjectOpen(false);
+  });
+  document.addEventListener('click', (event) => {
+    if (!quickSubjectOpen || quickSubjectPicker?.contains(event.target)) return;
+    setQuickSubjectOpen(false);
+  });
 
   populateTaskSubjectOptions();
 
@@ -319,6 +388,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const dueDate = document.getElementById('quickTaskDate')?.value || '';
     if (!createTask({ title, subjectId, dueDate })) return;
     e.target.reset();
+    populateTaskSubjectOptions();
   });
 
   document.querySelectorAll('[data-action]').forEach((btn) => {

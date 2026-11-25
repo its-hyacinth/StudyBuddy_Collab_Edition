@@ -565,3 +565,30 @@
     position: static;
   }
 }
+
+.student-app .quick-task-subject-filter {
+  width: 100%;
+  min-width: 0;
+}
+
+.student-app .quick-task-subject-filter .subject-filter-button {
+  width: 100%;
+  min-width: 0;
+  padding: 0 8px;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.student-app .quick-task-subject-filter .subject-filter-button span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.student-app .quick-task-subject-filter .subject-filter-options {
+  right: 0;
+  left: auto;
+  width: max-content;
+  max-width: min(320px, calc(100vw - 32px));
+}
