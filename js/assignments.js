@@ -236,7 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function showAssignmentDetails(id) {
-    const assignment = getAssignments().find((item) => item.id === id);
+    const assignment = getAssignments().find((item) => String(item.id) === String(id));
     if (!assignment) { showToast('Assignment details are no longer available.', 'error'); return; }
     const setText = (elementId, value) => {
       const element = document.getElementById(elementId);
@@ -992,10 +992,12 @@ document.addEventListener('DOMContentLoaded', () => {
     openSubmissionDialog(event.currentTarget.dataset.assignmentId);
   });
 
-  render();
-  sbWhenReady(render);
   const requestedAssignmentId = !isTeacher
     ? new URLSearchParams(window.location.search).get('assignment')
     : null;
-  if (requestedAssignmentId) showAssignmentDetails(requestedAssignmentId);
+  render();
+  sbWhenReady(() => {
+    render();
+    if (requestedAssignmentId) showAssignmentDetails(requestedAssignmentId);
+  });
 });

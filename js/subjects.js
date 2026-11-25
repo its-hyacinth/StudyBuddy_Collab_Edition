@@ -248,15 +248,20 @@ document.addEventListener('DOMContentLoaded', () => {
           const assignmentSubject = subjects.find((subject) => subject.id === assignment.subjectId);
           const subjectName = assignment.subject || assignmentSubject?.name || 'Unassigned';
           const assignmentColor = showAllSubjects ? assignmentSubject?.color || '#2563EB' : s.color;
+          const assignmentUrl = assignment.id
+            ? `assignments.php?assignment=${encodeURIComponent(String(assignment.id))}`
+            : '';
+          const assignmentHref = assignmentUrl ? `href="${escapeHTML(assignmentUrl)}"` : '';
+          const assignmentTag = assignment.id ? 'a' : 'div';
           return `
-          <div class="list-item">
+          <${assignmentTag} class="list-item${assignment.id ? ' list-item-link' : ''}" ${assignmentHref}>
             <div class="cell-icon" style="width:32px;height:32px;border-radius:8px;background:${iconBg(assignmentColor)};color:${assignmentColor};display:flex;align-items:center;justify-content:center"><i data-lucide="file-text"></i></div>
             <div class="item-meta">
               <div class="item-title">${escapeHTML(assignment.title)}</div>
               <div class="item-sub">${showAllSubjects ? `${escapeHTML(subjectName)} · ` : ''}${assignment.dueDate ? `Due ${formatDate(assignment.dueDate)}` : 'No due date'}</div>
             </div>
             <span class="badge ${statusClass(status)}">${statusLabel(status)}</span>
-          </div>`;
+          </${assignmentTag}>`;
         }).join('') : `<p class="subject-assignments-empty">No ${assignmentFilter === 'all' ? '' : `${assignmentFilter} `}assignments ${showAllSubjects ? 'across your subjects' : 'for this subject'}.</p>`}
       </div>`;
     el.querySelectorAll('[data-assignment-filter]').forEach((button) => {
