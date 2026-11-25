@@ -80,6 +80,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (table) {
     table.innerHTML = classes.map((c) => {
       const nextActivity = nextAssignmentsByClass.get(String(c.id));
+      const performance = classPerformance(c, grades);
+      const progress = performance ? performance.average : null;
       return `
       <tr data-id="${escapeHtml(c.id)}">
         <td>
@@ -98,8 +100,8 @@ document.addEventListener('DOMContentLoaded', () => {
         </td>
         <td>
           <div class="progress-row">
-            <div class="progress-bar"><div class="fill ${escapeHtml(c.short)}" style="width:${Number(c.progress) || 0}%"></div></div>
-            <span class="progress-pct">${Number(c.progress) || 0}%</span>
+            <div class="progress-bar" title="${performance ? `${performance.gradedCount} graded submission${performance.gradedCount === 1 ? '' : 's'}` : 'No graded submissions yet'}"><div class="fill ${escapeHtml(c.short)}" style="width:${progress ?? 0}%"></div></div>
+            <span class="progress-pct">${progress === null ? '—' : `${progress}%`}</span>
           </div>
         </td>
         <td><a href="classes.php" class="btn btn-ghost btn-sm">Manage</a></td>
