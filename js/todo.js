@@ -193,6 +193,39 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof lucide !== 'undefined') lucide.createIcons();
   }
 
+  function getTaskSubjectOptions() {
+    const options = new Map();
+    const add = (id, name) => {
+      const label = String(name || '').trim();
+      if (!label) return;
+      const value = String(id || '').trim() || label;
+      if (!options.has(value)) options.set(value, { id: value, name: label });
+    };
+
+    getSubjects().forEach((subject) => add(subject.id, subject.name || subject.shortName));
+    getAssignments().forEach((assignment) => {
+      if (assignment.source !== 'teacher' && assignment.source !== 'classroom' && !assignment.classId) return;
+      add(
+        assignment.subjectId || assignment.classId || assignment.classroomId || assignment.subject,
+        assignment.subject
+      );
+    });
+    return [...options.values()];
+  }
+
+  function populateTaskSubjectOptions() {
+    const subjects = getTaskSubjectOptions();
+    ['taskSubject', 'quickTaskSubject'].forEach((id) => {
+      const select = document.getElementById(id);
+      if (!select) return;
+      const previous = subjects.some((subject) => subject.id === select.value) ? select.value : '';
+      select.innerHTML = `<option value="">${subjects.length ? 'General / no subject' : 'No subjects available'}</option>` + subjects.map((subject) =>
+        `<option value="${escapeHtml(subject.id)}">${escapeHtml(subject.name)}</option>`
+      ).join('');
+      select.value = previous;
+    });
+  }
+
   function createTask({ title, subjectId, dueDate, dueTime, notes }) {
     const cleanTitle = String(title || '').trim();
     if (!cleanTitle) {
@@ -201,7 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const taskDate = dueDate || localDateStr();
-    const subject = getSubjects().find((s) => s.id === subjectId)?.name || 'General';
+    const subject = getTaskSubjectOptions().find((s) => s.id === subjectId)?.name || 'General';
     addTask({
       title: cleanTitle,
       subjectId,
@@ -218,6 +251,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function openTaskForm(task = null) {
+    populateTaskSubjectOptions();
     editingTaskId = task?.id || null;
     const form = document.getElementById('addTaskForm');
     form?.reset();
@@ -237,16 +271,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('addTaskBtn')?.addEventListener('click', () => openTaskForm());
   document.getElementById('todoSort')?.addEventListener('change', (e) => { sortBy = e.target.value; render(); });
 
-  const taskSubjects = getSubjects();
-  ['taskSubject', 'quickTaskSubject'].forEach((id) => {
-    const select = document.getElementById(id);
-    if (!select) return;
-    const previous = taskSubjects.some((subject) => subject.id === select.value) ? select.value : '';
-    select.innerHTML = `<option value="">${taskSubjects.length ? 'General / no subject' : 'No subjects available'}</option>` + taskSubjects.map((subject) =>
-      `<option value="${escapeHtml(subject.id)}">${escapeHtml(subject.name)}</option>`
-    ).join('');
-    select.value = previous;
-  });
+  populateTaskSubjectOptions();
 
   document.getElementById('addTaskForm')?.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -264,7 +289,7 @@ document.addEventListener('DOMContentLoaded', () => {
         render();
         return;
       }
-      const subject = getSubjects().find((item) => item.id === subjectId)?.name || 'General';
+      const subject = getTaskSubjectOptions().find((item) => item.id === subjectId)?.name || 'General';
       updateTask(task.id, {
         title,
         subjectId,
@@ -309,6 +334,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const requestedTaskId = new URLSearchParams(window.location.search).get('task');
   render();
   sbWhenReady(() => {
+    populateTaskSubjectOptions();
     render();
     if (requestedTaskId) showTaskDetails(requestedTaskId);
   });
