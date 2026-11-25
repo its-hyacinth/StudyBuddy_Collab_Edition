@@ -27,9 +27,6 @@
           <button type="button" class="btn btn-outline" id="syncClassroomBtn">
             <i data-lucide="refresh-cw"></i> Sync Classroom
           </button>
-          <button type="button" class="btn btn-primary" id="addAssignmentBtn">
-            <i data-lucide="plus"></i> Add Assignment
-          </button>
         </div>
       </div>
 
@@ -249,9 +246,6 @@
               </div>
             </div>
             <div class="qa-grid">
-              <button type="button" class="qa-btn blue" data-action="add-assignment">
-                <i data-lucide="clipboard-plus"></i> Add Assignment
-              </button>
               <button type="button" class="qa-btn green" data-action="mark-complete">
                 <i data-lucide="check-circle"></i> Mark Complete
               </button>
@@ -292,55 +286,6 @@
           </div>
         </aside>
       </div>
-    </div>
-  </div>
-
-  <div class="modal-backdrop" id="addAssignmentModal">
-    <div class="modal" role="dialog" aria-labelledby="addAssignmentTitle">
-      <div class="modal-header">
-        <h3 id="addAssignmentTitle">Add Assignment</h3>
-        <button type="button" class="modal-close" data-close-modal="addAssignmentModal" aria-label="Close">
-          <i data-lucide="x"></i>
-        </button>
-      </div>
-      <form id="addAssignmentForm">
-        <div class="modal-body">
-          <div class="form-group">
-            <label for="asgTitle">Title</label>
-            <input type="text" class="form-control" id="asgTitle" name="title" placeholder="Assignment title" required />
-          </div>
-          <div class="form-group">
-            <label for="asgSubject">Subject</label>
-            <select class="form-control" id="asgSubject" name="subjectId" required>
-              <option value="">Select subject</option>
-              <option value="subj_math">Mathematics</option>
-              <option value="subj_sci">Science</option>
-              <option value="subj_eng">English</option>
-              <option value="subj_cs">Computer Science</option>
-              <option value="subj_fil">Filipino</option>
-              <option value="subj_hist">History</option>
-            </select>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label for="asgDueDate">Due Date</label>
-              <input type="date" class="form-control" id="asgDueDate" name="dueDate" required />
-            </div>
-            <div class="form-group">
-              <label for="asgPoints">Points</label>
-              <input type="number" class="form-control" id="asgPoints" name="points" placeholder="50" min="0" />
-            </div>
-          </div>
-          <div class="form-group">
-            <label for="asgDescription">Description</label>
-            <textarea class="form-control" id="asgDescription" name="description" placeholder="Assignment details..."></textarea>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-ghost" data-close-modal="addAssignmentModal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Add Assignment</button>
-        </div>
-      </form>
     </div>
   </div>
 
