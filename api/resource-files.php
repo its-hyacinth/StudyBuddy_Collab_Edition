@@ -25,18 +25,24 @@ function sb_ensure_resource_file_storage(PDO $pdo): void {
         download_count INT NOT NULL DEFAULT 0,
         PRIMARY KEY (teacher_id, resource_id)
     )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS resource_student_downloads (
+        teacher_id BIGINT NOT NULL,
+        resource_id VARCHAR(120) NOT NULL,
+        student_id BIGINT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (teacher_id, resource_id, student_id)
+    )");
 }
 
-function sb_record_resource_download(PDO $pdo, int $teacherId, string $resourceId): void {
+function sb_record_resource_download(PDO $pdo, int $teacherId, string $resourceId, int $studentId): void {
     if (defined('SB_DB_DRIVER') && SB_DB_DRIVER === 'pgsql') {
-        $sql = 'INSERT INTO resource_downloads (teacher_id, resource_id, download_count) VALUES (?,?,1)
-                ON CONFLICT (teacher_id, resource_id) DO UPDATE
-                SET download_count = resource_downloads.download_count + 1';
+        $sql = 'INSERT INTO resource_student_downloads (teacher_id, resource_id, student_id) VALUES (?,?,?)
+                ON CONFLICT (teacher_id, resource_id, student_id) DO NOTHING';
     } else {
-        $sql = 'INSERT INTO resource_downloads (teacher_id, resource_id, download_count) VALUES (?,?,1)
-                ON DUPLICATE KEY UPDATE download_count = download_count + 1';
+        $sql = 'INSERT INTO resource_student_downloads (teacher_id, resource_id, student_id) VALUES (?,?,?)
+                ON DUPLICATE KEY UPDATE student_id = VALUES(student_id)';
     }
-    $pdo->prepare($sql)->execute([$teacherId, $resourceId]);
+    $pdo->prepare($sql)->execute([$teacherId, $resourceId, $studentId]);
 }
 
 function sb_resource_file_download(PDO $pdo, array $user): never {
@@ -74,9 +80,10 @@ function sb_resource_file_download(PDO $pdo, array $user): never {
     if (!is_string($contents)) {
         json_response(['ok' => false, 'message' => 'The resource file could not be read.'], 500);
     }
-    if (($user['role'] ?? '') === 'student') {
+    $forceDownload = (string)($_GET['download'] ?? '') === '1';
+    if (($user['role'] ?? '') === 'student' && $forceDownload) {
         try {
-            sb_record_resource_download($pdo, $teacherId, $resourceId);
+            sb_record_resource_download($pdo, $teacherId, $resourceId, (int)$user['id']);
         } catch (Throwable $error) {
             error_log('Could not record resource download: ' . $error->getMessage());
             json_response(['ok' => false, 'message' => 'The resource download could not be recorded. Please try again.'], 500);
@@ -90,7 +97,6 @@ function sb_resource_file_download(PDO $pdo, array $user): never {
         $contentType = 'application/octet-stream';
     }
     $inlineTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'text/plain'];
-    $forceDownload = (string)($_GET['download'] ?? '') === '1';
     $disposition = !$forceDownload && in_array($contentType, $inlineTypes, true) ? 'inline' : 'attachment';
     header('Content-Type: ' . $contentType);
     header('X-Content-Type-Options: nosniff');
@@ -112,11 +118,14 @@ if ($method === 'GET' && isset($_GET['stats'])) {
     if (($user['role'] ?? '') !== 'teacher') {
         json_response(['ok' => false, 'message' => 'Only teachers can view resource download totals.'], 403);
     }
-    $query = $pdo->prepare('SELECT resource_id, download_count FROM resource_downloads WHERE teacher_id = ?');
+    $query = $pdo->prepare(
+        'SELECT resource_id, COUNT(DISTINCT student_id) AS student_count
+         FROM resource_student_downloads WHERE teacher_id = ? GROUP BY resource_id'
+    );
     $query->execute([(int)$user['id']]);
     $downloads = [];
     foreach ($query->fetchAll() as $row) {
-        $downloads[(string)$row['resource_id']] = (int)$row['download_count'];
+        $downloads[(string)$row['resource_id']] = (int)$row['student_count'];
     }
     json_response(['ok' => true, 'downloads' => $downloads]);
 }
@@ -137,7 +146,9 @@ if ($method === 'DELETE') {
     $fileDeleted = $delete->rowCount() > 0;
     $deleteDownloads = $pdo->prepare('DELETE FROM resource_downloads WHERE resource_id = ? AND teacher_id = ?');
     $deleteDownloads->execute([$resourceId, (int)$user['id']]);
-    $downloadsDeleted = $deleteDownloads->rowCount() > 0;
+    $deleteStudentDownloads = $pdo->prepare('DELETE FROM resource_student_downloads WHERE resource_id = ? AND teacher_id = ?');
+    $deleteStudentDownloads->execute([$resourceId, (int)$user['id']]);
+    $downloadsDeleted = $deleteDownloads->rowCount() > 0 || $deleteStudentDownloads->rowCount() > 0;
     $resourceQuery = $pdo->prepare('SELECT 1 FROM resources WHERE user_id = ? AND external_id = ?');
     $resourceQuery->execute([(int)$user['id'], $resourceId]);
     $resourceExists = $resourceQuery->fetchColumn() !== false;
@@ -181,7 +192,7 @@ if (str_contains(strtolower((string)($_SERVER['CONTENT_TYPE'] ?? '')), 'applicat
             json_response(['ok' => false, 'message' => 'Shared resource not found.'], 404);
         }
         try {
-            sb_record_resource_download($pdo, $teacherId, $resourceId);
+            sb_record_resource_download($pdo, $teacherId, $resourceId, (int)$user['id']);
         } catch (Throwable $error) {
             error_log('Could not record shared resource download: ' . $error->getMessage());
             json_response(['ok' => false, 'message' => 'The resource download could not be recorded. Please try again.'], 500);

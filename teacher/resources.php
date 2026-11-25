@@ -36,9 +36,8 @@
         <div class="stat-card">
           <div class="stat-icon green"><i data-lucide="download"></i></div>
           <div class="stat-body">
-            <div class="stat-label">Total Downloads</div>
-            <div class="stat-value" id="statDownloads">248</div>
-            <div class="stat-delta up"><i data-lucide="trending-up"></i> +32 this week</div>
+            <div class="stat-label">Student Downloads</div>
+            <div class="stat-value" id="statDownloads">0</div>
           </div>
         </div>
         <div class="stat-card">
@@ -112,7 +111,7 @@
                     <th>Type</th>
                     <th>Size</th>
                     <th>Uploaded</th>
-                    <th>Downloads</th>
+                    <th>Students Downloaded</th>
                     <th>Actions</th>
                   </tr>
                 </thead>

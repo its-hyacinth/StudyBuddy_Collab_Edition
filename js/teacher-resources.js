@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function resourceDownloadCount(resource) {
-    return downloadCounts.get(String(resource.id)) ?? (Number(resource.downloads) || 0);
+    return downloadCounts.get(String(resource.id)) || 0;
   }
 
   async function refreshResourceDownloadCounts(showError = false) {
@@ -447,10 +447,10 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="file-icon ${escapeHtml(resource.type || 'link')}" style="width:32px;height:32px"><i data-lucide="${typeIcon[resource.type] || 'file'}"></i></div>
             <div class="item-meta">
               <div class="item-title">${escapeHtml(resource.title || 'Untitled resource')}</div>
-              <div class="item-sub">${resource.downloadCount} download${resource.downloadCount === 1 ? '' : 's'}</div>
+              <div class="item-sub">${resource.downloadCount} student${resource.downloadCount === 1 ? '' : 's'}</div>
             </div>
           </div>`).join('')
-        : '<p style="font-size:12.5px;color:var(--text-muted);">No downloads yet.</p>';
+        : '<p style="font-size:12.5px;color:var(--text-muted);">No student downloads yet.</p>';
     }
 
     const tbody = document.querySelector('#resourcesTable tbody') || document.getElementById('resourcesTableBody');
